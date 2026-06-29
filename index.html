@@ -487,6 +487,7 @@ textarea.inp{resize:vertical; min-height:64px}
         <button class="btn ghost sm" id="exportData">⬇ ייצוא גיבוי (JSON)</button>
         <button class="btn ghost sm" id="importDataBtn">⬆ שחזור מגיבוי</button>
         <input type="file" id="importDataFile" accept=".json" class="hidden">
+        <button class="btn ghost sm" id="restoreAuto">↩ שחזר מגיבוי אוטומטי אחרון</button>
         <button class="btn danger sm" id="resetData">טען מחדש נתוני בית הספר</button>
       </div>
     </div>
@@ -513,6 +514,10 @@ textarea.inp{resize:vertical; min-height:64px}
     <button class="btn" id="clLogin" style="width:100%; margin-top:6px">התחברות</button>
     <button class="btn ghost" id="clLocal" style="width:100%; margin-top:8px">המשך במצב מקומי (ללא סנכרון)</button>
   </div>
+</div>
+
+<div id="signPage" class="cloud-overlay hidden" style="align-items:flex-start; overflow:auto">
+  <div class="cloud-card" style="max-width:680px; margin:24px auto" id="signPageInner"></div>
 </div>
 
 <script>
@@ -1038,6 +1043,9 @@ function syncParent(fid,srcId){
   if(!src||!(src.parentName||src.parentPhone||src.parentEmail))
     src=fam.find(x=>x.parentName||x.parentPhone||x.parentEmail)||fam[0];
   fam.forEach(x=>{x.parentName=src.parentName||'';x.parentPhone=src.parentPhone||'';x.parentEmail=src.parentEmail||'';});
+  // propagate terms-signed status: if any sibling's parent has signed, the whole family is covered
+  const signed=fam.find(x=>x.termsSigned);
+  if(signed)fam.forEach(x=>{x.termsSigned=true;x.termsSignedAt=x.termsSignedAt||signed.termsSignedAt;x.termsSignedBy=x.termsSignedBy||signed.termsSignedBy;});
 }
 function linkSibling(aId,bId){
   const a=DB.students.find(x=>x.id===aId),b=DB.students.find(x=>x.id===bId);
@@ -1067,6 +1075,15 @@ window._toggleSigned=function(id,on){
   else { s.termsSigned=false;s.termsSignedAt=null;s.termsSignedBy=''; save(); toast('פתיחת התיק בוטלה','ok'); }
   studentPage(id); renderStudents();
 };
+function signLink(id){ return location.origin+location.pathname+'?sign='+encodeURIComponent(id); }
+window._sendSign=function(id,how){
+  const s=DB.students.find(x=>x.id===id);if(!s)return;
+  const link=signLink(id);
+  const msg=`שלום, לפתיחת תיק הספרייה של ${s.firstName} ${s.lastName} בביה״ס דבורה עומר נדרשת חתימת הורה על תקנון הספרייה. למילוי וחתימה דיגיטלית (כדקה): ${link}`;
+  if(how==='mail'){ const to=s.parentEmail||''; window.open(`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent('חתימת הורה — ספריית דבורה עומר')}&body=${encodeURIComponent(msg)}`); }
+  else if(how==='wa'){ let p=(s.parentPhone||'').replace(/\D/g,''); if(p.indexOf('0')===0)p='972'+p.slice(1); if(!p){toast('אין מספר טלפון להורה בכרטיס','err');return;} window.open(`https://wa.me/${p}?text=${encodeURIComponent(msg)}`,'_blank'); }
+  else { if(navigator.clipboard){navigator.clipboard.writeText(link).then(()=>toast('הקישור הועתק','ok'),()=>toast('העתקה נכשלה','err'));} else toast(link); }
+};
 
 function studentPage(id){
   const s=DB.students.find(x=>x.id===id);if(!s)return;
@@ -1079,7 +1096,8 @@ function studentPage(id){
   <div class="mbody">
     <div class="kv"><b>כיתה</b><span>${gradeHeb(s.grade)+s.classLabel} · מחנך/ת ${esc(teacherFor(s.grade,s.classLabel)||'—')}</span></div>
     <div class="kv"><b>הורה</b><span>${esc(s.parentName||'—')} · ${esc(s.parentPhone||'')} · ${esc(s.parentEmail||'')}</span></div>
-    ${s.isTeacher?'':`<div class="kv"><b>תקנון</b><span>${s.termsSigned?`<span style="color:#2e9a4f">✓ נחתם${s.termsSignedAt?' · '+new Date(s.termsSignedAt).toLocaleDateString('he-IL'):''}${s.termsSignedBy?' · '+esc(s.termsSignedBy):''}</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',false)">בטל פתיחת תיק</button>`:`<span style="color:#b5651d">טרם נחתם — התיק סגור להשאלה</span> <button class="btn sm" onclick="_toggleSigned('${s.id}',true)">סמן כחתום ופתח תיק</button>`}</span></div>`}
+    ${s.isTeacher?'':`<div class="kv"><b>תקנון</b><span>${s.termsSigned?`<span style="color:#2e9a4f">✓ נחתם${s.termsSignedAt?' · '+new Date(s.termsSignedAt).toLocaleDateString('he-IL'):''}${s.termsSignedBy?' · '+esc(s.termsSignedBy):''}</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',false)">בטל פתיחת תיק</button>`:`<span style="color:#b5651d">טרם נחתם — התיק סגור להשאלה</span> <button class="btn sm" onclick="_toggleSigned('${s.id}',true)">סמן כחתום</button>`}</span></div>
+    ${s.termsSigned?'':`<div class="kv"><b>שליחת תקנון לחתימת הורה</b><span><button class="btn ghost sm" onclick="_sendSign('${s.id}','mail')">📧 מייל</button> <button class="btn ghost sm" onclick="_sendSign('${s.id}','wa')">💬 וואטסאפ</button> <button class="btn ghost sm" onclick="_sendSign('${s.id}','copy')">🔗 העתק קישור</button></span></div>`}`}
     ${sibHtml}
     <h3 style="color:var(--teal-d);font-size:17px;margin:16px 0 6px">ספרים פתוחים (${open.length})</h3>
     ${open.map(o=>`<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b><small>${esc(copyLabel(o.book,o.item))} · עד ${o.item.dueDate?new Date(o.item.dueDate).toLocaleDateString('he-IL'):'—'}</small></div><div class="actions"><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','student:${s.id}')">החזרה</button><button class="btn danger sm" onclick="confirmLost('${o.book.id}','${o.item.id}','student:${s.id}')">אבוד</button></div></div>`).join('')||'<p class="muted">אין.</p>'}
@@ -1228,6 +1246,13 @@ $('#exportData').addEventListener('click',()=>{const blob=new Blob([JSON.stringi
 $('#importDataBtn').addEventListener('click',()=>$('#importDataFile').click());
 $('#importDataFile').addEventListener('change',ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{let parsed;try{parsed=JSON.parse(r.result);}catch(e){toast('קובץ לא תקין','err');return;}confirmAction({title:'שחזור מגיבוי',message:'שחזור מגיבוי יחליף את כל הנתונים הקיימים במכשיר זה. להמשיך?',danger:true,admin:true,okLabel:'שחזר ודרוס'},()=>{DB=parsed;migrate();save();toast('שוחזר','ok');go('shelf');});};r.readAsText(f);ev.target.value='';});
 $('#resetData').addEventListener('click',()=>{confirmAction({title:'טעינת נתוני בית הספר',message:'פעולה זו תטען מחדש את נתוני בית הספר ותמחק כל שינוי מקומי שביצעת. להמשיך?',danger:true,admin:true,okLabel:'טען ודרוס'},()=>{DB=seed();save();toast('נטענו נתוני בית הספר','ok');go('shelf');});});
+$('#restoreAuto').addEventListener('click',()=>{
+  let bk; try{bk=JSON.parse(localStorage.getItem('dvora_lib_backup')||'null');}catch(e){}
+  if(!bk||!bk.data){toast('אין גיבוי אוטומטי שמור','err');return;}
+  const when=bk.ts?new Date(bk.ts).toLocaleString('he-IL'):'';
+  const cnt=(bk.data.students||[]).length;
+  confirmAction({title:'שחזור מגיבוי אוטומטי',message:`לשחזר את הגיבוי האוטומטי האחרון (${when}, ${cnt} תלמידים)? המצב הנוכחי יוחלף.`,danger:true,okLabel:'שחזר'},()=>{DB=bk.data;migrate();save();toast('שוחזר מהגיבוי האוטומטי','ok');go('shelf');});
+});
 
 /* ============ SETTINGS (policy) ============ */
 function loadSettings(){
@@ -1585,7 +1610,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 16';
+const APP_VERSION='גרסה 29.6.2026 · 17';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
@@ -1650,21 +1675,104 @@ async function cloudFetchRole(){
   }catch(e){ console.warn('role fetch failed',e); }
   console.log('Cloud account:', cloudUser&&cloudUser.email, '| UID:', cloudUser&&cloudUser.id, '| role:', cloudRole);
 }
+function dbScore(d){ if(!d||!Array.isArray(d.students))return -1; let p=0; d.students.forEach(s=>{if(s.parentName)p++;if(s.parentPhone)p++;if(s.parentEmail)p++;if(s.familyId)p++;}); return (d.students.length*10)+p+((d.books&&d.books.length)||0); }
+function localBackup(tag){ try{ localStorage.setItem('dvora_lib_backup', JSON.stringify({ts:Date.now(),tag:tag||'',data:DB})); }catch(e){} }
+function cloudFinishLogin(){ cloudSubscribe(); cloudReRender(); cloudStatusRender(); cloudApplySignatures&&cloudApplySignatures(); }
+function cloudSyncConflict(remote){
+  const rc=(remote.students||[]).length, lc=(DB.students||[]).length;
+  modal(`<div class="mhead"><h3>סנכרון נתונים</h3></div>
+  <div class="mbody">
+    <p style="margin:0 0 8px">נמצאו נתונים שונים בין הענן למכשיר זה. כדי לא לאבד מידע, בחר/י לאיזה כיוון לסנכרן:</p>
+    <div class="kv"><b>בענן</b><span>${rc} תלמידים</span></div>
+    <div class="kv"><b>במכשיר זה</b><span>${lc} תלמידים (כולל פרטים שהזנת)</span></div>
+    <p class="muted" style="margin:10px 0 0">גיבוי מקומי נשמר אוטומטית כך שתמיד אפשר לחזור.</p>
+    <div class="row" style="margin-top:14px"><button class="btn" id="syUp">⬆ העלה מהמכשיר לענן (מומלץ אם הזנת כאן פרטים)</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn ghost" id="syDown">⬇ טען מהענן (דורס את המכשיר)</button></div>
+  </div>`);
+  $('#syUp').addEventListener('click',()=>{ closeModal(); cloudSaveNow().then(()=>{toast('הנתונים מהמכשיר הועלו לענן','ok'); cloudFinishLogin();}); });
+  $('#syDown').addEventListener('click',()=>{ closeModal(); DB=remote; migrate(); toast('נטען מהענן','ok'); cloudFinishLogin(); });
+}
 async function cloudAfterLogin(silent){
   try{
     await cloudFetchRole();
     const remote=await cloudLoad();
-    if(remote){ DB=remote; migrate(); cloudReRender(); if(!silent)toast('הנתונים נטענו מהענן','ok'); }
-    else {
-      // cloud empty → seed it with current local data (first-time setup)
-      await cloudSaveNow();
-      if(!silent)toast('הנתונים המקומיים הועלו לענן','ok');
-    }
-    cloudSubscribe(); cloudReRender(); cloudStatusRender();
+    localBackup('pre-cloud-login');                 // snapshot local before any change
+    if(!remote){ await cloudSaveNow(); if(!silent)toast('הנתונים המקומיים הועלו לענן','ok'); cloudFinishLogin(); return; }
+    const rs=dbScore(remote), ls=dbScore(DB);
+    if(rs < ls){ cloudSyncConflict(remote); return; }   // cloud has less → ask, don't overwrite silently
+    DB=remote; migrate(); if(!silent)toast('הנתונים נטענו מהענן','ok');
+    cloudFinishLogin();
   }catch(e){ console.error(e); toast('טעינת הענן נכשלה — ממשיכים מקומית','err'); }
 }
-async function cloudDoLogin(email,pw){
-  const {data,error}=await supa.auth.signInWithPassword({email:email,password:pw});
+function cloudSubscribe(){
+  if(!supa||cloudChan)return;
+  cloudChan=supa.channel('lib-state').on('postgres_changes',{event:'*',schema:'public',table:'library_state'},payload=>{
+    if(Date.now()<cloudIgnoreUntil)return;            // ignore our own write echo
+    const nd=payload.new&&payload.new.data;
+    if(nd&&Object.keys(nd).length){ DB=nd; migrate(); cloudReRender(); toast('עודכן ממכשיר אחר','ok'); }
+  }).subscribe();
+  try{ supa.channel('sig-reqs').on('postgres_changes',{event:'INSERT',schema:'public',table:'signature_requests'},()=>cloudApplySignatures()).subscribe(); }catch(e){}
+}
+async function cloudApplySignatures(){
+  if(!cloudOn||!supa)return;
+  try{
+    const {data,error}=await supa.from('signature_requests').select('*').eq('applied',false);
+    if(error||!data||!data.length)return;
+    let n=0;
+    for(const row of data){
+      const st=DB.students.find(x=>x.id===row.student_id);
+      if(st){ markSigned(st,row.parent_name||st.parentName||''); n++; }
+      try{ await supa.from('signature_requests').update({applied:true}).eq('id',row.id); }catch(e){}
+    }
+    if(n){ toast(`התקבלו ${n} חתימות הורים — תיקים נפתחו`,'ok'); cloudReRender(); }
+  }catch(e){ console.warn('apply signatures',e); }
+}
+/* ---- parent signing page (opened via ?sign=<studentId>) ---- */
+function showSignPage(sid){
+  try{ if(!supa&&window.supabase) supa=window.supabase.createClient(SUPA_URL,SUPA_KEY); }catch(e){}
+  const terms = DB.settings&&DB.settings.terms ? `<pre style="white-space:pre-wrap;font:inherit;margin:0">${esc(DB.settings.terms)}</pre>` : TERMS_HTML;
+  const inner=document.getElementById('signPageInner');
+  inner.innerHTML=`
+    <div class="cloud-title">ספריית ביה״ס דבורה עומר · כפר סבא</div>
+    <h3 style="margin:0 0 10px">חתימת הורה על תקנון הספרייה</h3>
+    <div style="max-height:240px; overflow:auto; background:#f7fafa; border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:14px">${terms}</div>
+    <p style="margin:0 0 12px">קראתי את התקנון, הבנתי את תוכנו, ואני מתחייב/ת כי בני/בתי ינהג/תנהג על פיו, וכי במקרה של אובדן או נזק אדאג להחלפה או לפיצוי כמפורט בתקנון.</p>
+    <label class="fld"><span>שם התלמיד/ה</span><input class="inp" id="spChild" placeholder="שם מלא של הילד/ה"></label>
+    <div class="grid" style="grid-template-columns:1fr 1fr; gap:10px"><label class="fld"><span>שם ההורה/אפוטרופוס</span><input class="inp" id="spParent"></label><label class="fld"><span>ת"ז (לא חובה)</span><input class="inp" id="spId" inputmode="numeric"></label></div>
+    <div class="fld"><span>חתימה</span><div class="sig-wrap"><canvas id="spSig" class="sig-pad"></canvas><button type="button" class="btn ghost sm sig-clear" id="spSigClear">נקה</button></div></div>
+    <label style="display:flex; gap:8px; align-items:flex-start; margin:6px 0 12px; font-size:14px"><input type="checkbox" id="spAgree" style="margin-top:3px"><span>אני מאשר/ת את תקנון הספרייה וחותם/ת עליו עבור בני/בתי.</span></label>
+    <div id="spErr" class="cl-err"></div>
+    <button class="btn" id="spSubmit" style="width:100%">שליחת חתימה לספרייה</button>`;
+  document.getElementById('signPage').classList.remove('hidden');
+  // signature pad
+  const c=document.getElementById('spSig'); let ctx=null,draw=false;
+  function fit(){const w=c.clientWidth||500,h=c.clientHeight||90,dpr=window.devicePixelRatio||1;c.width=w*dpr;c.height=h*dpr;ctx=c.getContext('2d');ctx.scale(dpr,dpr);ctx.lineWidth=2;ctx.lineCap='round';ctx.strokeStyle='#143';}
+  fit();
+  const pos=e=>{const r=c.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};};
+  let drew=false;
+  c.addEventListener('mousedown',e=>{draw=true;const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);e.preventDefault();});
+  c.addEventListener('mousemove',e=>{if(!draw)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();drew=true;e.preventDefault();});
+  window.addEventListener('mouseup',()=>draw=false);
+  c.addEventListener('touchstart',e=>{draw=true;const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);e.preventDefault();},{passive:false});
+  c.addEventListener('touchmove',e=>{if(!draw)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();drew=true;e.preventDefault();},{passive:false});
+  c.addEventListener('touchend',()=>draw=false);
+  document.getElementById('spSigClear').addEventListener('click',()=>{ctx.clearRect(0,0,c.width,c.height);drew=false;});
+  document.getElementById('spSubmit').addEventListener('click',async()=>{
+    const child=document.getElementById('spChild').value.trim(), parent=document.getElementById('spParent').value.trim();
+    const err=document.getElementById('spErr'); err.textContent='';
+    if(!child||!parent){err.textContent='נא למלא שם תלמיד/ה ושם הורה';return;}
+    if(!document.getElementById('spAgree').checked){err.textContent='נא לאשר את התקנון';return;}
+    if(!drew){err.textContent='נא לחתום במסגרת';return;}
+    const btn=document.getElementById('spSubmit'); btn.disabled=true; btn.textContent='שולח…';
+    try{
+      if(!supa)throw new Error('no-conn');
+      const {error}=await supa.from('signature_requests').insert({student_id:sid,student_name:child,parent_name:parent});
+      if(error)throw error;
+      inner.innerHTML=`<div class="cloud-title">ספריית ביה״ס דבורה עומר · כפר סבא</div><h3 style="margin:10px 0">✓ תודה!</h3><p>החתימה נשלחה לספרייה. תיק הספרייה של ${esc(child)} ייפתח להשאלה. אפשר לסגור את החלון.</p>`;
+    }catch(e){ err.textContent='השליחה נכשלה. בדקו חיבור לאינטרנט ונסו שוב.'; btn.disabled=false; btn.textContent='שליחת חתימה לספרייה'; }
+  });
+}
+async function cloudDoLogin(email,pw){  const {data,error}=await supa.auth.signInWithPassword({email:email,password:pw});
   if(error)throw error;
   cloudUser=data.user; cloudOn=true; return data.user;
 }
@@ -1715,7 +1823,9 @@ window.cloudChangePassword=function(){
   if(lo)lo.addEventListener('click',()=>{ cloudHideLogin(); cloudOn=false; cloudStatusRender(); toast('מצב מקומי — הנתונים נשמרים במכשיר זה בלבד'); });
 })();
 
-if(CLOUD_ENABLED) cloudInit(); else cloudStatusRender();
+const _signParam=(function(){try{return new URLSearchParams(location.search).get('sign');}catch(e){return null;}})();
+if(_signParam){ showSignPage(_signParam); }
+else if(CLOUD_ENABLED) cloudInit(); else cloudStatusRender();
 </script>
 </body>
 </html>
