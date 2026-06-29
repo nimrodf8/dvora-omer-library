@@ -1066,7 +1066,15 @@ function renderFamilyBox(s){
     .sort((a,b)=>a.grade-b.grade||cmp(a.classLabel,b.classLabel)||cmp(a.firstName,b.firstName));
   const chips=sibs.length?`<div class="sib-chips">${sibs.map(x=>`<span class="sib-chip">${esc(x.firstName+' '+x.lastName)} · ${gradeHeb(x.grade)+x.classLabel}<button type="button" title="ביטול שיוך" onclick="_sibUnlink('${x.id}','${s.id}')">×</button></span>`).join('')}</div>`:'<div class="muted" style="margin-bottom:6px">לא משויכים אחים.</div>';
   box.innerHTML=chips+`<div class="row"><select class="inp" id="sibSel" style="flex:1"><option value="">— בחר תלמיד —</option>${cand.map(x=>`<option value="${x.id}">${esc(x.firstName+' '+x.lastName)} · ${gradeHeb(x.grade)+x.classLabel}</option>`).join('')}</select><button type="button" class="btn ghost sm" id="sibAdd">+ שייך</button></div><div class="muted" style="margin-top:6px">פרטי ההורה יסונכרנו אוטומטית בין כל בני המשפחה.</div>`;
-  $('#sibAdd').addEventListener('click',()=>{const v=$('#sibSel').value;if(!v){toast('בחרו תלמיד','err');return;}linkSibling(s.id,v);renderFamilyBox(s);refreshParentFields(s);renderStudents();toast('שויך','ok');});
+  $('#sibAdd').addEventListener('click',()=>{
+    const v=$('#sibSel').value;if(!v){toast('בחרו תלמיד','err');return;}
+    // capture parent details typed in the form so they aren't lost and become the family source
+    if($('#sPName'))s.parentName=$('#sPName').value.trim();
+    if($('#sPPhone'))s.parentPhone=$('#sPPhone').value.trim();
+    if($('#sPMail'))s.parentEmail=$('#sPMail').value.trim();
+    linkSibling(s.id,v);
+    renderFamilyBox(s);refreshParentFields(s);renderStudents();toast('שויך · פרטי ההורה סונכרנו','ok');
+  });
 }
 window._sibUnlink=function(sibId,selfId){if(!confirm('לבטל את שיוך האח/אחות? (פרטי ההורה יישארו כפי שהם)'))return;unlinkSibling(sibId);const self=DB.students.find(x=>x.id===selfId);if(self){renderFamilyBox(self);refreshParentFields(self);}renderStudents();toast('בוטל השיוך','ok');};
 window._toggleSigned=function(id,on){
@@ -1610,7 +1618,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 17';
+const APP_VERSION='גרסה 29.6.2026 · 18';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
