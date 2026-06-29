@@ -1227,16 +1227,17 @@ let _queueRows=[];
 // קורא פרטי חתימה גם אם העמודות החדשות לא קיימות — המידע מקודד בתוך שם התלמיד
 function parseSig(row){
   let name=row.student_name||'';
-  let phone=row.parent_phone||'', email=row.parent_email||'', fg=row.family_group||'';
+  let phone=row.parent_phone||'', email=row.parent_email||'', fg=row.family_group||'', notify=false;
   const m=name.match(/⟦(\{[\s\S]*?\})⟧\s*$/);
-  if(m){ try{ const j=JSON.parse(m[1]); phone=phone||j.p||''; email=email||j.e||''; fg=fg||j.g||''; }catch(e){} name=name.replace(/\s*⟦\{[\s\S]*?\}⟧\s*$/,'').trim(); }
-  return {name, parent_name:row.parent_name||'', phone, email, fg};
+  if(m){ try{ const j=JSON.parse(m[1]); phone=phone||j.p||''; email=email||j.e||''; fg=fg||j.g||''; notify=!!j.n; }catch(e){} name=name.replace(/\s*⟦\{[\s\S]*?\}⟧\s*$/,'').trim(); }
+  return {name, parent_name:row.parent_name||'', phone, email, fg, notify};
 }
 function fillContactFromSignature(st,info){
   if(!info)return;
   if(!st.parentName && info.parent_name) st.parentName=info.parent_name;
   if(!st.parentPhone && info.phone) st.parentPhone=info.phone;
   if(!st.parentEmail && info.email) st.parentEmail=info.email;
+  if(info.notify) st.notifyConsent=true;
 }
 async function linkFamilyFromSignature(info, st){
   if(!info||!info.fg||!supa)return;
@@ -1302,6 +1303,7 @@ function studentPage(id){
     <div class="kv"><b>הורה</b><span>${esc(s.parentName||'—')} · ${esc(s.parentPhone||'')} · ${esc(s.parentEmail||'')}</span></div>
     ${s.isTeacher?'':`<div class="kv"><b>תקנון</b><span>${s.termsSigned?`<span style="color:#2e9a4f">✓ נחתם${s.termsSignedAt?' · '+new Date(s.termsSignedAt).toLocaleDateString('he-IL'):''}${s.termsSignedBy?' · '+esc(s.termsSignedBy):''}</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',false)">בטל פתיחת תיק</button>`:`<span style="color:#b5651d">טרם נחתם — התיק סגור להשאלה</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',true)">סמן כחתום ידנית</button>`}</span></div>
     <div class="kv"><b>חתימת הורה</b><span><button class="btn sm" onclick="_sendSignMenu('${s.id}')">✍ שליחת תקנון לחתימה</button>${s.termsSigned?' <span class="muted">כבר נחתם — אפשר לשלוח שוב</span>':''}</span></div>`}
+    ${s.notifyConsent?'<div class="kv"><b>הודעות</b><span style="color:#2e9a4f">✓ ההורה אישר קבלת הודעות על השאלה ותזכורות החזרה</span></div>':''}
     ${sibHtml}
     <h3 style="color:var(--teal-d);font-size:17px;margin:16px 0 6px">ספרים פתוחים (${open.length})</h3>
     ${open.map(o=>`<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b><small>${esc(copyLabel(o.book,o.item))} · עד ${o.item.dueDate?new Date(o.item.dueDate).toLocaleDateString('he-IL'):'—'}</small></div><div class="actions"><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','student:${s.id}')">החזרה</button><button class="btn danger sm" onclick="confirmLost('${o.book.id}','${o.item.id}','student:${s.id}')">אבוד</button></div></div>`).join('')||'<p class="muted">אין.</p>'}
@@ -2187,7 +2189,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 62';
+const APP_VERSION='גרסה 29.6.2026 · 63';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
@@ -2434,7 +2436,8 @@ function showSignPage(sid){
     <div class="grid" style="grid-template-columns:1fr 1fr; gap:10px"><label class="fld"><span>שם ההורה/אפוטרופוס</span><input class="inp" id="spParent"></label><label class="fld"><span>טלפון ההורה</span><input class="inp" id="spPhone" inputmode="tel" placeholder="050-0000000"></label></div>
     <label class="fld"><span>אימייל ההורה (לא חובה)</span><input class="inp" id="spEmail" inputmode="email" placeholder="name@example.com"></label>
     <div class="fld"><span>חתימה</span><div class="sig-wrap"><canvas id="spSig" class="sig-pad"></canvas><button type="button" class="btn ghost sm sig-clear" id="spSigClear">נקה</button></div></div>
-    <label style="display:flex; gap:8px; align-items:flex-start; margin:6px 0 12px; font-size:14px"><input type="checkbox" id="spAgree" style="margin-top:3px"><span>אני מאשר/ת את תקנון הספרייה וחותם/ת עליו עבור ילדיי הרשומים מעלה.</span></label>
+    <label style="display:flex; gap:8px; align-items:flex-start; margin:6px 0 8px; font-size:14px"><input type="checkbox" id="spAgree" style="margin-top:3px"><span>אני מאשר/ת את תקנון הספרייה וחותם/ת עליו עבור ילדיי הרשומים מעלה.</span></label>
+    <label style="display:flex; gap:8px; align-items:flex-start; margin:0 0 12px; font-size:14px"><input type="checkbox" id="spNotify" style="margin-top:3px"><span>אני מאשר/ת לקבל מהמערכת הודעות על השאלת ספרים על ידי ילדי/תי, ותזכורות על מועד החזרה צפוי ועל איחור בהחזרה. <b>(אישור חובה)</b></span></label>
     <div id="spErr" class="cl-err"></div>
     <button class="btn" id="spSubmit" style="width:100%">שליחת חתימה לספרייה</button>`;
   document.getElementById('signPage').classList.remove('hidden');
@@ -2472,6 +2475,7 @@ function showSignPage(sid){
     const err=document.getElementById('spErr'); err.textContent='';
     if(!kids.length||!parent){err.textContent='נא למלא שם תלמיד/ה ושם הורה';return;}
     if(!document.getElementById('spAgree').checked){err.textContent='נא לאשר את התקנון';return;}
+    if(!document.getElementById('spNotify').checked){err.textContent='נא לאשר קבלת הודעות ותזכורות מהמערכת (אישור חובה)';return;}
     if(!drew){err.textContent='נא לחתום במסגרת';return;}
     const btn=document.getElementById('spSubmit'); btn.disabled=true; btn.textContent='שולח…';
     try{
@@ -2479,7 +2483,7 @@ function showSignPage(sid){
       const fg = kids.length>1 ? ('fg_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7)) : '';
       for(let i=0;i<kids.length;i++){
         const base = kids[i].cls ? (kids[i].name+' · '+kids[i].cls) : kids[i].name;
-        const meta = (phone||email||fg) ? (' ⟦'+JSON.stringify({p:phone,e:email,g:fg})+'⟧') : '';
+        const meta = ' ⟦'+JSON.stringify({p:phone,e:email,g:fg,n:1})+'⟧';
         const sid_i = (i===0 && !generic) ? sid : '';   // הקישור הישיר חל על הילד הראשון; אחים → לשיוך ידני
         const {error}=await supa.from('signature_requests').insert({student_id:sid_i, student_name:base+meta, parent_name:parent});
         if(error)throw error;
