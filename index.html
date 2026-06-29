@@ -253,9 +253,9 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <div class="layout">
   <aside class="sidebar">
     <nav class="nav" id="tabs">
+      <button data-view="catalog" class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/></svg> קטלוג</button>
       <button data-view="checkout" class="nav-item"><svg viewBox="0 0 24 24"><path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1Z"/></svg> השאלה</button>
       <button data-view="reminders" class="nav-item"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg> תזכורות</button>
-      <button data-view="catalog" class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/></svg> קטלוג</button>
       <button data-view="students" class="nav-item"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.5a3 3 0 0 1 0 5.8M16.5 19a5.5 5.5 0 0 0-2-4.2"/></svg> תלמידים</button>
       <button data-view="classes" class="nav-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="1.5"/><path d="M3 17l3 3M21 17l-3 3M8 9h8M8 12.5h5"/></svg> כיתות ומורים</button>
       <button data-view="map" class="nav-item"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg> מפת התמצאות</button>
@@ -1770,8 +1770,10 @@ function reportDefs(){
     {key:'signed', title:'סטטוס חתימת תקנון', icon:'✍️', headers:['תלמיד/ה','כיתה','הורה','חתם/ה','תאריך'], rows:signRows},
   ];
 }
-let repFilter={}, _repDefs=[];
+let repFilter={}, _repDefs=[], repClassSel=new Set();
 function filterRows(rows,q){ q=(q||'').trim().toLowerCase(); if(!q)return rows; return rows.filter(r=>r.some(c=>String(c==null?'':c).toLowerCase().includes(q))); }
+function byclassRows(d){ let all=filterRows(d.rows, repFilter['byclass']); if(repClassSel.size)all=all.filter(r=>repClassSel.has(String(r[0]))); return all; }
+function classLoanRows(lbl){ return (DB.logs||[]).filter(l=>l.type==='checkout').filter(l=>{const s=DB.students.find(x=>x.id===l.studentId);return s&&clsLabel(s)===lbl;}).sort((a,b)=>b.date-a.date); }
 function repRowHtml(d,r){
   if(d.key==='byclass'){
     const lbl=String(r[0]).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
@@ -1779,24 +1781,58 @@ function repRowHtml(d,r){
   }
   return `<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`;
 }
+function classChooserHtml(d){
+  return `<div class="no-print" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center">
+    <span class="muted" style="margin-inline-end:4px">בחירת כיתות:</span>
+    ${d.rows.map(r=>{const lbl=String(r[0]);const on=repClassSel.has(lbl);return `<button class="btn ${on?'':'ghost'} sm" onclick="toggleRepClass('${esc(lbl).replace(/'/g,"\\'")}')">${esc(lbl)}</button>`;}).join('')}
+    ${repClassSel.size?`<button class="btn ghost sm" onclick="clearRepClass()" style="text-decoration:underline">נקה בחירה (${repClassSel.size})</button>`:'<span class="muted">— ללא בחירה = כל הכיתות</span>'}
+  </div>`;
+}
 function repBodyHtml(d){
+  if(d.key==='byclass'){
+    const all=byclassRows(d); const N=all.length, showAll=!!repShowAll[d.key];
+    const rows=showAll?all:all.slice(0,12);
+    const toggle = N>12 ? `<div class="rep-more no-print"><button class="btn ghost sm" onclick="toggleReport('${d.key}')">${showAll?'הצג פחות ▲':`הצג את כל ${N} השורות ▼`}</button></div>` : '';
+    const table = N? `<div style="${showAll?'max-height:420px;overflow:auto':''}"><table class="rep-table"><thead><tr>${d.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>repRowHtml(d,r)).join('')}</tbody></table></div>${toggle}` : `<div class="rep-empty">אין השאלות לכיתות שנבחרו.</div>`;
+    return classChooserHtml(d)+table;
+  }
   const all=filterRows(d.rows, repFilter[d.key]); const N=all.length, showAll=!!repShowAll[d.key];
   const rows=showAll?all:all.slice(0,8);
   const toggle = N>8 ? `<div class="rep-more no-print"><button class="btn ghost sm" onclick="toggleReport('${d.key}')">${showAll?'הצג פחות ▲':`הצג את כל ${N} השורות ▼`}</button></div>` : '';
   return N? `<div style="${showAll?'max-height:420px;overflow:auto':''}"><table class="rep-table"><thead><tr>${d.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>repRowHtml(d,r)).join('')}</tbody></table></div>${toggle}` : `<div class="rep-empty">${repFilter[d.key]?'אין תוצאות לסינון זה.':'אין נתונים בקטגוריה זו 👍'}</div>`;
 }
+function refreshByclass(){ const d=_repDefs.find(x=>x.key==='byclass'); if(!d)return; const body=document.getElementById('repbody-byclass'); if(body)body.innerHTML=repBodyHtml(d); const cnt=document.getElementById('repcnt-byclass'); if(cnt)cnt.textContent=byclassRows(d).length+' שורות'; }
+window.toggleRepClass=function(lbl){ if(repClassSel.has(lbl))repClassSel.delete(lbl); else repClassSel.add(lbl); repShowAll['byclass']=false; refreshByclass(); };
+window.clearRepClass=function(){ repClassSel.clear(); refreshByclass(); };
 window.setRepFilter=function(key,val){
   repFilter[key]=val; repShowAll[key]=false;
   const d=_repDefs.find(x=>x.key===key); if(!d)return;
   const body=document.getElementById('repbody-'+key); if(body)body.innerHTML=repBodyHtml(d);
-  const cnt=document.getElementById('repcnt-'+key); if(cnt)cnt.textContent=filterRows(d.rows,val).length+' שורות';
+  const cnt=document.getElementById('repcnt-'+key); if(cnt)cnt.textContent=(key==='byclass'?byclassRows(d):filterRows(d.rows,val)).length+' שורות';
 };
 window.toggleReport=function(k){ repShowAll[k]=!repShowAll[k]; const d=_repDefs.find(x=>x.key===k); const body=document.getElementById('repbody-'+k); if(d&&body)body.innerHTML=repBodyHtml(d); };
 window.showClassLoans=function(lbl){
-  const rows=(DB.logs||[]).filter(l=>l.type==='checkout').filter(l=>{const s=DB.students.find(x=>x.id===l.studentId);return s&&clsLabel(s)===lbl;}).sort((a,b)=>b.date-a.date);
+  const rows=classLoanRows(lbl);
   const body=rows.length?`<table class="rep-table"><thead><tr><th>תאריך</th><th>ספר</th><th>תלמיד/ה</th><th>להחזרה עד</th></tr></thead><tbody>${rows.map(l=>{const b=DB.books.find(x=>x.id===l.bookId);const s=DB.students.find(x=>x.id===l.studentId);return `<tr><td style="white-space:nowrap">${new Date(l.date).toLocaleDateString('he-IL')}</td><td>${esc(b?b.title:'(נמחק)')}</td><td>${esc(s?s.firstName+' '+s.lastName:'—')}</td><td style="white-space:nowrap">${l.dueDate?new Date(l.dueDate).toLocaleDateString('he-IL'):'—'}</td></tr>`;}).join('')}</tbody></table>`:'<p class="muted">אין השאלות לכיתה זו.</p>';
   modal(`<div class="mhead"><h3>השאלות — כיתה ${esc(lbl)} (${rows.length})</h3><button class="x" onclick="closeModal()">×</button></div><div class="mbody">${body}</div>`);
 };
+function exportByClass(){
+  const d=_repDefs.find(x=>x.key==='byclass'); if(!d)return;
+  const rows=byclassRows(d);
+  if(!rows.length){toast('אין נתונים לייצוא','err');return;}
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['כיתה','סה״כ השאלות'],...rows]), 'סיכום לפי כיתה');
+  const used={};
+  rows.forEach(r=>{
+    const lbl=String(r[0]);
+    const loans=classLoanRows(lbl);
+    const detail=[['תאריך','ספר','תלמיד/ה','להחזרה עד']].concat(loans.map(l=>{const b=DB.books.find(x=>x.id===l.bookId);const s=DB.students.find(x=>x.id===l.studentId);return [new Date(l.date).toLocaleDateString('he-IL'), b?b.title:'(נמחק)', s?s.firstName+' '+s.lastName:'—', l.dueDate?new Date(l.dueDate).toLocaleDateString('he-IL'):''];}));
+    let base=('כיתה '+lbl).replace(/[\\\/\?\*\[\]:]/g,' ').slice(0,28), nm=base, i=2; while(used[nm]){nm=base.slice(0,25)+' '+i;i++;} used[nm]=1;
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detail), nm);
+  });
+  XLSX.writeFile(wb,`השאלות_לפי_כיתה_${new Date().toLocaleDateString('he-IL').replace(/\./g,'-')}.xlsx`);
+  toast('יוצא לאקסל: סיכום + פירוט השאלות לכל כיתה','ok');
+}
 function renderDeletedBooks(){
   const box=document.getElementById('deletedBooks'); if(!box)return;
   const list=(DB.deletedBooks||[]).slice().reverse();
@@ -1838,8 +1874,9 @@ function renderReports(){
   const p=$('#reportsPanel');
   let html=`<div class="stat-grid">`+stats.map(s=>`<div class="stat${s.warn?' warn':''}"><div class="v">${s.v}</div><div class="l">${s.l}</div></div>`).join('')+`</div>`;
   html+=defs.map(d=>{
-    const cnt=filterRows(d.rows,repFilter[d.key]).length;
-    return `<div class="card rep-card"><div class="rep-head"><div><h3>${d.icon} ${esc(d.title)}</h3></div><div class="row" style="gap:8px;align-items:center"><input class="inp no-print" style="height:32px;max-width:150px;padding:4px 8px" placeholder="🔍 סינון…" value="${esc(repFilter[d.key]||'')}" oninput="setRepFilter('${d.key}',this.value)"><span class="cnt" id="repcnt-${d.key}">${cnt} שורות</span><button class="btn ghost sm no-print" onclick="exportReport('${d.key}')">⬇ אקסל</button></div></div><div id="repbody-${d.key}">${repBodyHtml(d)}</div></div>`;
+    const cnt=(d.key==='byclass'?byclassRows(d):filterRows(d.rows,repFilter[d.key])).length;
+    const exp=d.key==='byclass'?'exportByClass()':`exportReport('${d.key}')`;
+    return `<div class="card rep-card"><div class="rep-head"><div><h3>${d.icon} ${esc(d.title)}</h3></div><div class="row" style="gap:8px;align-items:center"><input class="inp no-print" style="height:32px;max-width:150px;padding:4px 8px" placeholder="🔍 סינון…" value="${esc(repFilter[d.key]||'')}" oninput="setRepFilter('${d.key}',this.value)"><span class="cnt" id="repcnt-${d.key}">${cnt} שורות</span><button class="btn ghost sm no-print" onclick="${exp}">⬇ אקסל</button></div></div><div id="repbody-${d.key}">${repBodyHtml(d)}</div></div>`;
   }).join('');
   p.innerHTML=html;
 }
@@ -2070,7 +2107,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 48';
+const APP_VERSION='גרסה 29.6.2026 · 50';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
