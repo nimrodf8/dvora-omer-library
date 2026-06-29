@@ -306,6 +306,7 @@ textarea.inp{resize:vertical; min-height:64px}
         <input class="inp" id="scanInput" inputmode="numeric" autocomplete="off"
           placeholder="מקדו כאן וסרקו — הסורק מקליד את המספר ולוחץ Enter" style="font-size:18px; letter-spacing:2px"></label>
       <div class="muted" style="margin-top:8px">סורק USB עובד כמו מקלדת — אין צורך בהתקנה. ודאו שהשדה ממוקד לפני הסריקה.</div>
+      <div class="row" style="margin-top:10px"><button class="btn ghost sm" id="coCancel">✕ ביטול וסגירת העמוד</button></div>
     </div>
     <div id="checkoutPanel"></div>
   </section>
@@ -326,7 +327,7 @@ textarea.inp{resize:vertical; min-height:64px}
   <section id="view-students" class="view hidden">
     <div class="view-head">
       <div><h2>תלמידים</h2><p>רישום תלמיד · שם המורה מתמלא אוטומטית לפי הכיתה</p></div>
-      <button class="btn" id="newStudentBtn">+ תלמיד חדש</button>
+      <div class="row"><button class="btn ghost sm" id="dlStudents">⬇ קובץ תלמידים (CSV)</button><button class="btn ghost sm" id="upStudentsBtn">⬆ עדכון מקובץ</button><input type="file" id="upStudentsFile" accept=".csv,.txt" class="hidden"><button class="btn" id="newStudentBtn">+ תלמיד חדש</button></div>
     </div>
     <div class="controls no-print">
       <label class="fld grow" style="margin:0"><span>חיפוש</span><input class="inp" id="studSearch" placeholder="שם תלמיד, כיתה, הורה…"></label>
@@ -429,9 +430,28 @@ textarea.inp{resize:vertical; min-height:64px}
       <div class="row no-print" style="margin-top:14px"><button class="btn" id="regSign">✍ רישום חתימה ופתיחת תיק להשאלה</button><span id="signState" class="muted" style="align-self:center"></span></div>
       <p class="muted no-print" style="margin-top:12px">בחרו תלמיד/ה, מלאו את פרטי ההורה והחתימה, ולחצו "רישום חתימה" — התיק ייפתח להשאלה (וגם אחים/אחיות באותה משפחה). בשלב ההורים החתימה תתבצע דרך קישור שיישלח להורה. ניתן גם להדפיס את הטופס לחתימה ידנית (🖨 הדפסת טופס).</p>
     </div>
-  </section>
 
-  <!-- ===== SETTINGS ===== -->
+    <div class="card no-print" style="margin-top:16px">
+      <h3 style="margin:0 0 8px; color:var(--teal-d)">שליחה כללית לקבוצת הורים</h3>
+      <p class="muted" style="margin:0 0 12px">שלחו קישור כללי (לא משויך לתלמיד מסוים) לקבוצת וואטסאפ של ההורים. כל הורה ימלא את שם הילד/ה והכיתה ויחתום — והחתימות יופיעו למטה לשיוך.</p>
+      <div class="row"><button class="btn" onclick="_sendGeneric('wa')">💬 שליחה בוואטסאפ</button><button class="btn ghost" onclick="_sendGeneric('mail')">📧 מייל</button><button class="btn ghost" onclick="_sendGeneric('copy')">🔗 העתקת קישור כללי</button></div>
+    </div>
+
+    <div class="card no-print" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <h3 style="margin:0; color:var(--teal-d)">חתימות שהתקבלו לשיוך</h3>
+        <button class="btn ghost sm" id="refreshQueue">↻ רענון</button>
+      </div>
+      <p class="muted" style="margin:8px 0 10px">חתימות שהגיעו דרך הקישור הכללי וממתינות לשיוך לתלמיד/ה הנכון/ה.</p>
+      <div style="background:#f7fafa; border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:13.5px; line-height:1.8; color:var(--ink)">
+        <b style="color:var(--teal-d)">איך זה עובד:</b><br>
+        • חתימה מ<b>קישור אישי</b> (נשלח מתוך תיק התלמיד) — משויכת <b>אוטומטית</b> לתלמיד/ה הנכון/ה, והתיק נפתח מיד.<br>
+        • חתימה מ<b>קישור כללי</b> (נשלח לקבוצת הורים) — מופיעה כאן וממתינה לשיוך: ההורה מילא את שם הילד/ה והכיתה. בחרו את התלמיד/ה הנכון/ה בשדה החיפוש ולחצו <b>"שייך ואשר"</b> — והתיק ייפתח להשאלה.<br>
+        • כל חתימה ושיוך מתועדים ב<b>יומן הפעילות</b> (הגדרות → יומן פעילות, למנהל/ת בלבד).
+      </div>
+      <div id="signQueue"></div>
+    </div>
+  </section>
   <section id="view-settings" class="view hidden">
     <div class="view-head"><div><h2>הגדרות</h2><p>מדיניות השאלה · כיתות ומורים · סורק · גיבוי נתונים</p></div></div>
 
@@ -448,16 +468,21 @@ textarea.inp{resize:vertical; min-height:64px}
     </div>
 
     <div class="card" style="margin-bottom:16px">
-      <h3 style="margin:0 0 10px; color:var(--teal-d)">כיתות ומורים</h3>
-      <div class="grid three" style="align-items:end">
-        <label class="fld" style="margin:0"><span>שכבה</span><select class="inp" id="clGrade">
-          <option value="1">א׳</option><option value="2">ב׳</option><option value="3">ג׳</option>
-          <option value="4">ד׳</option><option value="5">ה׳</option><option value="6">ו׳</option></select></label>
-        <label class="fld" style="margin:0"><span>כיתה (אות)</span><input class="inp" id="clLabel" placeholder="1, 2, 3 או א/ב/ג"></label>
-        <label class="fld" style="margin:0"><span>שם המחנך/ת</span><input class="inp" id="clTeacher" placeholder="שם מלא"></label>
+      <div class="row" style="justify-content:space-between; align-items:center; cursor:pointer" id="clsToggle">
+        <h3 style="margin:0; color:var(--teal-d)">כיתות ומורים</h3>
+        <span id="clsChev" class="cs-link">▸ פתיחה ועדכון</span>
       </div>
-      <button class="btn sm" id="addClass" style="margin-top:6px">+ הוסף כיתה</button>
-      <div class="list" id="classList" style="margin-top:12px"></div>
+      <div id="clsBody" class="hidden" style="margin-top:12px">
+        <div class="grid three" style="align-items:end">
+          <label class="fld" style="margin:0"><span>שכבה</span><select class="inp" id="clGrade">
+            <option value="1">א׳</option><option value="2">ב׳</option><option value="3">ג׳</option>
+            <option value="4">ד׳</option><option value="5">ה׳</option><option value="6">ו׳</option></select></label>
+          <label class="fld" style="margin:0"><span>כיתה (אות)</span><input class="inp" id="clLabel" placeholder="1, 2, 3 או א/ב/ג"></label>
+          <label class="fld" style="margin:0"><span>שם המחנך/ת</span><input class="inp" id="clTeacher" placeholder="שם מלא"></label>
+        </div>
+        <button class="btn sm" id="addClass" style="margin-top:6px">+ הוסף כיתה</button>
+        <div class="list" id="classList" style="margin-top:12px"></div>
+      </div>
     </div>
 
     <div class="card" style="margin-bottom:16px">
@@ -965,11 +990,12 @@ function openCheckout(b,it){
     const txt=$('#coStud').value.trim();
     let st=DB.students.find(s=>(s.firstName+' '+s.lastName+' — '+gradeHeb(s.grade)+s.classLabel)===txt)||DB.students.find(s=>txt&&(s.firstName+' '+s.lastName)===txt);
     if(!st){toast('בחרו תלמיד מהרשימה','err');return;}
-    if(!st.termsSigned){toast('תיק התלמיד טרם נפתח להשאלה — נדרשת חתימת הורה על התקנון (עמוד "תקנון")','err');return;}
-    const openCnt=studentOpenItems(st.id).length, max=DB.settings.maxBooks||2;
+    if(!st.isTeacher && !st.termsSigned){toast('תיק התלמיד טרם נפתח להשאלה — נדרשת חתימת הורה על התקנון (עמוד "תקנון")','err');return;}
+    const openCnt=studentOpenItems(st.id).length, max=st.isTeacher?99:(DB.settings.maxBooks||2);
     if(openCnt>=max){toast(`${esc(st.firstName)} כבר מחזיק/ה ${openCnt} ספרים (מקסימום ${max})`,'err');return;}
-    const dueTs=new Date($('#coDue').value).getTime();
-    confirmAction({title:'אישור השאלה',message:`להשאיל את "${b.title}" ל${st.firstName} ${st.lastName} (${gradeHeb(st.grade)+st.classLabel})? להחזרה עד ${new Date(dueTs).toLocaleDateString('he-IL')}.`,okLabel:'אשר השאלה'},()=>{
+    let dueTs=new Date($('#coDue').value).getTime();
+    if(st.isTeacher){ const d=new Date(); d.setMonth(d.getMonth()+6); dueTs=d.getTime(); }   // מורים: השאלה לחצי שנה
+    confirmAction({title:'אישור השאלה',message:`להשאיל את "${b.title}" ל${st.firstName} ${st.lastName} (${st.isTeacher?'מורה':gradeHeb(st.grade)+st.classLabel})? להחזרה עד ${new Date(dueTs).toLocaleDateString('he-IL')}${st.isTeacher?' (חצי שנה)':''}.`,okLabel:'אשר השאלה'},()=>{
       it.status='out';it.holder=st.id;it.dueDate=dueTs;it.borrowDate=Date.now();if(!it.reminders)it.reminders=[];
       DB.logs.push({id:uid(),type:'checkout',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:st.id,date:Date.now(),dueDate:dueTs});
       logAct('checkout',`השאלה: ${b.title} ל${st.firstName} ${st.lastName}`);
@@ -1141,6 +1167,41 @@ window._sendSignMenu=function(id){
     <div class="row" style="margin-top:8px"><button class="btn ghost" onclick="_sendSign('${s.id}','copy')">🔗 העתקת הקישור</button></div>
   </div>`);
 };
+function genericLink(){ return location.origin+location.pathname+'?sign=generic'; }
+window._sendGeneric=function(how){
+  const link=genericLink();
+  const msg=`שלום הורים יקרים, לפתיחת תיק הספרייה של ילדכם/ן בביה״ס דבורה עומר נדרשת חתימת הורה על תקנון הספרייה. אנא מלאו את שם הילד/ה והכיתה וחתמו דיגיטלית (כדקה): ${link}`;
+  if(how==='wa') window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+  else if(how==='mail') window.open('mailto:?subject='+encodeURIComponent('חתימת הורים — ספריית דבורה עומר')+'&body='+encodeURIComponent(msg));
+  else { if(navigator.clipboard){navigator.clipboard.writeText(link).then(()=>toast('הקישור הכללי הועתק','ok'),()=>toast('העתקה נכשלה','err'));} else toast(link); }
+  logAct('sign_sent','שליחת קישור כללי לקבוצת הורים ('+(how==='wa'?'וואטסאפ':how==='mail'?'מייל':'קישור')+')'); save();
+};
+async function renderSignQueue(){
+  const box=document.getElementById('signQueue'); if(!box)return;
+  if(!cloudOn||!supa){ box.innerHTML='<p class="muted">שיוך חתימות זמין במצב מחובר לענן.</p>'; return; }
+  box.innerHTML='<p class="muted">טוען…</p>';
+  let rows=[];
+  try{ const {data,error}=await supa.from('signature_requests').select('*').eq('applied',false); if(error)throw error; rows=data||[]; }
+  catch(e){ box.innerHTML='<p class="muted">שגיאה בטעינת החתימות. ודאו שהורצה supabase_signatures.sql.</p>'; return; }
+  const pend=rows.filter(r=>!r.student_id || !DB.students.find(s=>s.id===r.student_id));
+  if(!pend.length){ box.innerHTML='<p class="muted">אין חתימות הממתינות לשיוך 👍</p>'; return; }
+  const opts=DB.students.filter(s=>!s.isTeacher).map(s=>`<option value="${esc(s.firstName+' '+s.lastName+' — '+gradeHeb(s.grade)+s.classLabel)}"></option>`).join('');
+  box.innerHTML='<datalist id="dlQueueStud">'+opts+'</datalist>'+pend.map(r=>`<div class="litem"><div class="meta"><b>${esc(r.student_name||'(ללא שם)')}</b><small>הורה: ${esc(r.parent_name||'—')}${r.signed_at?' · '+new Date(r.signed_at).toLocaleDateString('he-IL'):''}</small></div><div class="actions"><input class="inp qstud" list="dlQueueStud" data-id="${esc(r.id)}" data-parent="${esc(r.parent_name||'')}" placeholder="שייך לתלמיד/ה…" style="max-width:220px; padding:6px 8px"><button class="btn sm qassign" data-id="${esc(r.id)}">שייך ואשר</button></div></div>`).join('');
+  box.querySelectorAll('.qassign').forEach(btn=>btn.addEventListener('click',()=>{
+    const id=btn.dataset.id; const inp=box.querySelector('.qstud[data-id="'+id+'"]');
+    const st=studentByLabel(inp.value.trim());
+    if(!st){toast('בחרו תלמיד/ה מהרשימה','err');return;}
+    _assignSignature(id, st, inp.dataset.parent);
+  }));
+}
+async function _assignSignature(reqId, st, parent){
+  markSigned(st, parent||st.parentName||'');
+  logAct('sign_recv',`שיוך חתימה לתלמיד/ה: ${st.firstName} ${st.lastName} (${parent||''})`);
+  save();
+  try{ if(supa)await supa.from('signature_requests').update({applied:true,student_id:st.id,student_name:st.firstName+' '+st.lastName}).eq('id',reqId); }catch(e){}
+  toast('שויך — תיק נפתח: '+st.firstName+' '+st.lastName,'ok');
+  renderSignQueue();
+}
 
 function studentPage(id){
   const s=DB.students.find(x=>x.id===id);if(!s)return;
@@ -1188,6 +1249,49 @@ function newStudent(cb,id){
 }
 
 /* ============ CLASSES (settings) ============ */
+$('#clsToggle')&&$('#clsToggle').addEventListener('click',()=>{const b=$('#clsBody');b.classList.toggle('hidden');$('#clsChev').textContent=b.classList.contains('hidden')?'▸ פתיחה ועדכון':'▾ סגירה';});
+$('#coCancel')&&$('#coCancel').addEventListener('click',()=>{$('#scanInput').value='';$('#checkoutPanel').innerHTML='';go('shelf');});
+function csvParse(text){
+  text=(text||'').replace(/^\uFEFF/,''); const rows=[]; let row=[],cur='',q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else { if(c==='"')q=true; else if(c===','){row.push(cur);cur='';} else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';} else if(c==='\r'){} else cur+=c; }
+  }
+  if(cur!==''||row.length){row.push(cur);rows.push(row);}
+  return rows;
+}
+const STUD_COLS=['מזהה','שם פרטי','שם משפחה','שכבה (1-6)','כיתה','שם הורה','טלפון הורה','מייל הורה','חתם תקנון (כן/לא)','בוגר (כן/לא)'];
+$('#dlStudents')&&$('#dlStudents').addEventListener('click',()=>{
+  const list=DB.students.filter(s=>!s.isTeacher).sort((a,b)=>a.grade-b.grade||cmp(a.classLabel,b.classLabel)||cmp(a.lastName,b.lastName));
+  const rows=[STUD_COLS].concat(list.map(s=>[s.id,s.firstName||'',s.lastName||'',s.grade||'',s.classLabel||'',s.parentName||'',s.parentPhone||'',s.parentEmail||'',s.termsSigned?'כן':'לא',s.graduated?'כן':'לא']));
+  const csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='תלמידים_דבורה_עומר.csv';a.click();
+  toast('הקובץ הורד','ok');
+});
+$('#upStudentsBtn')&&$('#upStudentsBtn').addEventListener('click',()=>$('#upStudentsFile').click());
+$('#upStudentsFile')&&$('#upStudentsFile').addEventListener('change',ev=>{
+  const f=ev.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{
+    let rows; try{rows=csvParse(r.result);}catch(e){toast('קובץ לא תקין','err');return;}
+    if(!rows.length){toast('הקובץ ריק','err');return;}
+    let start=0; const h=rows[0].map(x=>(x||'').trim());
+    if(h[0]==='מזהה'||h.join(' ').indexOf('שם פרטי')>-1) start=1;
+    let upd=0,add=0;
+    for(let i=start;i<rows.length;i++){
+      const c=rows[i].map(x=>(x||'').trim()); if(!c.length||(!c[0]&&!c[1]&&!c[2]))continue;
+      const id=c[0]; let s=id&&DB.students.find(x=>x.id===id);
+      if(!s){ if(!c[1]&&!c[2])continue; s={id:uid(),grade:1,classLabel:'1',active:true,graduated:false,createdAt:Date.now()}; DB.students.push(s); add++; } else upd++;
+      if(c[1])s.firstName=c[1]; if(c[2])s.lastName=c[2];
+      if(c[3])s.grade=+c[3]||s.grade; if(c[4])s.classLabel=c[4];
+      if(c[5])s.parentName=c[5]; if(c[6])s.parentPhone=c[6]; if(c[7])s.parentEmail=c[7];
+      if(c[8])s.termsSigned=(c[8]==='כן'); if(c[9])s.graduated=(c[9]==='כן');
+      if(s.familyId)syncParent(s.familyId,s.id);
+    }
+    logAct('student',`עדכון תלמידים מקובץ: ${upd} עודכנו, ${add} נוספו`);
+    save();renderStudents();toast(`עודכנו ${upd} · נוספו ${add} תלמידים`,'ok');
+  };
+  r.readAsText(f); ev.target.value='';
+});
 $('#addClass').addEventListener('click',()=>{
   const g=+$('#clGrade').value,l=$('#clLabel').value.trim(),t=$('#clTeacher').value.trim();
   if(!l||!t){toast('מלאו כיתה ומורה','err');return;}
@@ -1383,12 +1487,13 @@ function markReminded(bookId,itemId){const b=DB.books.find(x=>x.id===bookId);con
 
 /* ============ REPORTS ============ */
 function clsLabel(s){return s?gradeHeb(s.grade)+s.classLabel:'';}
+let repShowAll={};
 function openLoanRows(){
   const r=[];
   DB.books.forEach(b=>itemsOf(b).forEach(it=>{ if(it.status!=='out')return;
     const s=DB.students.find(x=>x.id===it.holder); const d=daysOut(it);
     r.push({title:b.title, barcode:it.barcode||'', student:s?(s.firstName+' '+s.lastName):'—', cls:clsLabel(s),
-      contact:s?[s.parentPhone,s.parentEmail].filter(Boolean).join(' / '):'',
+      contact:s?[s.parentName,s.parentPhone,s.parentEmail].filter(Boolean).join(' · '):'',
       borrow:it.borrowDate?new Date(it.borrowDate).toLocaleDateString('he-IL'):'',
       due:it.dueDate?new Date(it.dueDate).toLocaleDateString('he-IL'):'',
       days:(d==null?'':d), overdue:!!(it.dueDate&&Date.now()>it.dueDate)});
@@ -1447,12 +1552,15 @@ function renderReports(){
   const p=$('#reportsPanel');
   let html=`<div class="stat-grid">`+stats.map(s=>`<div class="stat${s.warn?' warn':''}"><div class="v">${s.v}</div><div class="l">${s.l}</div></div>`).join('')+`</div>`;
   html+=defs.map((d,i)=>{
-    const N=d.rows.length, prev=d.rows.slice(0,8);
-    const body = N? `<table class="rep-table"><thead><tr>${d.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${prev.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>${N>8?`<div class="rep-more">מוצגות 8 מתוך ${N} שורות — ייצאו לאקסל לרשימה המלאה.</div>`:''}` : `<div class="rep-empty">אין נתונים בקטגוריה זו 👍</div>`;
+    const N=d.rows.length, showAll=!!repShowAll[d.key];
+    const rows=showAll?d.rows:d.rows.slice(0,8);
+    const toggle = N>8 ? `<div class="rep-more no-print"><button class="btn ghost sm" onclick="toggleReport('${d.key}')">${showAll?'הצג פחות ▲':`הצג את כל ${N} השורות ▼`}</button></div>` : '';
+    const body = N? `<div style="${showAll?'max-height:420px;overflow:auto':''}"><table class="rep-table"><thead><tr>${d.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${toggle}` : `<div class="rep-empty">אין נתונים בקטגוריה זו 👍</div>`;
     return `<div class="card rep-card"><div class="rep-head"><div><h3>${d.icon} ${esc(d.title)}</h3></div><div class="row"><span class="cnt">${N} שורות</span>${N?`<button class="btn ghost sm no-print" onclick="exportReport(${i})">⬇ אקסל</button>`:''}</div></div>${body}</div>`;
   }).join('');
   p.innerHTML=html;
 }
+window.toggleReport=function(k){ repShowAll[k]=!repShowAll[k]; renderReports(); };
 function exportReport(i){
   const d=reportDefs()[i]; if(!d.rows.length){toast('אין נתונים לייצוא','err');return;}
   const wb=XLSX.utils.book_new();
@@ -1576,12 +1684,13 @@ function renderTerms(){
   $('#termsView').classList.remove('hidden'); $('#termsEdit').classList.add('hidden');
   if(!$('#dDate').value) $('#dDate').value=new Date().toISOString().slice(0,10);
   const dl=$('#dlDeclStud'); if(dl)dl.innerHTML=DB.students.filter(s=>!s.isTeacher).map(s=>`<option value="${esc(s.firstName+' '+s.lastName+' — '+gradeHeb(s.grade)+s.classLabel)}"></option>`).join('');
-  signStateText(); setupSig();
+  signStateText(); setupSig(); renderSignQueue();
 }
 $('#editTermsBtn').addEventListener('click',()=>{$('#termsText').value=DB.settings.terms||TERMS_PLAIN;$('#termsView').classList.add('hidden');$('#termsEdit').classList.remove('hidden');});
 $('#cancelTerms').addEventListener('click',renderTerms);
 $('#saveTerms').addEventListener('click',()=>{DB.settings.terms=$('#termsText').value.trim();save();toast('התקנון נשמר','ok');renderTerms();});
 $('#restoreTerms').addEventListener('click',()=>{DB.settings.terms='';save();toast('שוחזר נוסח ברירת המחדל','ok');renderTerms();});
+$('#refreshQueue')&&$('#refreshQueue').addEventListener('click',renderSignQueue);
 $('#dTalmid').addEventListener('input',()=>{const st=studentByLabel($('#dTalmid').value.trim());if(st){$('#dClass').value=gradeHeb(st.grade)+st.classLabel;if(!$('#dParent').value)$('#dParent').value=st.parentName||'';}signStateText();});
 $('#regSign').addEventListener('click',()=>{
   const st=studentByLabel($('#dTalmid').value.trim());
@@ -1677,7 +1786,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 20';
+const APP_VERSION='גרסה 29.6.2026 · 23';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
@@ -1787,16 +1896,22 @@ async function cloudApplySignatures(){
     if(error||!data||!data.length)return;
     let n=0;
     for(const row of data){
-      const st=DB.students.find(x=>x.id===row.student_id);
-      if(st){ logAct('sign_recv',`התקבלה חתימת הורה: ${st.firstName} ${st.lastName} (${row.parent_name||''})`); markSigned(st,row.parent_name||st.parentName||''); n++; }
-      try{ await supa.from('signature_requests').update({applied:true}).eq('id',row.id); }catch(e){}
+      const st=row.student_id?DB.students.find(x=>x.id===row.student_id):null;
+      if(st){
+        logAct('sign_recv',`התקבלה חתימת הורה: ${st.firstName} ${st.lastName} (${row.parent_name||''})`);
+        markSigned(st,row.parent_name||st.parentName||''); n++;
+        try{ await supa.from('signature_requests').update({applied:true}).eq('id',row.id); }catch(e){}
+      }
+      // rows without a matching student stay unapplied → appear in the matching queue (עמוד תקנון)
     }
     if(n){ toast(`התקבלו ${n} חתימות הורים — תיקים נפתחו`,'ok'); cloudReRender(); }
+    renderSignQueue&&renderSignQueue();
   }catch(e){ console.warn('apply signatures',e); }
 }
 /* ---- parent signing page (opened via ?sign=<studentId>) ---- */
 function showSignPage(sid){
   try{ if(!supa&&window.supabase) supa=window.supabase.createClient(SUPA_URL,SUPA_KEY); }catch(e){}
+  const generic = (sid==='generic'||!sid);
   const terms = DB.settings&&DB.settings.terms ? `<pre style="white-space:pre-wrap;font:inherit;margin:0">${esc(DB.settings.terms)}</pre>` : TERMS_HTML;
   const inner=document.getElementById('signPageInner');
   inner.innerHTML=`
@@ -1804,7 +1919,7 @@ function showSignPage(sid){
     <h3 style="margin:0 0 10px">חתימת הורה על תקנון הספרייה</h3>
     <div style="max-height:240px; overflow:auto; background:#f7fafa; border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:14px">${terms}</div>
     <p style="margin:0 0 12px">קראתי את התקנון, הבנתי את תוכנו, ואני מתחייב/ת כי בני/בתי ינהג/תנהג על פיו, וכי במקרה של אובדן או נזק אדאג להחלפה או לפיצוי כמפורט בתקנון.</p>
-    <label class="fld"><span>שם התלמיד/ה</span><input class="inp" id="spChild" placeholder="שם מלא של הילד/ה"></label>
+    <div class="grid" style="grid-template-columns:2fr 1fr; gap:10px"><label class="fld"><span>שם התלמיד/ה</span><input class="inp" id="spChild" placeholder="שם מלא של הילד/ה"></label><label class="fld"><span>כיתה</span><input class="inp" id="spClass" placeholder="למשל: ג׳2"></label></div>
     <div class="grid" style="grid-template-columns:1fr 1fr; gap:10px"><label class="fld"><span>שם ההורה/אפוטרופוס</span><input class="inp" id="spParent"></label><label class="fld"><span>ת"ז (לא חובה)</span><input class="inp" id="spId" inputmode="numeric"></label></div>
     <div class="fld"><span>חתימה</span><div class="sig-wrap"><canvas id="spSig" class="sig-pad"></canvas><button type="button" class="btn ghost sm sig-clear" id="spSigClear">נקה</button></div></div>
     <label style="display:flex; gap:8px; align-items:flex-start; margin:6px 0 12px; font-size:14px"><input type="checkbox" id="spAgree" style="margin-top:3px"><span>אני מאשר/ת את תקנון הספרייה וחותם/ת עליו עבור בני/בתי.</span></label>
@@ -1826,6 +1941,7 @@ function showSignPage(sid){
   document.getElementById('spSigClear').addEventListener('click',()=>{ctx.clearRect(0,0,c.width,c.height);drew=false;});
   document.getElementById('spSubmit').addEventListener('click',async()=>{
     const child=document.getElementById('spChild').value.trim(), parent=document.getElementById('spParent').value.trim();
+    const cls=(document.getElementById('spClass').value||'').trim();
     const err=document.getElementById('spErr'); err.textContent='';
     if(!child||!parent){err.textContent='נא למלא שם תלמיד/ה ושם הורה';return;}
     if(!document.getElementById('spAgree').checked){err.textContent='נא לאשר את התקנון';return;}
@@ -1833,7 +1949,8 @@ function showSignPage(sid){
     const btn=document.getElementById('spSubmit'); btn.disabled=true; btn.textContent='שולח…';
     try{
       if(!supa)throw new Error('no-conn');
-      const {error}=await supa.from('signature_requests').insert({student_id:sid,student_name:child,parent_name:parent});
+      const sname = cls ? (child+' · '+cls) : child;
+      const {error}=await supa.from('signature_requests').insert({student_id: generic?'':sid, student_name:sname, parent_name:parent});
       if(error)throw error;
       inner.innerHTML=`<div class="cloud-title">ספריית ביה״ס דבורה עומר · כפר סבא</div><h3 style="margin:10px 0">✓ תודה!</h3><p>החתימה נשלחה לספרייה. תיק הספרייה של ${esc(child)} ייפתח להשאלה. אפשר לסגור את החלון.</p>`;
     }catch(e){ err.textContent='השליחה נכשלה. בדקו חיבור לאינטרנט ונסו שוב.'; btn.disabled=false; btn.textContent='שליחת חתימה לספרייה'; }
