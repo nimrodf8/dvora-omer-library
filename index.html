@@ -492,6 +492,19 @@ textarea.inp{resize:vertical; min-height:64px}
       </div>
     </div>
 
+    <div class="card" style="margin-bottom:16px">
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <h3 style="margin:0; color:var(--teal-d)">יומן פעילות (למנהל/ת בלבד)</h3>
+        <button class="btn ghost sm" id="actExport">⬇ ייצוא לאקסל</button>
+      </div>
+      <p class="muted" style="margin:8px 0 10px">תיעוד פעולות המשתמשים: השאלה, החזרה, שליחת תקנון, חתימות, עריכות. כולל מי ביצע ומתי.</p>
+      <div class="row" style="margin-bottom:8px">
+        <label class="fld" style="margin:0; max-width:220px"><span>סינון לפי סוג</span>
+          <select class="inp" id="actFilter"><option value="">הכל</option><option value="login">התחברות</option><option value="checkout">השאלה</option><option value="return">החזרה</option><option value="lost">אבוד</option><option value="sign_sent">שליחת תקנון</option><option value="sign_recv">חתימה התקבלה</option><option value="sign_manual">חתימה ידנית</option><option value="student">תלמידים</option><option value="book">ספרים</option><option value="class">כיתות</option><option value="data">נתונים</option></select></label>
+      </div>
+      <div id="activityLog" style="max-height:340px; overflow:auto"></div>
+    </div>
+
     <div class="card">
       <h3 style="margin:0 0 10px; color:var(--teal-d)">הרשאות (יחובר בשלב Supabase)</h3>
       <p class="muted" style="margin:0">אדמין — גישה מלאה · ספרן/מתנדב — קטלוג, השאלה, החזרה · הורה — צפייה בלבד בספרים של ילדם, עם מייל אוטומטי בעת השאלה. הרשאות אמיתיות בין מכשירים מצריכות את שלב ה־Supabase.</p>
@@ -573,6 +586,26 @@ function ensureItems(b){
 }
 function migrate(){ (DB.books||[]).forEach(ensureItems);
   const s=DB.settings||(DB.settings={}); if(s.maxBooks==null)s.maxBooks=2; if(s.loanDays==null)s.loanDays=30; if(s.reminderDays==null)s.reminderDays=21; if(s.repeatDays==null)s.repeatDays=5; if(s.terms==null)s.terms=''; if(s.adminPin==null)s.adminPin=''; if(!s.libMap)s.libMap=JSON.parse(JSON.stringify(LIB_MAP));
+  if(!Array.isArray(DB.activity))DB.activity=[];
+}
+let cloudName='';
+function actActor(){ return cloudName || (typeof cloudUser!=='undefined'&&cloudUser&&cloudUser.email) || 'מקומי'; }
+function logAct(action,detail){
+  if(!DB.activity)DB.activity=[];
+  DB.activity.push({id:uid(),ts:Date.now(),user:actActor(),role:(typeof cloudRole!=='undefined'&&cloudRole)||'',action:action,detail:detail||''});
+  if(DB.activity.length>1000)DB.activity=DB.activity.slice(-1000);
+}
+function actLabel(a){return {login:'התחברות',checkout:'השאלה',return:'החזרה',lost:'אבוד',sign_sent:'שליחת תקנון',sign_recv:'חתימה התקבלה',sign_manual:'חתימה ידנית',student:'תלמידים',book:'ספרים',del_book:'מחיקת ספר',class:'כיתות',del_class:'מחיקת כיתה',data:'נתונים'}[a]||a;}
+function renderActivity(){
+  const box=document.getElementById('activityLog'); if(!box)return;
+  if(cloudOn && cloudRole!=='admin'){ box.innerHTML='<p class="muted">צפייה ביומן הפעילות מותרת למנהל/ת בלבד.</p>'; return; }
+  const f=document.getElementById('actFilter')?document.getElementById('actFilter').value:'';
+  let list=(DB.activity||[]).slice().reverse();
+  if(f)list=list.filter(e=>e.action===f||(f==='book'&&e.action==='del_book')||(f==='class'&&e.action==='del_class'));
+  if(!list.length){box.innerHTML='<p class="muted">אין רישומים עדיין.</p>';return;}
+  box.innerHTML='<table class="rep-table"><thead><tr><th>תאריך ושעה</th><th>משתמש</th><th>פעולה</th><th>פרטים</th></tr></thead><tbody>'+
+    list.slice(0,300).map(e=>`<tr><td style="white-space:nowrap">${new Date(e.ts).toLocaleString('he-IL')}</td><td>${esc(e.user||'')}${e.role==='admin'?' · מנהל/ת':''}</td><td>${esc(actLabel(e.action))}</td><td>${esc(e.detail||'')}</td></tr>`).join('')+
+    '</tbody></table>'+(list.length>300?`<div class="rep-more">מוצגות 300 מתוך ${list.length} רשומות — ייצאו לאקסל לרשימה המלאה.</div>`:'');
 }
 const itemsOf=b=>b.items||[];
 const availItems=b=>itemsOf(b).filter(i=>i.status==='in');
@@ -658,7 +691,7 @@ function go(v){
   if(v==='shelf')renderShelf();
   if(v==='catalog')renderCatalog();
   if(v==='students')renderStudents();
-  if(v==='settings'){renderClasses();loadSettings();}
+  if(v==='settings'){renderClasses();loadSettings();renderActivity();}
   if(v==='reminders')renderReminders();
   if(v==='map')renderMap();
   if(v==='reports')renderReports();
@@ -783,7 +816,7 @@ function renderCatalog(){
     return `<div class="litem">${cov}<div class="meta"><b>${esc(b.title)}</b><small>${esc(b.author||'—')} · ${esc(b.genre||'—')} · ${esc(b.language||'')}${b.location?' · 📍 '+esc(b.location):''}</small></div><div class="actions">${st}<button class="btn ghost sm" onclick="editBook('${b.id}')">עריכה</button><button class="btn danger sm" onclick="delBook('${b.id}')">מחיקה</button></div></div>`;
   }).join('')||'<p class="muted">אין ספרים. לחצו על "ספר חדש".</p>';
 }
-function delBook(id){const b=DB.books.find(x=>x.id===id);confirmAction({title:'מחיקת ספר',message:`למחוק לצמיתות את "${b?b.title:''}" וכל העותקים שלו?`,danger:true,admin:true,okLabel:'מחק ספר'},()=>{DB.books=DB.books.filter(x=>x.id!==id);save();renderCatalog();toast('הספר נמחק');});}
+function delBook(id){const b=DB.books.find(x=>x.id===id);confirmAction({title:'מחיקת ספר',message:`למחוק לצמיתות את "${b?b.title:''}" וכל העותקים שלו?`,danger:true,admin:true,okLabel:'מחק ספר'},()=>{logAct('del_book',`מחיקת ספר: ${b?b.title:''}`);DB.books=DB.books.filter(x=>x.id!==id);save();renderCatalog();toast('הספר נמחק');});}
 function editBook(id){
   const b=id?DB.books.find(x=>x.id===id):{id:uid(),cover:'',location:'',items:[{id:uid(),barcode:'',status:'in',holder:null,dueDate:null}]};
   ensureItems(b);
@@ -867,6 +900,7 @@ function editBook(id){
     b.items=formItems;
     Object.assign(b,{title:t,author:$('#fAuthor').value.trim(),authorSort:$('#fAuthorSort').value.trim(),series:$('#fSeries').value.trim(),seriesIndex:$('#fSeriesIdx').value.trim(),language:$('#fLang').value,ageBand:$('#fAge').value,genre:$('#fGenre').value,publisher:$('#fPub').value.trim(),year:$('#fYear').value.trim(),dewey:$('#fDewey').value.trim(),location:$('#fLocation').value.trim(),isbn:$('#fIsbn').value.trim(),cover:$('#fCover').value.trim(),notes:$('#fNotes').value.trim()});
     if(!id)DB.books.push(b);
+    logAct('book',`${id?'עריכת':'הוספת'} ספר: ${t}`);
     save();closeModal();renderCatalog();renderShelf();toast('נשמר','ok');
   });
 }
@@ -938,6 +972,7 @@ function openCheckout(b,it){
     confirmAction({title:'אישור השאלה',message:`להשאיל את "${b.title}" ל${st.firstName} ${st.lastName} (${gradeHeb(st.grade)+st.classLabel})? להחזרה עד ${new Date(dueTs).toLocaleDateString('he-IL')}.`,okLabel:'אשר השאלה'},()=>{
       it.status='out';it.holder=st.id;it.dueDate=dueTs;it.borrowDate=Date.now();if(!it.reminders)it.reminders=[];
       DB.logs.push({id:uid(),type:'checkout',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:st.id,date:Date.now(),dueDate:dueTs});
+      logAct('checkout',`השאלה: ${b.title} ל${st.firstName} ${st.lastName}`);
       save();renderShelf();
       panel.innerHTML=`<div class="card"><p>✓ הושאל בהצלחה: <b>${esc(b.title)}</b> (${esc(copyLabel(b,it))}) ל־<b>${esc(st.firstName+' '+st.lastName)}</b>. להחזרה עד ${new Date(dueTs).toLocaleDateString('he-IL')}.</p><p class="muted">מייל להורה (${esc(st.parentEmail||'—')}) יישלח אוטומטית בשלב Supabase.</p></div>`;
       toast('הושאל','ok');setTimeout(()=>$('#scanInput').focus(),100);
@@ -996,11 +1031,12 @@ function confirmLost(bookId,itemId,ctx){
 function delClass(id){
   const c=DB.classes.find(x=>x.id===id);
   confirmAction({title:'מחיקת כיתה',message:`למחוק את הכיתה ${c?gradeHeb(c.grade)+c.label:''}?`,danger:true,admin:true,okLabel:'מחק כיתה'},()=>{
+    logAct('del_class',`מחיקת כיתה: ${c?gradeHeb(c.grade)+c.label:''}`);
     DB.classes=DB.classes.filter(x=>x.id!==id);save();renderClasses();toast('הכיתה נמחקה');
   });
 }
-function returnBook(bookId,itemId,fromScan){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;it.status='in';DB.logs.push({id:uid(),type:'return',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:it.holder,date:Date.now()});it.holder=null;it.dueDate=null;save();renderShelf();if(fromScan)$('#checkoutPanel').innerHTML=`<div class="card"><p>✓ הוחזר: <b>${esc(b.title)}</b></p></div>`;toast('הוחזר','ok');}
-function markLost(bookId,itemId,fromScan){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;it.status='lost';DB.logs.push({id:uid(),type:'lost',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:it.holder,date:Date.now()});it.holder=null;it.dueDate=null;save();renderShelf();if(fromScan)$('#checkoutPanel').innerHTML=`<div class="card"><p>סומן כאבוד: <b>${esc(b.title)}</b></p></div>`;toast('סומן כאבוד');}
+function returnBook(bookId,itemId,fromScan){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;const h=DB.students.find(s=>s.id===it.holder);it.status='in';DB.logs.push({id:uid(),type:'return',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:it.holder,date:Date.now()});logAct('return',`החזרה: ${b.title}${h?' מ'+h.firstName+' '+h.lastName:''}`);it.holder=null;it.dueDate=null;save();renderShelf();if(fromScan)$('#checkoutPanel').innerHTML=`<div class="card"><p>✓ הוחזר: <b>${esc(b.title)}</b></p></div>`;toast('הוחזר','ok');}
+function markLost(bookId,itemId,fromScan){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;it.status='lost';DB.logs.push({id:uid(),type:'lost',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:it.holder,date:Date.now()});logAct('lost',`סימון אבוד: ${b.title}`);it.holder=null;it.dueDate=null;save();renderShelf();if(fromScan)$('#checkoutPanel').innerHTML=`<div class="card"><p>סומן כאבוד: <b>${esc(b.title)}</b></p></div>`;toast('סומן כאבוד');}
 
 /* ============ STUDENTS ============ */
 $('#newStudentBtn').addEventListener('click',()=>newStudent());
@@ -1079,8 +1115,8 @@ function renderFamilyBox(s){
 window._sibUnlink=function(sibId,selfId){if(!confirm('לבטל את שיוך האח/אחות? (פרטי ההורה יישארו כפי שהם)'))return;unlinkSibling(sibId);const self=DB.students.find(x=>x.id===selfId);if(self){renderFamilyBox(self);refreshParentFields(self);}renderStudents();toast('בוטל השיוך','ok');};
 window._toggleSigned=function(id,on){
   const s=DB.students.find(x=>x.id===id);if(!s)return;
-  if(on){ markSigned(s,s.parentName||''); toast('התיק נפתח להשאלה','ok'); }
-  else { s.termsSigned=false;s.termsSignedAt=null;s.termsSignedBy=''; save(); toast('פתיחת התיק בוטלה','ok'); }
+  if(on){ markSigned(s,s.parentName||''); logAct('sign_manual',`סימון תקנון כנחתם: ${s.firstName} ${s.lastName}`); save(); toast('התיק נפתח להשאלה','ok'); }
+  else { s.termsSigned=false;s.termsSignedAt=null;s.termsSignedBy=''; logAct('sign_manual',`ביטול חתימת תקנון: ${s.firstName} ${s.lastName}`); save(); toast('פתיחת התיק בוטלה','ok'); }
   studentPage(id); renderStudents();
 };
 function signLink(id){ return location.origin+location.pathname+'?sign='+encodeURIComponent(id); }
@@ -1090,6 +1126,8 @@ window._sendSign=function(id,how){  const s=DB.students.find(x=>x.id===id);if(!s
   if(how==='mail'){ const to=s.parentEmail||''; window.open(`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent('חתימת הורה — ספריית דבורה עומר')}&body=${encodeURIComponent(msg)}`); }
   else if(how==='wa'){ let p=(s.parentPhone||'').replace(/\D/g,''); if(p.indexOf('0')===0)p='972'+p.slice(1); if(!p){toast('אין מספר טלפון להורה בכרטיס','err');return;} window.open(`https://wa.me/${p}?text=${encodeURIComponent(msg)}`,'_blank'); }
   else { if(navigator.clipboard){navigator.clipboard.writeText(link).then(()=>toast('הקישור הועתק','ok'),()=>toast('העתקה נכשלה','err'));} else toast(link); }
+  logAct('sign_sent',`שליחת תקנון לחתימה: ${s.firstName} ${s.lastName} (${how==='mail'?'מייל':how==='wa'?'וואטסאפ':'קישור'})`);
+  save();
 };
 window._sendSignMenu=function(id){
   const s=DB.students.find(x=>x.id===id);if(!s)return;
@@ -1144,6 +1182,7 @@ function newStudent(cb,id){
     const f=$('#sFirst').value.trim();if(!f){toast('חסר שם','err');return;}
     Object.assign(s,{firstName:f,lastName:$('#sLast').value.trim(),grade:+$('#sGrade').value,classLabel:$('#sClass').value.trim(),parentName:$('#sPName').value.trim(),parentPhone:$('#sPPhone').value.trim(),parentEmail:$('#sPMail').value.trim()});
     if(s.familyId)syncParent(s.familyId,s.id);
+    logAct('student',`${id?'עדכון':'הוספת'} תלמיד: ${f} ${$('#sLast').value.trim()}`);
     if(!id)DB.students.push(s);save();closeModal();renderStudents();toast('נשמר','ok');if(cb)cb();
   });
 }
@@ -1174,6 +1213,7 @@ function editClass(id){
     c.grade=g;c.label=l;c.teacher=t;
     // sync the teacher-borrower record (created from the class teacher), if any
     DB.students.filter(s=>s.isTeacher&&s.firstName===oldT&&s.grade===oldG&&s.classLabel===oldL).forEach(s=>{s.firstName=t||oldT;s.grade=g;s.classLabel=l;});
+    logAct('class',`עריכת כיתה: ${gradeHeb(g)+l} · מחנך/ת ${t||'—'}`);
     save();closeModal();renderClasses();toast('הכיתה עודכנה','ok');
   });
 }
@@ -1264,7 +1304,7 @@ function checkRollover(){
 $('#exportData').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='dvora_library_backup.json';a.click();});
 $('#importDataBtn').addEventListener('click',()=>$('#importDataFile').click());
 $('#importDataFile').addEventListener('change',ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{let parsed;try{parsed=JSON.parse(r.result);}catch(e){toast('קובץ לא תקין','err');return;}confirmAction({title:'שחזור מגיבוי',message:'שחזור מגיבוי יחליף את כל הנתונים הקיימים במכשיר זה. להמשיך?',danger:true,admin:true,okLabel:'שחזר ודרוס'},()=>{DB=parsed;migrate();save();toast('שוחזר','ok');go('shelf');});};r.readAsText(f);ev.target.value='';});
-$('#resetData').addEventListener('click',()=>{confirmAction({title:'טעינת נתוני בית הספר',message:'פעולה זו תטען מחדש את נתוני בית הספר ותמחק כל שינוי מקומי שביצעת. להמשיך?',danger:true,admin:true,okLabel:'טען ודרוס'},()=>{DB=seed();save();toast('נטענו נתוני בית הספר','ok');go('shelf');});});
+$('#resetData').addEventListener('click',()=>{confirmAction({title:'טעינת נתוני בית הספר',message:'פעולה זו תטען מחדש את נתוני בית הספר ותמחק כל שינוי מקומי שביצעת. להמשיך?',danger:true,admin:true,okLabel:'טען ודרוס'},()=>{logAct('data','טעינת נתוני בית הספר מחדש');DB=seed();save();toast('נטענו נתוני בית הספר','ok');go('shelf');});});
 $('#restoreAuto').addEventListener('click',()=>{
   let bk; try{bk=JSON.parse(localStorage.getItem('dvora_lib_backup')||'null');}catch(e){}
   if(!bk||!bk.data){toast('אין גיבוי אוטומטי שמור','err');return;}
@@ -1292,6 +1332,13 @@ $('#saveSettings').addEventListener('click',()=>{
 });
 $('#saveAdminPin').addEventListener('click',()=>{DB.settings.adminPin=$('#setAdminPin').value.trim();save();toast(DB.settings.adminPin?'קוד אדמין נשמר':'קוד אדמין הוסר','ok');});
 $('#changePwBtn').addEventListener('click',()=>{ if(typeof cloudChangePassword==='function')cloudChangePassword(); });
+$('#actFilter')&&$('#actFilter').addEventListener('change',renderActivity);
+$('#actExport')&&$('#actExport').addEventListener('click',()=>{
+  if(cloudOn&&cloudRole!=='admin'){toast('מותר למנהל/ת בלבד','err');return;}
+  const rows=[['תאריך ושעה','משתמש','תפקיד','פעולה','פרטים']].concat((DB.activity||[]).slice().reverse().map(e=>[new Date(e.ts).toLocaleString('he-IL'),e.user||'',e.role||'',actLabel(e.action),e.detail||'']));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'יומן פעילות'); XLSX.writeFile(wb,'יומן_פעילות.xlsx');
+  toast('היומן יוצא לאקסל','ok');
+});
 
 /* ============ REMINDERS ============ */
 function daysOut(it){const b=it.borrowDate||it.dueDate&&(it.dueDate-(DB.settings.loanDays||30)*864e5);if(!b)return null;return Math.floor((Date.now()-b)/864e5);}
@@ -1542,6 +1589,7 @@ $('#regSign').addEventListener('click',()=>{
   const parent=$('#dParent').value.trim()||st.parentName||'';
   if(!parent){toast('הזינו שם הורה/אפוטרופוס','err');return;}
   markSigned(st,parent);
+  logAct('sign_manual',`רישום חתימת תקנון: ${st.firstName} ${st.lastName} (${parent})`);
   const fam=st.familyId?siblingsOf(st).length:0;
   toast(`נרשמה חתימה — תיק התלמיד נפתח להשאלה${fam?` (כולל ${fam} אח/ות)`:''}`,'ok');
   signStateText();
@@ -1629,7 +1677,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 19';
+const APP_VERSION='גרסה 29.6.2026 · 20';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
@@ -1740,7 +1788,7 @@ async function cloudApplySignatures(){
     let n=0;
     for(const row of data){
       const st=DB.students.find(x=>x.id===row.student_id);
-      if(st){ markSigned(st,row.parent_name||st.parentName||''); n++; }
+      if(st){ logAct('sign_recv',`התקבלה חתימת הורה: ${st.firstName} ${st.lastName} (${row.parent_name||''})`); markSigned(st,row.parent_name||st.parentName||''); n++; }
       try{ await supa.from('signature_requests').update({applied:true}).eq('id',row.id); }catch(e){}
     }
     if(n){ toast(`התקבלו ${n} חתימות הורים — תיקים נפתחו`,'ok'); cloudReRender(); }
@@ -1835,7 +1883,7 @@ window.cloudChangePassword=function(){
     const err=document.getElementById('clErr'); err.textContent='';
     if(!em||!pw){err.textContent='הזינו אימייל וסיסמה';return;}
     lg.disabled=true; lg.textContent='מתחבר…';
-    try{ await cloudDoLogin(em,pw); cloudHideLogin(); cloudStatusRender(); await cloudAfterLogin(false); }
+    try{ await cloudDoLogin(em,pw); cloudHideLogin(); cloudStatusRender(); await cloudAfterLogin(false); logAct('login',`התחברות (${cloudRole==='admin'?'מנהל/ת':'ספרן/ית'})`); save(); }
     catch(e){ err.textContent='התחברות נכשלה: '+(e&&e.message?e.message:'בדקו אימייל/סיסמה'); }
     finally{ lg.disabled=false; lg.textContent='התחברות'; }
   });
