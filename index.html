@@ -416,7 +416,7 @@ textarea.inp{resize:vertical; min-height:64px}
       <h3 style="margin:0 0 6px; color:var(--teal-d)">הצהרת הורה והתחייבות</h3>
       <p style="margin:0 0 14px">קראתי את תקנון הספרייה, הבנתי את תוכנו, ואני מתחייב/ת כי בני/בתי ינהג/תנהג על פיו. ידוע לי כי במקרה של אובדן או נזק בלתי סביר לספר, אדאג להחלפתו או לפיצוי הספרייה כמפורט בסעיף 5.</p>
       <div class="grid" style="grid-template-columns:1fr 1fr; gap:12px">
-        <label class="fld" style="margin:0"><span>שם התלמיד/ה</span><input class="inp" id="dTalmid"></label>
+        <label class="fld" style="margin:0"><span>שם התלמיד/ה</span><input class="inp" id="dTalmid" list="dlDeclStud" placeholder="בחרו תלמיד/ה מהרשימה"><datalist id="dlDeclStud"></datalist></label>
         <label class="fld" style="margin:0"><span>כיתה</span><input class="inp" id="dClass"></label>
         <label class="fld" style="margin:0"><span>שם ההורה/אפוטרופוס</span><input class="inp" id="dParent"></label>
         <label class="fld" style="margin:0"><span>ת"ז</span><input class="inp" id="dId" inputmode="numeric"></label>
@@ -426,7 +426,8 @@ textarea.inp{resize:vertical; min-height:64px}
           <div class="sig-wrap"><canvas id="sigPad" class="sig-pad"></canvas><button type="button" class="btn ghost sm sig-clear no-print" id="sigClear">נקה</button></div></div>
         <label class="fld" style="margin:0"><span>תאריך</span><input class="inp" id="dDate" type="date"></label>
       </div>
-      <p class="muted no-print" style="margin-top:12px">בשלב ההורים, ההורה ימלא ויחתום על הטופס דרך קישור שיישלח אליו כשתיק הילד מוכן. בינתיים ניתן להדפיס את הטופס לחתימה ידנית (🖨 הדפסת טופס).</p>
+      <div class="row no-print" style="margin-top:14px"><button class="btn" id="regSign">✍ רישום חתימה ופתיחת תיק להשאלה</button><span id="signState" class="muted" style="align-self:center"></span></div>
+      <p class="muted no-print" style="margin-top:12px">בחרו תלמיד/ה, מלאו את פרטי ההורה והחתימה, ולחצו "רישום חתימה" — התיק ייפתח להשאלה (וגם אחים/אחיות באותה משפחה). בשלב ההורים החתימה תתבצע דרך קישור שיישלח להורה. ניתן גם להדפיס את הטופס לחתימה ידנית (🖨 הדפסת טופס).</p>
     </div>
   </section>
 
@@ -475,6 +476,9 @@ textarea.inp{resize:vertical; min-height:64px}
         <label class="fld" style="margin:0; max-width:220px"><span>קוד אדמין</span><input class="inp" id="setAdminPin" type="text" autocomplete="off" placeholder="ריק = ללא קוד"></label>
         <button class="btn sm" id="saveAdminPin">שמירת קוד</button>
       </div>
+      <hr style="border:none;border-top:1px solid var(--line); margin:14px 0">
+      <p class="muted" style="margin:0 0 8px">שינוי סיסמת החשבון המחובר לענן (כל משתמש משנה את הסיסמה של עצמו).</p>
+      <button class="btn ghost sm" id="changePwBtn">🔑 שינוי סיסמה</button>
     </div>
 
     <div class="card" style="margin-bottom:16px">
@@ -922,6 +926,7 @@ function openCheckout(b,it){
     const txt=$('#coStud').value.trim();
     let st=DB.students.find(s=>(s.firstName+' '+s.lastName+' — '+gradeHeb(s.grade)+s.classLabel)===txt)||DB.students.find(s=>txt&&(s.firstName+' '+s.lastName)===txt);
     if(!st){toast('בחרו תלמיד מהרשימה','err');return;}
+    if(!st.termsSigned){toast('תיק התלמיד טרם נפתח להשאלה — נדרשת חתימת הורה על התקנון (עמוד "תקנון")','err');return;}
     const openCnt=studentOpenItems(st.id).length, max=DB.settings.maxBooks||2;
     if(openCnt>=max){toast(`${esc(st.firstName)} כבר מחזיק/ה ${openCnt} ספרים (מקסימום ${max})`,'err');return;}
     const dueTs=new Date($('#coDue').value).getTime();
@@ -1002,7 +1007,8 @@ function studentRow(s){
   const open=studentOpenItems(s.id).length;
   const sib=siblingsOf(s).length;
   const tag=s.isTeacher?'<span class="tag" style="background:var(--orange-l);border-color:#f6d4b0;color:var(--orange-d)">מורה</span>':s.graduated?'<span class="tag lost">סיים/עבר חט״ב</span>':'';
-  return `<div class="litem"><div class="cover" style="font-size:18px">${esc(s.firstName[0]||'')}</div><div class="meta"><b>${esc(s.firstName+' '+s.lastName)}</b><small>${tag?tag+' · ':''}הורה: ${esc(s.parentName||'—')}${s.parentPhone?' · '+esc(s.parentPhone):''}${sib?' · 👨‍👩‍👧 '+sib+(sib>1?' אחים':' אח/אחות'):''}${open?' · '+open+' ספרים פתוחים':''}</small></div><div class="actions"><button class="btn ghost sm" onclick="studentPage('${s.id}')">תיק</button><button class="btn ghost sm" onclick="newStudent(null,'${s.id}')">עריכה</button></div></div>`;
+  const signBadge=s.isTeacher?'':(s.termsSigned?'<span class="tag" style="background:#e7f6ec;border-color:#bfe6cc;color:#2e7d46">תקנון ✓</span>':'<span class="tag" style="background:#fff3e0;border-color:#ffe0b2;color:#b5651d">ללא תקנון</span>');
+  return `<div class="litem"><div class="cover" style="font-size:18px">${esc(s.firstName[0]||'')}</div><div class="meta"><b>${esc(s.firstName+' '+s.lastName)}</b><small>${tag?tag+' · ':''}${signBadge?signBadge+' · ':''}הורה: ${esc(s.parentName||'—')}${s.parentPhone?' · '+esc(s.parentPhone):''}${sib?' · 👨‍👩‍👧 '+sib+(sib>1?' אחים':' אח/אחות'):''}${open?' · '+open+' ספרים פתוחים':''}</small></div><div class="actions"><button class="btn ghost sm" onclick="studentPage('${s.id}')">תיק</button><button class="btn ghost sm" onclick="newStudent(null,'${s.id}')">עריכה</button></div></div>`;
 }
 function renderStudents(){
   fillStudClass();
@@ -1055,6 +1061,12 @@ function renderFamilyBox(s){
   $('#sibAdd').addEventListener('click',()=>{const v=$('#sibSel').value;if(!v){toast('בחרו תלמיד','err');return;}linkSibling(s.id,v);renderFamilyBox(s);refreshParentFields(s);renderStudents();toast('שויך','ok');});
 }
 window._sibUnlink=function(sibId,selfId){if(!confirm('לבטל את שיוך האח/אחות? (פרטי ההורה יישארו כפי שהם)'))return;unlinkSibling(sibId);const self=DB.students.find(x=>x.id===selfId);if(self){renderFamilyBox(self);refreshParentFields(self);}renderStudents();toast('בוטל השיוך','ok');};
+window._toggleSigned=function(id,on){
+  const s=DB.students.find(x=>x.id===id);if(!s)return;
+  if(on){ markSigned(s,s.parentName||''); toast('התיק נפתח להשאלה','ok'); }
+  else { s.termsSigned=false;s.termsSignedAt=null;s.termsSignedBy=''; save(); toast('פתיחת התיק בוטלה','ok'); }
+  studentPage(id); renderStudents();
+};
 
 function studentPage(id){
   const s=DB.students.find(x=>x.id===id);if(!s)return;
@@ -1067,6 +1079,7 @@ function studentPage(id){
   <div class="mbody">
     <div class="kv"><b>כיתה</b><span>${gradeHeb(s.grade)+s.classLabel} · מחנך/ת ${esc(teacherFor(s.grade,s.classLabel)||'—')}</span></div>
     <div class="kv"><b>הורה</b><span>${esc(s.parentName||'—')} · ${esc(s.parentPhone||'')} · ${esc(s.parentEmail||'')}</span></div>
+    ${s.isTeacher?'':`<div class="kv"><b>תקנון</b><span>${s.termsSigned?`<span style="color:#2e9a4f">✓ נחתם${s.termsSignedAt?' · '+new Date(s.termsSignedAt).toLocaleDateString('he-IL'):''}${s.termsSignedBy?' · '+esc(s.termsSignedBy):''}</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',false)">בטל פתיחת תיק</button>`:`<span style="color:#b5651d">טרם נחתם — התיק סגור להשאלה</span> <button class="btn sm" onclick="_toggleSigned('${s.id}',true)">סמן כחתום ופתח תיק</button>`}</span></div>`}
     ${sibHtml}
     <h3 style="color:var(--teal-d);font-size:17px;margin:16px 0 6px">ספרים פתוחים (${open.length})</h3>
     ${open.map(o=>`<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b><small>${esc(copyLabel(o.book,o.item))} · עד ${o.item.dueDate?new Date(o.item.dueDate).toLocaleDateString('he-IL'):'—'}</small></div><div class="actions"><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','student:${s.id}')">החזרה</button><button class="btn danger sm" onclick="confirmLost('${o.book.id}','${o.item.id}','student:${s.id}')">אבוד</button></div></div>`).join('')||'<p class="muted">אין.</p>'}
@@ -1234,6 +1247,7 @@ $('#saveSettings').addEventListener('click',()=>{
   save();toast('המדיניות נשמרה','ok');paintCount();
 });
 $('#saveAdminPin').addEventListener('click',()=>{DB.settings.adminPin=$('#setAdminPin').value.trim();save();toast(DB.settings.adminPin?'קוד אדמין נשמר':'קוד אדמין הוסר','ok');});
+$('#changePwBtn').addEventListener('click',()=>{ if(typeof cloudChangePassword==='function')cloudChangePassword(); });
 
 /* ============ REMINDERS ============ */
 function daysOut(it){const b=it.borrowDate||it.dueDate&&(it.dueDate-(DB.settings.loanDays||30)*864e5);if(!b)return null;return Math.floor((Date.now()-b)/864e5);}
@@ -1308,6 +1322,10 @@ function reportDefs(){
   const byGenre=Object.entries(gMap).sort((a,b)=>b[1].c-a[1].c).map(([g,o])=>[g,o.t,o.c]);
   // lost
   const lost=[]; DB.books.forEach(b=>itemsOf(b).forEach(it=>{if(it.status==='lost'){const s=DB.students.find(x=>x.id===it.holder);lost.push([b.title,it.barcode||'',s?(s.firstName+' '+s.lastName):'',clsLabel(s)]);}}));
+  // terms signature status (students only, not teachers)
+  const signRows=DB.students.filter(s=>!s.isTeacher&&!s.graduated)
+    .sort((a,b)=>a.grade-b.grade||cmp(a.classLabel,b.classLabel)||cmp(a.lastName,b.lastName))
+    .map(s=>[s.firstName+' '+s.lastName, clsLabel(s), s.parentName||'', s.termsSigned?'כן':'לא', s.termsSigned&&s.termsSignedAt?new Date(s.termsSignedAt).toLocaleDateString('he-IL'):'']);
   return [
     {key:'over60', title:'מושאלים מעל חודשיים (60+ ימים)', icon:'📕', headers:LH,
       rows:open.filter(x=>x.days!==''&&x.days>=60).sort((a,b)=>b.days-a.days).map(lrow)},
@@ -1321,6 +1339,7 @@ function reportDefs(){
     {key:'popular', title:'הספרים המושאלים ביותר', icon:'⭐', headers:['ספר','מס׳ השאלות'], rows:pop},
     {key:'genre', title:'מלאי לפי קטגוריה', icon:'🗂', headers:['קטגוריה','כותרים','עותקים'], rows:byGenre},
     {key:'lost', title:'ספרים שאבדו', icon:'❌', headers:['ספר','ברקוד','תלמיד אחרון','כיתה'], rows:lost},
+    {key:'signed', title:'סטטוס חתימת תקנון', icon:'✍️', headers:['תלמיד/ה','כיתה','הורה','חתם/ה','תאריך'], rows:signRows},
   ];
 }
 function renderReports(){
@@ -1328,10 +1347,11 @@ function renderReports(){
   let copies=0,out=0,lost=0; DB.books.forEach(b=>itemsOf(b).forEach(it=>{copies++;if(it.status==='out')out++;if(it.status==='lost')lost++;}));
   const over60=defs[0].rows.length, overdue=defs[1].rows.length;
   const studs=DB.students.filter(s=>s.active&&!s.isTeacher).length;
+  const unsigned=DB.students.filter(s=>!s.isTeacher&&!s.graduated&&!s.termsSigned).length;
   const stats=[
     {v:DB.books.length,l:'כותרים'},{v:copies,l:'עותקים'},{v:out,l:'מושאלים כעת'},
     {v:overdue,l:'באיחור',warn:overdue>0},{v:over60,l:'מעל חודשיים',warn:over60>0},
-    {v:lost,l:'אבודים',warn:lost>0},{v:studs,l:'תלמידים'}
+    {v:lost,l:'אבודים',warn:lost>0},{v:studs,l:'תלמידים'},{v:unsigned,l:'טרם חתמו תקנון',warn:unsigned>0}
   ];
   const p=$('#reportsPanel');
   let html=`<div class="stat-grid">`+stats.map(s=>`<div class="stat${s.warn?' warn':''}"><div class="v">${s.v}</div><div class="l">${s.l}</div></div>`).join('')+`</div>`;
@@ -1449,16 +1469,39 @@ const TERMS_PLAIN=`בית הספר היסודי ע"ש דבורה עומר — כ
 
 6. התנהגות בספרייה
 שמירה על שקט, יחס מכבד לצוות ולחברים, והחזרת הספרים והכיסאות למקומם.`;
+function studentByLabel(txt){return DB.students.find(s=>(s.firstName+' '+s.lastName+' — '+gradeHeb(s.grade)+s.classLabel)===txt)||DB.students.find(s=>txt&&(s.firstName+' '+s.lastName)===txt);}
+function markSigned(st,parent){
+  const fam=st.familyId?DB.students.filter(x=>x.familyId===st.familyId):[st];
+  const ts=Date.now(); (fam.length?fam:[st]).forEach(s=>{s.termsSigned=true;s.termsSignedAt=ts;s.termsSignedBy=parent||s.parentName||'';});
+  save();
+}
+function signStateText(){
+  const el=$('#signState'); if(!el)return; const st=studentByLabel($('#dTalmid').value.trim());
+  if(!st){el.textContent='';return;}
+  el.innerHTML=st.termsSigned?`<span style="color:#2e9a4f">✓ תיק פתוח — נחתם ${st.termsSignedAt?new Date(st.termsSignedAt).toLocaleDateString('he-IL'):''}</span>`:'<span style="color:#b5651d">התיק טרם נחתם</span>';
+}
 function renderTerms(){
   $('#termsView').innerHTML = DB.settings.terms ? `<pre>${esc(DB.settings.terms)}</pre>` : TERMS_HTML;
   $('#termsView').classList.remove('hidden'); $('#termsEdit').classList.add('hidden');
   if(!$('#dDate').value) $('#dDate').value=new Date().toISOString().slice(0,10);
-  setupSig();
+  const dl=$('#dlDeclStud'); if(dl)dl.innerHTML=DB.students.filter(s=>!s.isTeacher).map(s=>`<option value="${esc(s.firstName+' '+s.lastName+' — '+gradeHeb(s.grade)+s.classLabel)}"></option>`).join('');
+  signStateText(); setupSig();
 }
 $('#editTermsBtn').addEventListener('click',()=>{$('#termsText').value=DB.settings.terms||TERMS_PLAIN;$('#termsView').classList.add('hidden');$('#termsEdit').classList.remove('hidden');});
 $('#cancelTerms').addEventListener('click',renderTerms);
 $('#saveTerms').addEventListener('click',()=>{DB.settings.terms=$('#termsText').value.trim();save();toast('התקנון נשמר','ok');renderTerms();});
 $('#restoreTerms').addEventListener('click',()=>{DB.settings.terms='';save();toast('שוחזר נוסח ברירת המחדל','ok');renderTerms();});
+$('#dTalmid').addEventListener('input',()=>{const st=studentByLabel($('#dTalmid').value.trim());if(st){$('#dClass').value=gradeHeb(st.grade)+st.classLabel;if(!$('#dParent').value)$('#dParent').value=st.parentName||'';}signStateText();});
+$('#regSign').addEventListener('click',()=>{
+  const st=studentByLabel($('#dTalmid').value.trim());
+  if(!st){toast('בחרו תלמיד/ה מהרשימה','err');return;}
+  const parent=$('#dParent').value.trim()||st.parentName||'';
+  if(!parent){toast('הזינו שם הורה/אפוטרופוס','err');return;}
+  markSigned(st,parent);
+  const fam=st.familyId?siblingsOf(st).length:0;
+  toast(`נרשמה חתימה — תיק התלמיד נפתח להשאלה${fam?` (כולל ${fam} אח/ות)`:''}`,'ok');
+  signStateText();
+});
 
 /* signature pad */
 let sigCtx=null,sigDrawing=false,sigInit=false;
@@ -1542,7 +1585,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 14';
+const APP_VERSION='גרסה 29.6.2026 · 16';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
@@ -1554,7 +1597,7 @@ let supa=null, cloudOn=false, cloudUser=null, cloudRole=null, cloudPushTimer=nul
 function cloudStatusRender(){
   const el=document.getElementById('cloudStatus'); if(!el)return;
   if(cloudOn&&cloudUser){ const r=cloudRole==='admin'?'מנהל/ת':'ספרן/ית';
-    el.innerHTML=`<span class="cloud-dot on"></span>מחובר לענן · <b>${esc(r)}</b><br><span class="muted">${esc(cloudUser.email||'')}</span> · <span class="cs-link" onclick="cloudSignOut()">התנתקות</span>`; }
+    el.innerHTML=`<span class="cloud-dot on"></span>מחובר לענן · <b>${esc(r)}</b><br><span class="muted" title="UID: ${esc(cloudUser.id||'')}">${esc(cloudUser.email||'')}</span><br><span class="cs-link" onclick="cloudChangePassword()">שינוי סיסמה</span> · <span class="cs-link" onclick="cloudSignOut()">התנתקות</span>`; }
   else el.innerHTML=`<span class="cloud-dot off"></span>מצב מקומי · <span class="cs-link" onclick="cloudShowLogin()">התחברות לענן</span>`;
 }
 function cloudInit(){
@@ -1595,8 +1638,17 @@ function cloudSubscribe(){
   }).subscribe();
 }
 async function cloudFetchRole(){
-  try{ const {data,error}=await supa.rpc('my_role'); cloudRole=(!error&&data)?(''+data).trim()||'librarian':'librarian'; }
-  catch(e){ cloudRole='librarian'; }
+  cloudRole='librarian';
+  try{
+    const {data,error}=await supa.rpc('my_role');
+    if(error){
+      console.warn('my_role RPC error:',error.message||error);
+      // fallback: read the role row directly
+      try{ const r=await supa.from('user_roles').select('role').eq('user_id',cloudUser&&cloudUser.id).maybeSingle();
+        if(r&&r.data&&r.data.role)cloudRole=r.data.role; }catch(e2){console.warn('user_roles read failed',e2);}
+    } else if(data){ cloudRole=(''+data).trim()||'librarian'; }
+  }catch(e){ console.warn('role fetch failed',e); }
+  console.log('Cloud account:', cloudUser&&cloudUser.email, '| UID:', cloudUser&&cloudUser.id, '| role:', cloudRole);
 }
 async function cloudAfterLogin(silent){
   try{
@@ -1616,10 +1668,37 @@ async function cloudDoLogin(email,pw){
   if(error)throw error;
   cloudUser=data.user; cloudOn=true; return data.user;
 }
-window.cloudSignOut=async function(){
-  try{ if(supa)await supa.auth.signOut(); }catch(e){}
+window.cloudSignOut=async function(){  try{ if(supa)await supa.auth.signOut(); }catch(e){}
   cloudOn=false; cloudUser=null; cloudRole=null; if(cloudChan){try{supa.removeChannel(cloudChan);}catch(e){} cloudChan=null;}
   cloudStatusRender(); cloudShowLogin();
+};
+window.cloudChangePassword=function(){
+  if(!cloudOn||!supa||!cloudUser){ toast('שינוי סיסמה זמין רק כשמחוברים לענן','err'); return; }
+  modal(`<div class="mhead"><h3>שינוי סיסמה</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mbody">
+    <p class="muted" style="margin:0 0 12px">שינוי הסיסמה עבור החשבון: <b>${esc(cloudUser.email||'')}</b></p>
+    <label class="fld"><span>סיסמה נוכחית</span><input class="inp" id="cpCur" type="password" autocomplete="current-password"></label>
+    <label class="fld"><span>סיסמה חדשה (לפחות 6 תווים)</span><input class="inp" id="cpNew" type="password" autocomplete="new-password"></label>
+    <label class="fld"><span>אימות סיסמה חדשה</span><input class="inp" id="cpNew2" type="password" autocomplete="new-password"></label>
+    <div id="cpErr" class="cl-err"></div>
+    <div class="row" style="margin-top:8px"><button class="btn" id="cpSave">עדכון סיסמה</button><button class="btn ghost" onclick="closeModal()">ביטול</button></div>
+  </div>`);
+  $('#cpSave').addEventListener('click',async()=>{
+    const cur=$('#cpCur').value, nw=$('#cpNew').value, nw2=$('#cpNew2').value, err=$('#cpErr'); err.textContent='';
+    if(!cur||!nw){err.textContent='מלאו את כל השדות';return;}
+    if(nw.length<6){err.textContent='הסיסמה החדשה חייבת לכלול לפחות 6 תווים';return;}
+    if(nw!==nw2){err.textContent='הסיסמאות אינן תואמות';return;}
+    if(nw===cur){err.textContent='הסיסמה החדשה זהה לנוכחית';return;}
+    const btn=$('#cpSave'); btn.disabled=true; btn.textContent='מעדכן…';
+    try{
+      const v=await supa.auth.signInWithPassword({email:cloudUser.email,password:cur});
+      if(v.error){ err.textContent='הסיסמה הנוכחית שגויה'; btn.disabled=false; btn.textContent='עדכון סיסמה'; return; }
+      const u=await supa.auth.updateUser({password:nw});
+      if(u.error){ err.textContent='העדכון נכשל: '+(u.error.message||''); btn.disabled=false; btn.textContent='עדכון סיסמה'; return; }
+      closeModal(); toast('הסיסמה עודכנה בהצלחה','ok');
+    }catch(e){ err.textContent='שגיאה: '+(e&&e.message||''); btn.disabled=false; btn.textContent='עדכון סיסמה'; }
+  });
+  setTimeout(()=>{const el=$('#cpCur'); if(el)el.focus();},30);
 };
 
 (function wireCloudLogin(){
