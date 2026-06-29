@@ -451,7 +451,15 @@ textarea.inp{resize:vertical; min-height:64px}
     </div>
 
     <div class="card" style="margin-bottom:16px">
-      <h3 style="margin:0 0 10px; color:var(--teal-d)">גיבוי ושחזור</h3>
+      <h3 style="margin:0 0 10px; color:var(--teal-d)">אבטחה ואדמין</h3>
+      <p class="muted" style="margin:0 0 10px">קוד אדמין נדרש כדי לאשר פעולות מחיקה (מחיקת ספר/כיתה, סימון אבוד, שחזור/טעינת נתונים, עריכת מפה). השאירו ריק כדי לאפשר אישור ללא קוד. בשלב Supabase זה יוחלף בהרשאות אמיתיות לפי משתמש.</p>
+      <div class="row" style="align-items:flex-end">
+        <label class="fld" style="margin:0; max-width:220px"><span>קוד אדמין</span><input class="inp" id="setAdminPin" type="text" autocomplete="off" placeholder="ריק = ללא קוד"></label>
+        <button class="btn sm" id="saveAdminPin">שמירת קוד</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
       <p class="muted" style="margin:0 0 10px">הנתונים נשמרים על המכשיר הזה. ייצאו גיבוי כדי להעביר בין מכשירים. בשלב הבא נחבר ל־Supabase למסד משותף ולמיילים להורים.</p>
       <div class="row">
         <button class="btn ghost sm" id="exportData">⬇ ייצוא גיבוי (JSON)</button>
@@ -524,7 +532,7 @@ function ensureItems(b){
   return b;
 }
 function migrate(){ (DB.books||[]).forEach(ensureItems);
-  const s=DB.settings||(DB.settings={}); if(s.maxBooks==null)s.maxBooks=2; if(s.loanDays==null)s.loanDays=30; if(s.reminderDays==null)s.reminderDays=21; if(s.repeatDays==null)s.repeatDays=5; if(s.terms==null)s.terms=''; if(!s.libMap)s.libMap=JSON.parse(JSON.stringify(LIB_MAP));
+  const s=DB.settings||(DB.settings={}); if(s.maxBooks==null)s.maxBooks=2; if(s.loanDays==null)s.loanDays=30; if(s.reminderDays==null)s.reminderDays=21; if(s.repeatDays==null)s.repeatDays=5; if(s.terms==null)s.terms=''; if(s.adminPin==null)s.adminPin=''; if(!s.libMap)s.libMap=JSON.parse(JSON.stringify(LIB_MAP));
 }
 const itemsOf=b=>b.items||[];
 const availItems=b=>itemsOf(b).filter(i=>i.status==='in');
@@ -701,7 +709,7 @@ function bookDetail(id){
     const h=it.holder?DB.students.find(s=>s.id===it.holder):null;
     const stTag=it.status==='out'?`<span class="tag out">מושאל${h?' · '+esc(h.firstName+' '+h.lastName):''}</span>`:it.status==='lost'?'<span class="tag lost">אבוד</span>':'<span class="tag">זמין</span>';
     const act=it.status==='in'?`<button class="btn sm" onclick="quickCheckout('${b.id}','${it.id}')">השאלה</button>`
-      :it.status==='out'?`<button class="btn sm" onclick="returnBook('${b.id}','${it.id}');bookDetail('${b.id}')">החזרה</button><button class="btn danger sm" onclick="markLost('${b.id}','${it.id}');bookDetail('${b.id}')">אבוד</button>`
+      :it.status==='out'?`<button class="btn sm" onclick="confirmReturn('${b.id}','${it.id}','detail:${b.id}')">החזרה</button><button class="btn danger sm" onclick="confirmLost('${b.id}','${it.id}','detail:${b.id}')">אבוד</button>`
       :`<button class="btn ghost sm" onclick="returnToStock('${b.id}','${it.id}')">החזר למלאי</button>`;
     return `<div class="litem"><div class="meta"><b style="font-size:14px">עותק ${i+1}</b><small>${it.barcode?'ברקוד '+esc(it.barcode):'ללא ברקוד'} · ${stTag}${it.dueDate&&it.status==='out'?' · עד '+new Date(it.dueDate).toLocaleDateString('he-IL'):''}</small></div><div class="actions">${act}</div></div>`;
   };
@@ -732,7 +740,7 @@ function renderCatalog(){
     return `<div class="litem">${cov}<div class="meta"><b>${esc(b.title)}</b><small>${esc(b.author||'—')} · ${esc(b.genre||'—')} · ${esc(b.language||'')}${b.location?' · 📍 '+esc(b.location):''}</small></div><div class="actions">${st}<button class="btn ghost sm" onclick="editBook('${b.id}')">עריכה</button><button class="btn danger sm" onclick="delBook('${b.id}')">מחיקה</button></div></div>`;
   }).join('')||'<p class="muted">אין ספרים. לחצו על "ספר חדש".</p>';
 }
-function delBook(id){const b=DB.books.find(x=>x.id===id);if(!confirm('למחוק את "'+(b?b.title:'')+'"?'))return;DB.books=DB.books.filter(x=>x.id!==id);save();renderCatalog();toast('נמחק');}
+function delBook(id){const b=DB.books.find(x=>x.id===id);confirmAction({title:'מחיקת ספר',message:`למחוק לצמיתות את "${b?b.title:''}" וכל העותקים שלו?`,danger:true,admin:true,okLabel:'מחק ספר'},()=>{DB.books=DB.books.filter(x=>x.id!==id);save();renderCatalog();toast('הספר נמחק');});}
 function editBook(id){
   const b=id?DB.books.find(x=>x.id===id):{id:uid(),cover:'',location:'',items:[{id:uid(),barcode:'',status:'in',holder:null,dueDate:null}]};
   ensureItems(b);
@@ -794,7 +802,7 @@ function editBook(id){
       return `<div class="litem copyRow" data-id="${it.id}"><div class="meta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:13px">עותק ${i+1}</b><input class="inp copyBc" value="${esc(it.barcode)}" placeholder="ברקוד" style="max-width:190px;padding:6px 8px">${stTag}</div><div class="actions"><button class="btn ghost sm cpGen" data-id="${it.id}">צור ברקוד</button><button class="btn danger sm cpDel" data-id="${it.id}" ${canDel?'':'disabled style=opacity:.4'}>מחק</button></div></div>`;
     }).join('');
     $('#cpList').querySelectorAll('.cpGen').forEach(btn=>btn.addEventListener('click',()=>{syncInputs();const it=formItems.find(i=>i.id===btn.dataset.id);it.barcode=String(DB.counters.barcode+genUsed);genUsed++;renderCopies();}));
-    $('#cpList').querySelectorAll('.cpDel').forEach(btn=>btn.addEventListener('click',()=>{const it=formItems.find(i=>i.id===btn.dataset.id);if(it.status!=='in')return;if(formItems.length<=1){toast('חייב להישאר עותק אחד','err');return;}syncInputs();formItems=formItems.filter(i=>i.id!==btn.dataset.id);renderCopies();}));
+    $('#cpList').querySelectorAll('.cpDel').forEach(btn=>btn.addEventListener('click',()=>{const it=formItems.find(i=>i.id===btn.dataset.id);if(it.status!=='in')return;if(formItems.length<=1){toast('חייב להישאר עותק אחד','err');return;}if(!confirm('להסיר עותק זה? יחול בעת שמירת הספר.'))return;syncInputs();formItems=formItems.filter(i=>i.id!==btn.dataset.id);renderCopies();}));
   }
   renderCopies();
   $('#cpAdd').addEventListener('click',()=>{syncInputs();formItems.push({id:uid(),barcode:'',status:'in',holder:null,dueDate:null});renderCopies();});
@@ -861,7 +869,7 @@ function openCheckout(b,it){
   const head=`<h3 style="margin:0;color:var(--teal-d)">${esc(b.title)}</h3><p class="muted">${esc(b.author||'')}${b.location?' · 📍 '+esc(b.location):''} · ${esc(copyLabel(b,it))}</p>`;
   if(it.status==='out'){
     const h=DB.students.find(s=>s.id===it.holder);
-    panel.innerHTML=`<div class="card">${cov}${head}<p><span class="tag out">מושאל</span> אצל <b>${h?esc(h.firstName+' '+h.lastName+' · '+gradeHeb(h.grade)+(h.classLabel||'')):'—'}</b>${it.dueDate?' · עד '+new Date(it.dueDate).toLocaleDateString('he-IL'):''}</p><div style="clear:both"></div><div class="row"><button class="btn" onclick="returnBook('${b.id}','${it.id}',true)">החזרה</button><button class="btn danger" onclick="markLost('${b.id}','${it.id}',true)">סמן כאבוד</button></div></div>`;
+    panel.innerHTML=`<div class="card">${cov}${head}<p><span class="tag out">מושאל</span> אצל <b>${h?esc(h.firstName+' '+h.lastName+' · '+gradeHeb(h.grade)+(h.classLabel||'')):'—'}</b>${it.dueDate?' · עד '+new Date(it.dueDate).toLocaleDateString('he-IL'):''}</p><div style="clear:both"></div><div class="row"><button class="btn" onclick="confirmReturn('${b.id}','${it.id}','scan')">החזרה</button><button class="btn danger" onclick="confirmLost('${b.id}','${it.id}','scan')">סמן כאבוד</button></div></div>`;
     return;
   }
   if(it.status==='lost'){
@@ -883,15 +891,62 @@ function openCheckout(b,it){
     const openCnt=studentOpenItems(st.id).length, max=DB.settings.maxBooks||2;
     if(openCnt>=max){toast(`${esc(st.firstName)} כבר מחזיק/ה ${openCnt} ספרים (מקסימום ${max})`,'err');return;}
     const dueTs=new Date($('#coDue').value).getTime();
-    it.status='out';it.holder=st.id;it.dueDate=dueTs;it.borrowDate=Date.now();if(!it.reminders)it.reminders=[];
-    DB.logs.push({id:uid(),type:'checkout',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:st.id,date:Date.now(),dueDate:dueTs});
-    save();renderShelf();
-    panel.innerHTML=`<div class="card"><p>✓ הושאל בהצלחה: <b>${esc(b.title)}</b> (${esc(copyLabel(b,it))}) ל־<b>${esc(st.firstName+' '+st.lastName)}</b>. להחזרה עד ${new Date(dueTs).toLocaleDateString('he-IL')}.</p><p class="muted">מייל להורה (${esc(st.parentEmail||'—')}) יישלח אוטומטית בשלב Supabase.</p></div>`;
-    toast('הושאל','ok');setTimeout(()=>$('#scanInput').focus(),100);
+    confirmAction({title:'אישור השאלה',message:`להשאיל את "${b.title}" ל${st.firstName} ${st.lastName} (${gradeHeb(st.grade)+st.classLabel})? להחזרה עד ${new Date(dueTs).toLocaleDateString('he-IL')}.`,okLabel:'אשר השאלה'},()=>{
+      it.status='out';it.holder=st.id;it.dueDate=dueTs;it.borrowDate=Date.now();if(!it.reminders)it.reminders=[];
+      DB.logs.push({id:uid(),type:'checkout',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:st.id,date:Date.now(),dueDate:dueTs});
+      save();renderShelf();
+      panel.innerHTML=`<div class="card"><p>✓ הושאל בהצלחה: <b>${esc(b.title)}</b> (${esc(copyLabel(b,it))}) ל־<b>${esc(st.firstName+' '+st.lastName)}</b>. להחזרה עד ${new Date(dueTs).toLocaleDateString('he-IL')}.</p><p class="muted">מייל להורה (${esc(st.parentEmail||'—')}) יישלח אוטומטית בשלב Supabase.</p></div>`;
+      toast('הושאל','ok');setTimeout(()=>$('#scanInput').focus(),100);
+    });
+  });
+}
+/* ============ CONFIRM / ADMIN GATE ============ */
+function confirmAction(opts,onOk){
+  opts=opts||{};
+  const adminSet=!!(DB.settings&&DB.settings.adminPin);
+  const adminBlock = opts.admin ? (adminSet
+    ? `<label class="fld" style="margin-top:8px"><span>קוד אדמין לאישור</span><input class="inp" id="caPin" type="password" autocomplete="off"></label>`
+    : `<div class="muted" style="margin-top:8px">⚠ פעולה זו מוחקת מידע. מומלץ להגדיר קוד אדמין בהגדרות → אבטחה כדי להגביל אותה למנהל/ת בלבד.</div>`) : '';
+  modal(`<div class="mhead"><h3>${esc(opts.title||'אישור פעולה')}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mbody">
+    <p style="margin:0">${esc(opts.message||'האם לאשר את הפעולה?')}</p>
+    ${adminBlock}
+    <div class="row" style="margin-top:16px"><button class="btn ${opts.danger?'danger':''}" id="caOk">${esc(opts.okLabel||'אישור')}</button><button class="btn ghost" id="caCancel">ביטול</button></div>
+  </div>`);
+  $('#caCancel').addEventListener('click',closeModal);
+  $('#caOk').addEventListener('click',()=>{
+    if(opts.admin&&adminSet){const v=($('#caPin')&&$('#caPin').value)||'';if(v!==DB.settings.adminPin){toast('קוד אדמין שגוי','err');return;}}
+    closeModal(); try{onOk&&onOk();}catch(e){console.error(e);}
+  });
+  setTimeout(()=>{const el=$('#caPin')||$('#caOk');if(el)el.focus();},30);
+}
+function afterCtx(ctx){
+  if(!ctx)return;
+  if(ctx==='reminders')renderReminders();
+  else if(ctx.indexOf('student:')===0)studentPage(ctx.slice(8));
+  else if(ctx.indexOf('detail:')===0)bookDetail(ctx.slice(7));
+}
+function confirmReturn(bookId,itemId,ctx){
+  const b=DB.books.find(x=>x.id===bookId);if(!b)return;const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;
+  const h=DB.students.find(s=>s.id===it.holder);
+  confirmAction({title:'אישור החזרה',message:`להחזיר את "${b.title}"${h?' מ'+h.firstName+' '+h.lastName:''}?`,okLabel:'אישור החזרה'},()=>{
+    returnBook(bookId,itemId,ctx==='scan');afterCtx(ctx);
+  });
+}
+function confirmLost(bookId,itemId,ctx){
+  const b=DB.books.find(x=>x.id===bookId);if(!b)return;
+  confirmAction({title:'סימון כאבוד',message:`לסמן עותק של "${b.title}" כאבוד? פעולה זו תוציא אותו מהמלאי הזמין.`,danger:true,admin:true,okLabel:'סמן כאבוד'},()=>{
+    markLost(bookId,itemId,ctx==='scan');afterCtx(ctx);
+  });
+}
+function delClass(id){
+  const c=DB.classes.find(x=>x.id===id);
+  confirmAction({title:'מחיקת כיתה',message:`למחוק את הכיתה ${c?gradeHeb(c.grade)+c.label:''}?`,danger:true,admin:true,okLabel:'מחק כיתה'},()=>{
+    DB.classes=DB.classes.filter(x=>x.id!==id);save();renderClasses();toast('הכיתה נמחקה');
   });
 }
 function returnBook(bookId,itemId,fromScan){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;it.status='in';DB.logs.push({id:uid(),type:'return',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:it.holder,date:Date.now()});it.holder=null;it.dueDate=null;save();renderShelf();if(fromScan)$('#checkoutPanel').innerHTML=`<div class="card"><p>✓ הוחזר: <b>${esc(b.title)}</b></p></div>`;toast('הוחזר','ok');}
-function markLost(bookId,itemId,fromScan){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;if(!confirm('לסמן עותק של "'+b.title+'" כאבוד?'))return;it.status='lost';DB.logs.push({id:uid(),type:'lost',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:it.holder,date:Date.now()});it.holder=null;it.dueDate=null;save();renderShelf();if(fromScan)$('#checkoutPanel').innerHTML=`<div class="card"><p>סומן כאבוד: <b>${esc(b.title)}</b></p></div>`;toast('סומן כאבוד');}
+function markLost(bookId,itemId,fromScan){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;it.status='lost';DB.logs.push({id:uid(),type:'lost',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:it.holder,date:Date.now()});it.holder=null;it.dueDate=null;save();renderShelf();if(fromScan)$('#checkoutPanel').innerHTML=`<div class="card"><p>סומן כאבוד: <b>${esc(b.title)}</b></p></div>`;toast('סומן כאבוד');}
 
 /* ============ STUDENTS ============ */
 $('#newStudentBtn').addEventListener('click',()=>newStudent());
@@ -955,7 +1010,7 @@ function renderFamilyBox(s){
   box.innerHTML=chips+`<div class="row"><select class="inp" id="sibSel" style="flex:1"><option value="">— בחר תלמיד —</option>${cand.map(x=>`<option value="${x.id}">${esc(x.firstName+' '+x.lastName)} · ${gradeHeb(x.grade)+x.classLabel}</option>`).join('')}</select><button type="button" class="btn ghost sm" id="sibAdd">+ שייך</button></div><div class="muted" style="margin-top:6px">פרטי ההורה יסונכרנו אוטומטית בין כל בני המשפחה.</div>`;
   $('#sibAdd').addEventListener('click',()=>{const v=$('#sibSel').value;if(!v){toast('בחרו תלמיד','err');return;}linkSibling(s.id,v);renderFamilyBox(s);refreshParentFields(s);renderStudents();toast('שויך','ok');});
 }
-window._sibUnlink=function(sibId,selfId){unlinkSibling(sibId);const self=DB.students.find(x=>x.id===selfId);if(self){renderFamilyBox(self);refreshParentFields(self);}renderStudents();toast('בוטל השיוך','ok');};
+window._sibUnlink=function(sibId,selfId){if(!confirm('לבטל את שיוך האח/אחות? (פרטי ההורה יישארו כפי שהם)'))return;unlinkSibling(sibId);const self=DB.students.find(x=>x.id===selfId);if(self){renderFamilyBox(self);refreshParentFields(self);}renderStudents();toast('בוטל השיוך','ok');};
 
 function studentPage(id){
   const s=DB.students.find(x=>x.id===id);if(!s)return;
@@ -970,7 +1025,7 @@ function studentPage(id){
     <div class="kv"><b>הורה</b><span>${esc(s.parentName||'—')} · ${esc(s.parentPhone||'')} · ${esc(s.parentEmail||'')}</span></div>
     ${sibHtml}
     <h3 style="color:var(--teal-d);font-size:17px;margin:16px 0 6px">ספרים פתוחים (${open.length})</h3>
-    ${open.map(o=>`<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b><small>${esc(copyLabel(o.book,o.item))} · עד ${o.item.dueDate?new Date(o.item.dueDate).toLocaleDateString('he-IL'):'—'}</small></div><div class="actions"><button class="btn ghost sm" onclick="returnBook('${o.book.id}','${o.item.id}');studentPage('${s.id}')">החזרה</button><button class="btn danger sm" onclick="markLost('${o.book.id}','${o.item.id}');studentPage('${s.id}')">אבוד</button></div></div>`).join('')||'<p class="muted">אין.</p>'}
+    ${open.map(o=>`<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b><small>${esc(copyLabel(o.book,o.item))} · עד ${o.item.dueDate?new Date(o.item.dueDate).toLocaleDateString('he-IL'):'—'}</small></div><div class="actions"><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','student:${s.id}')">החזרה</button><button class="btn danger sm" onclick="confirmLost('${o.book.id}','${o.item.id}','student:${s.id}')">אבוד</button></div></div>`).join('')||'<p class="muted">אין.</p>'}
     <h3 style="color:var(--teal-d);font-size:17px;margin:16px 0 6px">יומן פעילות</h3>
     ${logs.map(logRow).join('')||'<p class="muted">אין רישומים.</p>'}
   </div>`);
@@ -1008,7 +1063,7 @@ $('#addClass').addEventListener('click',()=>{
 });
 function renderClasses(){
   const list=DB.classes.slice().sort((a,b)=>a.grade-b.grade||cmp(a.label,b.label));
-  $('#classList').innerHTML=list.map(c=>`<div class="litem"><div class="meta"><b>${gradeHeb(c.grade)+c.label}</b><small>מחנך/ת: ${esc(c.teacher)}</small></div><div class="actions"><button class="btn danger sm" onclick="(function(){DB.classes=DB.classes.filter(x=>x.id!=='${c.id}');save();renderClasses();})()">מחק</button></div></div>`).join('')||'<p class="muted">לא הוגדרו כיתות.</p>';
+  $('#classList').innerHTML=list.map(c=>`<div class="litem"><div class="meta"><b>${gradeHeb(c.grade)+c.label}</b><small>מחנך/ת: ${esc(c.teacher)}</small></div><div class="actions"><button class="btn danger sm" onclick="delClass('${c.id}')">מחק</button></div></div>`).join('')||'<p class="muted">לא הוגדרו כיתות.</p>';
 }
 
 /* ============ BARCODES ============ */
@@ -1096,8 +1151,8 @@ function checkRollover(){
 /* ============ data export/import ============ */
 $('#exportData').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='dvora_library_backup.json';a.click();});
 $('#importDataBtn').addEventListener('click',()=>$('#importDataFile').click());
-$('#importDataFile').addEventListener('change',ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{DB=JSON.parse(r.result);migrate();save();toast('שוחזר','ok');go('shelf');}catch(e){toast('קובץ לא תקין','err');}};r.readAsText(f);});
-$('#resetData').addEventListener('click',()=>{if(!confirm('לטעון מחדש את נתוני בית הספר? כל שינוי מקומי יימחק.'))return;DB=seed();save();toast('נטענו נתוני בית הספר','ok');go('shelf');});
+$('#importDataFile').addEventListener('change',ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{let parsed;try{parsed=JSON.parse(r.result);}catch(e){toast('קובץ לא תקין','err');return;}confirmAction({title:'שחזור מגיבוי',message:'שחזור מגיבוי יחליף את כל הנתונים הקיימים במכשיר זה. להמשיך?',danger:true,admin:true,okLabel:'שחזר ודרוס'},()=>{DB=parsed;migrate();save();toast('שוחזר','ok');go('shelf');});};r.readAsText(f);ev.target.value='';});
+$('#resetData').addEventListener('click',()=>{confirmAction({title:'טעינת נתוני בית הספר',message:'פעולה זו תטען מחדש את נתוני בית הספר ותמחק כל שינוי מקומי שביצעת. להמשיך?',danger:true,admin:true,okLabel:'טען ודרוס'},()=>{DB=seed();save();toast('נטענו נתוני בית הספר','ok');go('shelf');});});
 
 /* ============ SETTINGS (policy) ============ */
 function loadSettings(){
@@ -1105,6 +1160,7 @@ function loadSettings(){
   $('#setLoanDays').value=DB.settings.loanDays||30;
   $('#setReminderDays').value=DB.settings.reminderDays||21;
   $('#setRepeatDays').value=DB.settings.repeatDays||5;
+  if($('#setAdminPin'))$('#setAdminPin').value=DB.settings.adminPin||'';
   if($('#scanGap'))$('#scanGap').value=DB.settings.scanGap||40;
 }
 $('#saveSettings').addEventListener('click',()=>{
@@ -1115,6 +1171,7 @@ $('#saveSettings').addEventListener('click',()=>{
   if($('#scanGap'))DB.settings.scanGap=+$('#scanGap').value||40;
   save();toast('המדיניות נשמרה','ok');paintCount();
 });
+$('#saveAdminPin').addEventListener('click',()=>{DB.settings.adminPin=$('#setAdminPin').value.trim();save();toast(DB.settings.adminPin?'קוד אדמין נשמר':'קוד אדמין הוסר','ok');});
 
 /* ============ REMINDERS ============ */
 function daysOut(it){const b=it.borrowDate||it.dueDate&&(it.dueDate-(DB.settings.loanDays||30)*864e5);if(!b)return null;return Math.floor((Date.now()-b)/864e5);}
@@ -1150,7 +1207,7 @@ function renderReminders(){
     const which=first?'תזכורת ראשונה':`תזכורת מס׳ ${o.sent+1}`;
     const status=first?'<span class="tag" style="background:#fff3e0;border-color:#ffe0b2;color:#b5651d">להחזרה בימים הקרובים</span>':'<span class="tag lost">הספר באיחור — נא להחזיר בהקדם</span>';
     const msg=first?'נא להחזיר את הספר בימים הקרובים.':'הספר טרם הוחזר ונמצא באיחור — נא להחזירו בהקדם.';
-    return `<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b> ${status}<small>${s?esc(s.firstName+' '+s.lastName+' · '+gradeHeb(s.grade)+s.classLabel):'—'} · הושאל ${bd} · <b>${o.days} ימים</b> · ${which}${contact?' · '+esc(contact):' · אין פרטי קשר'}<br><span style="color:${first?'#b5651d':'#b3261e'}">${msg}</span>${hist}</small></div><div class="actions"><button class="btn ghost sm" onclick="markReminded('${o.book.id}','${o.item.id}')">סמן: תזכורת נשלחה</button><button class="btn ghost sm" onclick="returnBook('${o.book.id}','${o.item.id}');renderReminders()">החזרה</button></div></div>`;
+    return `<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b> ${status}<small>${s?esc(s.firstName+' '+s.lastName+' · '+gradeHeb(s.grade)+s.classLabel):'—'} · הושאל ${bd} · <b>${o.days} ימים</b> · ${which}${contact?' · '+esc(contact):' · אין פרטי קשר'}<br><span style="color:${first?'#b5651d':'#b3261e'}">${msg}</span>${hist}</small></div><div class="actions"><button class="btn ghost sm" onclick="markReminded('${o.book.id}','${o.item.id}')">סמן: תזכורת נשלחה</button><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','reminders')">החזרה</button></div></div>`;
   }).join('')+`</div>`;
 }
 function markReminded(bookId,itemId){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;if(!it.reminders)it.reminders=[];it.reminders.push(new Date().toLocaleDateString('he-IL'));it.lastReminderTs=Date.now();save();renderReminders();toast('סומן כתזכורת שנשלחה','ok');}
@@ -1261,7 +1318,10 @@ function renderMap(){
     }).join('')+`</div><p class="muted" style="margin-top:12px">גררו קטגוריות בין הארונות או בתוך ארון לשינוי הסדר. הוסיפו קטגוריה מהרשימה בכל ארון, או ✕ להסרה. שם הארון ניתן לעריכה.</p></div>`;
     M.forEach((u,ui)=>{ if(u.landmark)return; const sel=$('#mapAdd'+ui); if(sel)sel.addEventListener('change',()=>{ if(sel.value)_mapAddCat(ui,sel.value); }); });
   }
-  $('#mapEditToggle').addEventListener('click',()=>{mapEdit=!mapEdit;renderMap();});
+  $('#mapEditToggle').addEventListener('click',()=>{
+    if(!mapEdit){confirmAction({title:'עריכת מפה',message:'כניסה למצב עריכת המפה (הזזה/הסרה של קטגוריות) — למנהל/ת בלבד.',admin:true,okLabel:'כניסה לעריכה'},()=>{mapEdit=true;renderMap();});}
+    else{mapEdit=false;renderMap();}
+  });
   if(mapEdit){
     $('#mapAddUnit').addEventListener('click',()=>{mapData().push({t:'ארון חדש',items:[]});save();renderMap();});
     $('#mapAddLand').addEventListener('click',()=>{mapData().push({t:'ציון דרך',landmark:true});save();renderMap();});
