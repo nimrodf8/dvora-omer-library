@@ -648,7 +648,7 @@ function renderShelf(){
     return true;
   });
   const groupOf=b=>({
-    author:b.author?firstLetter(authorSortKey(b.author)):'ללא סופר', title:firstLetter(stripArticle(b.title)),
+    author:b.author?b.author.trim():'ללא סופר', title:firstLetter(stripArticle(b.title)),
     series:b.series||'ללא סדרה', language:b.language||'—', age:b.ageBand||'—',
     genre:b.genre||'—', publisher:b.publisher||'—', year:b.year||'—', location:b.location||'ללא מיקום'
   }[sort]);
@@ -658,7 +658,10 @@ function renderShelf(){
   }[sort]);
   list.sort((a,b)=>cmp(sortKey(a),sortKey(b))|| cmp(a.title,b.title));
   const groups={};list.forEach(b=>{const g=groupOf(b);(groups[g]=groups[g]||[]).push(b);});
-  const keys=Object.keys(groups).sort(cmp);
+  const keyCmp = sort==='author'
+    ? (a,b)=>cmp(a==='ללא סופר'?'תתת':authorSortKey(a), b==='ללא סופר'?'תתת':authorSortKey(b))
+    : cmp;
+  const keys=Object.keys(groups).sort(keyCmp);
   const wall=$('#shelfWall');
   if(!list.length){wall.innerHTML=`<div class="empty-state"><div class="big">📚</div><p>אין ספרים להצגה. הוסיפו ספרים בלשונית <b>קטלוג</b> או ייבאו מאקסל.</p></div>`;return;}
   wall.innerHTML=keys.map(k=>{
@@ -1068,7 +1071,25 @@ $('#addClass').addEventListener('click',()=>{
 });
 function renderClasses(){
   const list=DB.classes.slice().sort((a,b)=>a.grade-b.grade||cmp(a.label,b.label));
-  $('#classList').innerHTML=list.map(c=>`<div class="litem"><div class="meta"><b>${gradeHeb(c.grade)+c.label}</b><small>מחנך/ת: ${esc(c.teacher)}</small></div><div class="actions"><button class="btn danger sm" onclick="delClass('${c.id}')">מחק</button></div></div>`).join('')||'<p class="muted">לא הוגדרו כיתות.</p>';
+  $('#classList').innerHTML=list.map(c=>`<div class="litem"><div class="meta"><b>${gradeHeb(c.grade)+c.label}</b><small>מחנך/ת: ${esc(c.teacher||'—')}</small></div><div class="actions"><button class="btn ghost sm" onclick="editClass('${c.id}')">ערוך</button><button class="btn danger sm" onclick="delClass('${c.id}')">מחק</button></div></div>`).join('')||'<p class="muted">לא הוגדרו כיתות.</p>';
+}
+function editClass(id){
+  const c=DB.classes.find(x=>x.id===id);if(!c)return;const oldT=c.teacher||'',oldG=c.grade,oldL=c.label;
+  const gradeOpt=GRADES_HEB.map((h,i)=>i?`<option value="${i}" ${c.grade==i?'selected':''}>${h}</option>`:'').join('');
+  modal(`<div class="mhead"><h3>עריכת כיתה</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mbody">
+    <div class="grid two"><label class="fld"><span>שכבה</span><select class="inp" id="ecGrade">${gradeOpt}</select></label><label class="fld"><span>כיתה (אות)</span><input class="inp" id="ecLabel" value="${esc(c.label)}"></label></div>
+    <label class="fld"><span>שם המחנך/ת</span><input class="inp" id="ecTeacher" value="${esc(c.teacher||'')}"></label>
+    <div class="row" style="margin-top:8px"><button class="btn" id="ecSave">שמירה</button><button class="btn ghost" onclick="closeModal()">ביטול</button></div>
+  </div>`);
+  $('#ecSave').addEventListener('click',()=>{
+    const g=+$('#ecGrade').value,l=$('#ecLabel').value.trim(),t=$('#ecTeacher').value.trim();
+    if(!l){toast('חסר מספר כיתה','err');return;}
+    c.grade=g;c.label=l;c.teacher=t;
+    // sync the teacher-borrower record (created from the class teacher), if any
+    DB.students.filter(s=>s.isTeacher&&s.firstName===oldT&&s.grade===oldG&&s.classLabel===oldL).forEach(s=>{s.firstName=t||oldT;s.grade=g;s.classLabel=l;});
+    save();closeModal();renderClasses();toast('הכיתה עודכנה','ok');
+  });
 }
 
 /* ============ BARCODES ============ */
@@ -1210,9 +1231,11 @@ function renderReminders(){
     const bd=o.item.borrowDate?new Date(o.item.borrowDate).toLocaleDateString('he-IL'):'—';
     const first=o.sent===0;
     const which=first?'תזכורת ראשונה':`תזכורת מס׳ ${o.sent+1}`;
-    const status=first?'<span class="tag" style="background:#fff3e0;border-color:#ffe0b2;color:#b5651d">להחזרה בימים הקרובים</span>':'<span class="tag lost">הספר באיחור — נא להחזיר בהקדם</span>';
-    const msg=first?'נא להחזיר את הספר בימים הקרובים.':'הספר טרם הוחזר ונמצא באיחור — נא להחזירו בהקדם.';
-    return `<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b> ${status}<small>${s?esc(s.firstName+' '+s.lastName+' · '+gradeHeb(s.grade)+s.classLabel):'—'} · הושאל ${bd} · <b>${o.days} ימים</b> · ${which}${contact?' · '+esc(contact):' · אין פרטי קשר'}<br><span style="color:${first?'#b5651d':'#b3261e'}">${msg}</span>${hist}</small></div><div class="actions"><button class="btn ghost sm" onclick="markReminded('${o.book.id}','${o.item.id}')">סמן: תזכורת נשלחה</button><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','reminders')">החזרה</button></div></div>`;
+    const overdue=!!(o.item.dueDate&&Date.now()>o.item.dueDate);
+    const status=overdue?'<span class="tag lost">הספר באיחור</span>':'<span class="tag" style="background:#fff3e0;border-color:#ffe0b2;color:#b5651d">להחזרה בימים הקרובים</span>';
+    const msg=overdue?'הספר עבר את מועד ההחזרה ונמצא באיחור — נא להחזירו בהקדם.':'הספר צריך להיות מוחזר בימים הקרובים.';
+    const due=o.item.dueDate?new Date(o.item.dueDate).toLocaleDateString('he-IL'):'—';
+    return `<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b> ${status}<small>${s?esc(s.firstName+' '+s.lastName+' · '+gradeHeb(s.grade)+s.classLabel):'—'} · הושאל ${bd} · להחזרה עד ${due} · <b>${o.days} ימים</b> · ${which}${contact?' · '+esc(contact):' · אין פרטי קשר'}<br><span style="color:${overdue?'#b3261e':'#b5651d'}">${msg}</span>${hist}</small></div><div class="actions"><button class="btn ghost sm" onclick="markReminded('${o.book.id}','${o.item.id}')">סמן: תזכורת נשלחה</button><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','reminders')">החזרה</button></div></div>`;
   }).join('')+`</div>`;
 }
 function markReminded(bookId,itemId){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;if(!it.reminders)it.reminders=[];it.reminders.push(new Date().toLocaleDateString('he-IL'));it.lastReminderTs=Date.now();save();renderReminders();toast('סומן כתזכורת שנשלחה','ok');}
@@ -1483,7 +1506,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 10';
+const APP_VERSION='גרסה 29.6.2026 · 12';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 </script>
 </body>
