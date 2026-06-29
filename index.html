@@ -230,6 +230,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
   header.topbar, .sidebar, .view-head, .controls, .no-print{display:none !important}
   .layout{display:block} main{padding:0; max-width:none}
   .label-sheet{border:none; padding:0; box-shadow:none}
+  #view-settings > :not(.label-sheet){display:none !important}
   @page{size:A4; margin:8mm}
 }
 @media(prefers-reduced-motion:reduce){ *{transition:none !important; animation:none !important} }
@@ -252,13 +253,11 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <div class="layout">
   <aside class="sidebar">
     <nav class="nav" id="tabs">
-      <button data-view="shelf" class="nav-item active"><svg viewBox="0 0 24 24"><path d="M4 5a1 1 0 0 1 1-1h5v16H5a1 1 0 0 1-1-1V5Z"/><path d="M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5V4Z"/></svg> ספרים</button>
       <button data-view="checkout" class="nav-item"><svg viewBox="0 0 24 24"><path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1Z"/></svg> השאלה</button>
       <button data-view="reminders" class="nav-item"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg> תזכורות</button>
       <button data-view="catalog" class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/></svg> קטלוג</button>
       <button data-view="students" class="nav-item"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.5a3 3 0 0 1 0 5.8M16.5 19a5.5 5.5 0 0 0-2-4.2"/></svg> תלמידים</button>
-      <button data-view="barcodes" class="nav-item"><svg viewBox="0 0 24 24"><path d="M4 5v14M7 5v14M10 5v14M13 5v10M16 5v14M19 5v14"/></svg> ברקודים</button>
-      <button data-view="import" class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/></svg> ייבוא וקטלוג</button>
+      <button data-view="classes" class="nav-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="1.5"/><path d="M3 17l3 3M21 17l-3 3M8 9h8M8 12.5h5"/></svg> כיתות ומורים</button>
       <button data-view="map" class="nav-item"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg> מפת התמצאות</button>
       <button data-view="reports" class="nav-item"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg> דוחות</button>
       <button data-view="terms" class="nav-item"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg> תקנון</button>
@@ -275,26 +274,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
   <!-- ===== SHELF ===== -->
   <section id="view-shelf" class="view">
     <div class="view-head">
-      <div><h2>הספרים</h2><p>כל הספרים בספרייה · סינון, חיפוש ומיון · לחיצה על ספר פותחת את פרטיו</p></div>
-    </div>
-    <div class="controls no-print">
-      <label class="fld grow" style="margin:0"><span>חיפוש</span>
-        <input class="inp" id="shelfSearch" placeholder="שם ספר, סופר, סדרה, ברקוד…"></label>
-      <label class="fld" style="margin:0"><span>מיון לפי</span>
-        <select class="inp" id="shelfSort">
-          <option value="author">שם משפחה של הסופר (א״ב)</option>
-          <option value="title" selected>שם הספר (א״ב)</option>
-          <option value="series">סדרה</option>
-          <option value="language">שפה</option>
-          <option value="age">גיל מתאים</option>
-          <option value="genre">ז'אנר</option>
-          <option value="publisher">הוצאה</option>
-          <option value="location">מיקום במדף</option>
-          <option value="year">שנת הוצאה</option>
-        </select></label>
-      <label class="fld" style="margin:0"><span>שפה</span><select class="inp" id="shelfLang"><option value="">הכל</option></select></label>
-      <label class="fld" style="margin:0"><span>ז'אנר</span><select class="inp" id="shelfGenre"><option value="">הכל</option></select></label>
-      <label class="fld" style="margin:0"><span>גיל</span><select class="inp" id="shelfAge"><option value="">הכל</option></select></label>
+      <div><h2>הספרים</h2><p>כל הספרים בספרייה · לחיצה על ספר פותחת את פרטיו · לחיפוש ומיון עברו לקטלוג</p></div>
     </div>
     <div id="shelfWall"></div>
   </section>
@@ -319,7 +299,22 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <div class="row"><button class="btn ghost sm" id="xlBooks">⬇ ייצוא לאקסל (XLSX)</button><button class="btn ghost sm" id="dlBooks">⬇ קובץ קטלוג (CSV)</button><button class="btn ghost sm" id="upBooksBtn">⬆ עדכון מקובץ</button><input type="file" id="upBooksFile" accept=".csv,.txt" class="hidden"><button class="btn" id="newBookBtn">+ ספר חדש</button></div>
     </div>
     <div class="controls no-print">
-      <label class="fld grow" style="margin:0"><span>חיפוש בקטלוג</span><input class="inp" id="catSearch" placeholder="שם, סופר, ברקוד, ISBN…"></label>
+      <label class="fld grow" style="margin:0"><span>חיפוש</span><input class="inp" id="catSearch" placeholder="שם, סופר, סדרה, ברקוד, מספר דנה קוד…"></label>
+      <label class="fld" style="margin:0"><span>מיון לפי</span>
+        <select class="inp" id="catSort">
+          <option value="title" selected>שם הספר (א״ב)</option>
+          <option value="author">שם משפחה של הסופר (א״ב)</option>
+          <option value="series">סדרה</option>
+          <option value="language">שפה</option>
+          <option value="age">גיל מתאים</option>
+          <option value="genre">ז'אנר</option>
+          <option value="publisher">הוצאה</option>
+          <option value="location">מיקום במדף</option>
+          <option value="year">שנת הוצאה</option>
+        </select></label>
+      <label class="fld" style="margin:0"><span>שפה</span><select class="inp" id="catLang"><option value="">הכל</option></select></label>
+      <label class="fld" style="margin:0"><span>ז'אנר</span><select class="inp" id="catGenre"><option value="">הכל</option></select></label>
+      <label class="fld" style="margin:0"><span>גיל</span><select class="inp" id="catAge"><option value="">הכל</option></select></label>
     </div>
     <div class="list" id="catalogList"></div>
   </section>
@@ -339,48 +334,23 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
     <div id="studentsList"></div>
   </section>
 
+  <!-- ===== CLASSES & TEACHERS ===== -->
+  <section id="view-classes" class="view hidden">
+    <div class="view-head"><div><h2>כיתות ומורים</h2><p>הוספה ועריכה של כיתות והמחנכים/ות שלהן</p></div></div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="grid three" style="align-items:end">
+        <label class="fld" style="margin:0"><span>שכבה</span><select class="inp" id="clGrade">
+          <option value="1">א׳</option><option value="2">ב׳</option><option value="3">ג׳</option>
+          <option value="4">ד׳</option><option value="5">ה׳</option><option value="6">ו׳</option></select></label>
+        <label class="fld" style="margin:0"><span>כיתה (אות)</span><input class="inp" id="clLabel" placeholder="1, 2, 3 או א/ב/ג"></label>
+        <label class="fld" style="margin:0"><span>שם המחנך/ת</span><input class="inp" id="clTeacher" placeholder="שם מלא"></label>
+      </div>
+      <button class="btn sm" id="addClass" style="margin-top:6px">+ הוסף כיתה</button>
+    </div>
+    <div class="list" id="classList"></div>
+  </section>
+
   <!-- ===== BARCODES ===== -->
-  <section id="view-barcodes" class="view hidden">
-    <div class="view-head"><div><h2>הדפסת ברקודים</h2><p>לספרים ללא ברקוד — מחוללים, מדפיסים על דף מדבקות A4, ומדביקים</p></div></div>
-    <div class="card no-print" style="margin-bottom:16px">
-      <div class="grid three">
-        <label class="fld" style="margin:0"><span>כמה מדבקות</span><input class="inp" id="bcCount" type="number" min="1" max="300" value="30"></label>
-        <label class="fld" style="margin:0"><span>קידומת (אופציונלי)</span><input class="inp" id="bcPrefix" placeholder="לדוגמה DVO"></label>
-        <div style="display:flex; align-items:flex-end; gap:8px">
-          <button class="btn" id="bcGen">חולל מספרים</button>
-          <button class="btn ghost" id="bcPrint">הדפס דף</button>
-        </div>
-      </div>
-      <div class="muted" style="margin-top:8px">כל מדבקה כוללת ברקוד <b>וגם</b> את המספר בכתב — אם הסריקה נכשלת, אפשר להקליד. 30 מדבקות לדף A4.</div>
-      <div class="row" style="margin-top:12px; align-items:flex-end; border-top:1px solid var(--line); padding-top:12px">
-        <label class="fld" style="margin:0; max-width:190px"><span>המספר הבא להקצאה</span><input class="inp" id="bcNext" type="number" min="1"></label>
-        <button class="btn ghost sm" id="bcSetNext">עדכן מספר התחלה</button>
-        <button class="btn ghost sm" id="bcReset">אפס מונה</button>
-        <span class="muted" style="flex:1">המספרים מתקדמים בכל "חולל" כדי שיישארו ייחודיים. אם רק התנסית — אפס או הגדר מספר התחלה.</span>
-      </div>
-    </div>
-    <div class="label-sheet" id="labelSheet"></div>
-  </section>
-
-  <!-- ===== IMPORT / CATALOG ===== -->
-  <section id="view-import" class="view hidden">
-    <div class="view-head"><div><h2>ייבוא וקטלוג ספרים</h2><p>הדרך המהירה להזין את ספרי הספרייה — מורידים תבנית, ממלאים, ומעלים</p></div></div>
-    <div class="card no-print" style="margin-bottom:16px">
-      <h3 style="margin:0 0 8px">📚 הזנת ספרים מתבנית</h3>
-      <p class="muted" style="margin:0 0 10px">הורידו את קובץ ה‑CSV, מלאו שורה לכל ספר (אפשר בגוגל שיטס/אקסל), ושמרו כ‑CSV. אז העלו אותו כאן — המערכת תוסיף את כל הספרים לקטלוג ותדלג על כפילויות.</p>
-      <div class="row"><button class="btn ghost sm" id="dlTemplate">⬇ הורד תבנית CSV</button>
-        <label class="btn sm" style="cursor:pointer">⬆ העלה תבנית מלאה<input type="file" id="catFile" accept=".csv" class="hidden"></label></div>
-      <div id="catImportMsg" class="muted" style="margin-top:8px"></div>
-    </div>
-    <div class="card no-print">
-      <h3 style="margin:0 0 8px">🔶 ניקוי רשימה קיימת (כפילויות וסדרות)</h3>
-      <label class="fld" style="margin:0"><span>בחרו קובץ (.xlsx / .csv) בפורמט הישן (שם ספר + שם תלמיד)</span>
-        <input class="inp" id="xlsFile" type="file" accept=".xlsx,.xls,.csv"></label>
-      <div class="muted" style="margin-top:8px">המערכת מאתרת כפילויות, וריאציות כתיב וסדרות לפני הייבוא.</div>
-    </div>
-    <div id="importPanel"></div>
-  </section>
-
   <!-- ===== REMINDERS ===== -->
   <section id="view-reminders" class="view hidden">
     <div class="view-head"><div><h2>תזכורות להחזרה</h2><p>ספרים שמושאלים מעבר לסף שהוגדר — מוכנים לשליחת תזכורת להורה</p></div></div>
@@ -454,7 +424,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
     </div>
   </section>
   <section id="view-settings" class="view hidden">
-    <div class="view-head"><div><h2>הגדרות</h2><p>מדיניות השאלה · כיתות ומורים · סורק · גיבוי נתונים</p></div></div>
+    <div class="view-head"><div><h2>הגדרות</h2><p>מדיניות השאלה · סורק · גיבוי נתונים · משתמשים</p></div></div>
 
     <div class="card" style="margin-bottom:16px">
       <h3 style="margin:0 0 10px; color:var(--teal-d)">מדיניות השאלה</h3>
@@ -469,24 +439,6 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
     </div>
 
     <div class="card" style="margin-bottom:16px">
-      <div class="row" style="justify-content:space-between; align-items:center; cursor:pointer" id="clsToggle">
-        <h3 style="margin:0; color:var(--teal-d)">כיתות ומורים</h3>
-        <span id="clsChev" class="cs-link">▸ פתיחה ועדכון</span>
-      </div>
-      <div id="clsBody" class="hidden" style="margin-top:12px">
-        <div class="grid three" style="align-items:end">
-          <label class="fld" style="margin:0"><span>שכבה</span><select class="inp" id="clGrade">
-            <option value="1">א׳</option><option value="2">ב׳</option><option value="3">ג׳</option>
-            <option value="4">ד׳</option><option value="5">ה׳</option><option value="6">ו׳</option></select></label>
-          <label class="fld" style="margin:0"><span>כיתה (אות)</span><input class="inp" id="clLabel" placeholder="1, 2, 3 או א/ב/ג"></label>
-          <label class="fld" style="margin:0"><span>שם המחנך/ת</span><input class="inp" id="clTeacher" placeholder="שם מלא"></label>
-        </div>
-        <button class="btn sm" id="addClass" style="margin-top:6px">+ הוסף כיתה</button>
-        <div class="list" id="classList" style="margin-top:12px"></div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:16px">
       <h3 style="margin:0 0 10px; color:var(--teal-d)">סורק ברקודים</h3>
       <p class="muted" style="margin:0">סורק USB סטנדרטי מתחבר ופשוט "מקליד" את המספר וסוגר ב־Enter — אין דרייבר להתקין. הגדירו את הסורק לסיומת Enter (ברירת המחדל ברובם). במסך ההשאלה ודאו שהשדה ממוקד.</p>
       <div class="row" style="margin-top:10px">
@@ -495,7 +447,27 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       </div>
     </div>
 
-    <div class="card" style="margin-bottom:16px">
+    <div class="card no-print" style="margin-bottom:16px">
+      <h3 style="margin:0 0 6px; color:var(--teal-d)">הדפסת ברקודים</h3>
+      <p class="muted" style="margin:0 0 12px">לספרים ללא ברקוד — מחוללים מספרים, מדפיסים על דף מדבקות A4 (30 לדף), ומדביקים. כל מדבקה כוללת ברקוד וגם את המספר בכתב.</p>
+      <div class="grid three">
+        <label class="fld" style="margin:0"><span>כמה מדבקות</span><input class="inp" id="bcCount" type="number" min="1" max="300" value="30"></label>
+        <label class="fld" style="margin:0"><span>קידומת (אופציונלי)</span><input class="inp" id="bcPrefix" placeholder="לדוגמה DVO"></label>
+        <div style="display:flex; align-items:flex-end; gap:8px">
+          <button class="btn" id="bcGen">חולל מספרים</button>
+          <button class="btn ghost" id="bcPrint">הדפס דף</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px; align-items:flex-end; border-top:1px solid var(--line); padding-top:12px">
+        <label class="fld" style="margin:0; max-width:190px"><span>המספר הבא להקצאה</span><input class="inp" id="bcNext" type="number" min="1"></label>
+        <button class="btn ghost sm" id="bcSetNext">עדכן מספר התחלה</button>
+        <button class="btn ghost sm" id="bcReset">אפס מונה</button>
+        <span class="muted" style="flex:1">המספרים מתקדמים בכל "חולל" כדי שיישארו ייחודיים.</span>
+      </div>
+    </div>
+    <div class="label-sheet" id="labelSheet"></div>
+
+    <div class="card dev-only" style="margin-bottom:16px">
       <h3 style="margin:0 0 10px; color:var(--teal-d)">אבטחה ואדמין</h3>
       <p class="muted" style="margin:0 0 10px">קוד אדמין נדרש כדי לאשר פעולות מחיקה (מחיקת ספר/כיתה, סימון אבוד, שחזור/טעינת נתונים, עריכת מפה). השאירו ריק כדי לאפשר אישור ללא קוד. בשלב Supabase זה יוחלף בהרשאות אמיתיות לפי משתמש.</p>
       <div class="row" style="align-items:flex-end">
@@ -507,7 +479,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <button class="btn ghost sm" id="changePwBtn">🔑 שינוי סיסמה</button>
     </div>
 
-    <div class="card" style="margin-bottom:16px">
+    <div class="card dev-only" style="margin-bottom:16px">
       <div class="row" style="justify-content:space-between; align-items:center">
         <h3 style="margin:0; color:var(--teal-d)">ניהול משתמשים (אדמין)</h3>
         <button class="btn ghost sm" id="usersRefresh">↻ רענון</button>
@@ -522,7 +494,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <div id="usersList" style="margin-top:14px"></div>
     </div>
 
-    <div class="card" style="margin-bottom:16px">
+    <div class="card dev-only" style="margin-bottom:16px">
       <p class="muted" style="margin:0 0 10px">הנתונים נשמרים על המכשיר ובענן. <b>גיבוי בענן</b> שומר תמונת-מצב מלאה שאפשר לשחזר ממנה בכל רגע (וגם נשמר גיבוי אוטומטי תקופתי). גיבוי JSON שומר קובץ במכשיר.</p>
       <div class="row">
         <button class="btn sm" id="cloudBackupBtn">☁ גיבוי לענן עכשיו</button>
@@ -734,6 +706,7 @@ let CUR='shelf';
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-view]');if(!b)return;go(b.dataset.view);});
 (function(){const bh=$('#brandHome');if(bh){bh.addEventListener('click',()=>go('shelf'));bh.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go('shelf');}});}})();
 function go(v){
+  if(v==='settings' && cloudRole!=='admin'){ toast('עמוד ההגדרות זמין למנהל/ת בלבד','err'); v='shelf'; }
   CUR=v;
   document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('active',x.dataset.view===v));
   document.querySelectorAll('.view').forEach(s=>s.classList.add('hidden'));
@@ -742,11 +715,11 @@ function go(v){
   if(v==='shelf')renderShelf();
   if(v==='catalog')renderCatalog();
   if(v==='students')renderStudents();
-  if(v==='settings'){renderClasses();loadSettings();renderActivity();renderDeletedBooks();renderUsers();}
+  if(v==='classes')renderClasses();
+  if(v==='settings'){loadSettings();renderActivity();renderDeletedBooks();renderUsers();applyDevOnly();renderBarcodeMeta();}
   if(v==='reminders')renderReminders();
   if(v==='map')renderMap();
   if(v==='reports')renderReports();
-  if(v==='barcodes')renderBarcodeMeta();
   if(v==='terms')renderTerms();
   if(v==='checkout')setTimeout(()=>$('#scanInput').focus(),60);
 }
@@ -754,18 +727,12 @@ function go(v){
 /* ============ count + filters fill ============ */
 function paintCount(){const titles=DB.books.length;let copies=0,out=0;DB.books.forEach(b=>{copies+=itemsOf(b).length;out+=outItems(b).length;});const studs=DB.students.filter(s=>s.active&&!s.isTeacher).length;$('#countPill').textContent=`${titles} כותרים · ${copies} עותקים · ${out} מושאלים · ${studs} תלמידים`;}
 function fillSelect(sel,arr,all){sel.innerHTML=(all?'<option value="">הכל</option>':'')+arr.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');}
-fillSelect($('#shelfLang'),LANGS,true);fillSelect($('#shelfGenre'),GENRES.map(g=>g.k),true);fillSelect($('#shelfAge'),AGES,true);
+fillSelect($('#catLang'),LANGS,true);fillSelect($('#catGenre'),GENRES.map(g=>g.k),true);fillSelect($('#catAge'),AGES,true);
 
 /* ============ SHELF ============ */
-['#shelfSearch','#shelfSort','#shelfLang','#shelfGenre','#shelfAge'].forEach(s=>$(s).addEventListener('input',renderShelf));
 function renderShelf(){
-  const q=$('#shelfSearch').value.trim().toLowerCase();
-  const sort=$('#shelfSort').value, fl=$('#shelfLang').value, fg=$('#shelfGenre').value, fa=$('#shelfAge').value;
-  let list=DB.books.filter(b=>{
-    if(fl&&b.language!==fl)return false; if(fg&&b.genre!==fg)return false; if(fa&&b.ageBand!==fa)return false;
-    if(q){const hay=[b.title,b.author,b.series,b.publisher,b.location,itemsOf(b).map(i=>i.barcode).join(' ')].join(' ').toLowerCase();if(!hay.includes(q))return false;}
-    return true;
-  });
+  const sort='title';
+  let list=DB.books.slice();
   const groupOf=b=>({
     author:b.author?b.author.trim():'ללא סופר', title:firstLetter(stripArticle(b.title)),
     series:b.series||'ללא סדרה', language:b.language||'—', age:b.ageBand||'—',
@@ -855,11 +822,20 @@ function quickCheckout(bookId,itemId){closeModal();go('checkout');const b=DB.boo
 
 /* ============ CATALOG ============ */
 $('#newBookBtn').addEventListener('click',()=>editBook(null));
-$('#catSearch').addEventListener('input',renderCatalog);
+['#catSearch','#catSort','#catLang','#catGenre','#catAge'].forEach(s=>$(s)&&$(s).addEventListener('input',renderCatalog));
 function renderCatalog(){
   const q=$('#catSearch').value.trim().toLowerCase();
-  let list=DB.books.slice().sort((a,b)=>cmp(a.title,b.title));
-  if(q)list=list.filter(b=>[b.title,b.author,b.isbn,b.series,b.location,itemsOf(b).map(i=>i.barcode).join(' ')].join(' ').toLowerCase().includes(q));
+  const sort=($('#catSort')&&$('#catSort').value)||'title';
+  const fl=($('#catLang')&&$('#catLang').value)||'', fg=($('#catGenre')&&$('#catGenre').value)||'', fa=($('#catAge')&&$('#catAge').value)||'';
+  const sortKey=b=>({
+    author:authorSortKey(b.author), title:stripArticle(b.title||''), series:(b.series||'תתת')+' '+String(b.seriesIndex||0).padStart(3,'0'),
+    language:b.language||'', age:b.ageBand||'', genre:b.genre||'', publisher:b.publisher||'', year:b.year||'', location:String(b.location||'תתת').padStart(4,'0')
+  }[sort]);
+  let list=DB.books.filter(b=>{
+    if(fl&&b.language!==fl)return false; if(fg&&b.genre!==fg)return false; if(fa&&b.ageBand!==fa)return false;
+    if(q){const hay=[b.title,b.author,b.danaCode,b.isbn,b.series,b.location,itemsOf(b).map(i=>i.barcode).join(' ')].join(' ').toLowerCase();if(!hay.includes(q))return false;}
+    return true;
+  }).sort((a,b)=>cmp(sortKey(a),sortKey(b))||cmp(a.title,b.title));
   $('#catalogList').innerHTML=list.map(b=>{
     const cov=b.cover?`<img class="cover" src="${esc(b.cover)}" style="cursor:pointer" onclick="bookDetail('${b.id}')">`:`<div class="cover" style="background:${GENRE_C[b.genre]||'#0d8b8d'};color:#fff;cursor:pointer" onclick="bookDetail('${b.id}')">${esc((b.title||'')[0]||'?')}</div>`;
     const a=availItems(b).length,o=outItems(b).length,l=lostItems(b).length,n=itemsOf(b).length;
@@ -1364,7 +1340,6 @@ function newStudent(cb,id){
 }
 
 /* ============ CLASSES (settings) ============ */
-$('#clsToggle')&&$('#clsToggle').addEventListener('click',()=>{const b=$('#clsBody');b.classList.toggle('hidden');$('#clsChev').textContent=b.classList.contains('hidden')?'▸ פתיחה ועדכון':'▾ סגירה';});
 $('#coCancel')&&$('#coCancel').addEventListener('click',()=>{$('#scanInput').value='';$('#checkoutPanel').innerHTML='';go('shelf');});
 function csvParse(text){
   text=(text||'').replace(/^\uFEFF/,''); const rows=[]; let row=[],cur='',q=false;
@@ -1503,7 +1478,7 @@ function drawLabels(){
 }
 
 /* ============ IMPORT ============ */
-$('#xlsFile').addEventListener('change',ev=>{
+$('#xlsFile')&&$('#xlsFile').addEventListener('change',ev=>{
   const f=ev.target.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{try{const wb=XLSX.read(r.result,{type:'binary'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false});importSetup(rows);}catch(e){toast('שגיאה בקריאת הקובץ','err');}};
   r.readAsBinaryString(f);
@@ -1620,6 +1595,10 @@ async function renderUsers(){
   let users=[];
   try{ const out=await callUserFn({action:'list'}); users=out.users||[]; }
   catch(e){ box.innerHTML=`<p class="muted">לא ניתן לטעון משתמשים: ${esc(e.message)}.<br>ודאו שפונקציית <b>manage-users</b> הופעלה ב-Supabase (ראו הוראות).</p>`; return; }
+  // הסתרת חשבון המפתח הראשי מהרשימה (שאר המשתמשים, כולל אדמין, מוצגים)
+  const HIDE_EMAILS=['nimrodf8@gmail.com'];
+  const HIDE_IDS=['136e50b8-cc73-443d-8fc5-b83a8193884c'];
+  users=users.filter(u=>!HIDE_IDS.includes(u.id) && !HIDE_EMAILS.includes((u.email||'').toLowerCase()));
   users.sort((a,b)=>(a.role===b.role?0:a.role==='admin'?-1:1)|| (a.email||'').localeCompare(b.email||''));
   box.innerHTML='<div class="list">'+users.map(u=>{
     const me=cloudUser&&u.id===cloudUser.id;
@@ -1885,7 +1864,7 @@ $('#exportAllRep').addEventListener('click',()=>{
 /* ============ MAP ============ */
 let mapEdit=false;
 function mapData(){ if(!DB.settings.libMap||!DB.settings.libMap.length) DB.settings.libMap=JSON.parse(JSON.stringify(LIB_MAP)); return DB.settings.libMap; }
-function mapFilter(name){go('shelf');setTimeout(()=>{const g=document.getElementById('shelfGenre');if(g&&[...g.options].some(o=>o.value===name)){g.value=name;g.dispatchEvent(new Event('input'));}},80);}
+function mapFilter(name){go('catalog');setTimeout(()=>{const g=document.getElementById('catGenre');if(g&&[...g.options].some(o=>o.value===name)){g.value=name;g.dispatchEvent(new Event('input'));}},80);}
 function renderMap(){
   const p=$('#mapPanel'); const M=mapData();
   const toolbar=`<div class="row no-print" style="margin-bottom:12px">
@@ -2054,13 +2033,13 @@ $('#printTerms').addEventListener('click',()=>{
 
 /* ============ BULK CATALOG TEMPLATE ============ */
 const TPL_COLS=['שם הספר','סופר','ז\'אנר','מיקום במדף','שפה','גיל','סדרה','מספר בסדרה','ברקוד','עותקים','הוצאה','שנה','ISBN','הערות'];
-$('#dlTemplate').addEventListener('click',()=>{
+$('#dlTemplate')&&$('#dlTemplate').addEventListener('click',()=>{
   const ex1=['הקוסם מארץ עוץ','ל. פרנק באום','סיפורים','ארון מרכזי','עברית','8-10','','','','1','','','',''];
   const ex2=['מכתבים מהיער 3','גלילה רון פדר','גלילה רון פדר','יחידה','עברית','8-10','מכתבים מהיער','3','','2','','','',''];
   const csv='\ufeff'+[TPL_COLS,ex1,ex2].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='תבנית_ספרים.csv';a.click();
 });
-$('#catFile').addEventListener('change',ev=>{
+$('#catFile')&&$('#catFile').addEventListener('change',ev=>{
   const f=ev.target.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{try{
     const wb=XLSX.read(r.result,{type:'binary'});const ws=wb.Sheets[wb.SheetNames[0]];
@@ -2091,7 +2070,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 42';
+const APP_VERSION='גרסה 29.6.2026 · 48';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
@@ -2189,7 +2168,20 @@ async function cloudFetchRole(){
     } else if(data){ cloudRole=(''+data).trim()||'librarian'; }
   }catch(e){ console.warn('role fetch failed',e); }
   console.log('Cloud account:', cloudUser&&cloudUser.email, '| UID:', cloudUser&&cloudUser.id, '| role:', cloudRole);
+  applyRoleUI();
 }
+function applyRoleUI(){
+  // הסתרת כפתור "הגדרות" מהתפריט לספרנים (אדמין בלבד)
+  const isAdmin=cloudRole==='admin';
+  const btn=document.querySelector('#tabs button[data-view="settings"]');
+  if(btn)btn.style.display=isAdmin?'':'none';
+  if(!isAdmin && CUR==='settings')go('shelf');
+  applyDevOnly();
+}
+const DEV_EMAILS=['nimrodf8@gmail.com'];
+const DEV_IDS=['136e50b8-cc73-443d-8fc5-b83a8193884c'];
+function isDevUser(){ return !!(cloudUser && (DEV_IDS.includes(cloudUser.id) || DEV_EMAILS.includes((cloudUser.email||'').toLowerCase()))); }
+function applyDevOnly(){ document.querySelectorAll('#view-settings .dev-only').forEach(el=>{ el.style.display=isDevUser()?'':'none'; }); }
 function dbScore(d){ if(!d||!Array.isArray(d.students))return -1; let p=0; d.students.forEach(s=>{if(s.parentName)p++;if(s.parentPhone)p++;if(s.parentEmail)p++;if(s.familyId)p++;}); return (d.students.length*10)+p+((d.books&&d.books.length)||0); }
 function localBackup(tag){ try{ localStorage.setItem('dvora_lib_backup', JSON.stringify({ts:Date.now(),tag:tag||'',data:DB})); }catch(e){} }
 async function cloudBackupNow(label, silent){
