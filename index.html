@@ -508,6 +508,21 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
     </div>
 
     <div class="card" style="margin-bottom:16px">
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <h3 style="margin:0; color:var(--teal-d)">ניהול משתמשים (אדמין)</h3>
+        <button class="btn ghost sm" id="usersRefresh">↻ רענון</button>
+      </div>
+      <p class="muted" style="margin:8px 0 12px">הקמת משתמשים חדשים (ספרן/ית או מנהל/ת) ישירות מהמערכת — נוצרים ב-Supabase Auth. דורש הפעלת פונקציית <b>manage-users</b> (ראו הוראות).</p>
+      <div class="grid" style="grid-template-columns:1.4fr 1fr 0.9fr auto; gap:8px; align-items:end">
+        <label class="fld" style="margin:0"><span>אימייל</span><input class="inp" id="nuEmail" type="email" placeholder="name@example.com" autocomplete="off"></label>
+        <label class="fld" style="margin:0"><span>סיסמה</span><input class="inp" id="nuPass" type="text" placeholder="לפחות 6 תווים" autocomplete="off"></label>
+        <label class="fld" style="margin:0"><span>תפקיד</span><select class="inp" id="nuRole"><option value="librarian">ספרן/ית</option><option value="admin">מנהל/ת</option></select></label>
+        <button class="btn" id="nuCreate">➕ הקם</button>
+      </div>
+      <div id="usersList" style="margin-top:14px"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
       <p class="muted" style="margin:0 0 10px">הנתונים נשמרים על המכשיר ובענן. <b>גיבוי בענן</b> שומר תמונת-מצב מלאה שאפשר לשחזר ממנה בכל רגע (וגם נשמר גיבוי אוטומטי תקופתי). גיבוי JSON שומר קובץ במכשיר.</p>
       <div class="row">
         <button class="btn sm" id="cloudBackupBtn">☁ גיבוי לענן עכשיו</button>
@@ -727,7 +742,7 @@ function go(v){
   if(v==='shelf')renderShelf();
   if(v==='catalog')renderCatalog();
   if(v==='students')renderStudents();
-  if(v==='settings'){renderClasses();loadSettings();renderActivity();renderDeletedBooks();}
+  if(v==='settings'){renderClasses();loadSettings();renderActivity();renderDeletedBooks();renderUsers();}
   if(v==='reminders')renderReminders();
   if(v==='map')renderMap();
   if(v==='reports')renderReports();
@@ -869,7 +884,10 @@ function editBook(id){
   modal(`<div class="mhead"><h3>${id?'עריכת ספר':'ספר חדש'}</h3><button class="x" onclick="closeModal()">×</button></div>
   <div class="mbody">
     <label class="fld"><span>שם הספר *</span><input class="inp" id="fTitle" value="${esc(b.title)}"></label>
-    <label class="fld"><span>מספר דנה קוד</span><input class="inp" id="fDana" value="${esc(b.danaCode||'')}" placeholder="קוד הקטלוג של הספר"></label>
+    <label class="fld"><span>מספר דנה קוד / מסת״ב</span>
+      <div class="row"><input class="inp" id="fDana" value="${esc(b.danaCode||'')}" placeholder="מספר דנה קוד או מסת״ב" style="flex:1"><button class="btn sm" id="fDanaLookup" type="button">🔍 שלוף נתונים</button></div>
+      <div class="muted" id="fLookupMsg" style="margin-top:6px"></div>
+    </label>
     <div class="grid two">
       <label class="fld"><span>סופר</span><input class="inp" id="fAuthor" list="dlAuthors" value="${esc(b.author)}"></label>
       <label class="fld"><span>מיון לפי (שם משפחה — אופציונלי)</span><input class="inp" id="fAuthorSort" value="${esc(b.authorSort)}" placeholder="${b.author?esc(authorSortKey(b.author)):'אוטומטי לפי שם'}"></label>
@@ -887,10 +905,7 @@ function editBook(id){
       <label class="fld"><span>הוצאה</span><input class="inp" id="fPub" list="dlPubs" value="${esc(b.publisher)}"></label>
       <label class="fld"><span>שנה</span><input class="inp" id="fYear" value="${esc(b.year)}"></label>
     </div>
-    <div class="grid two">
-      <label class="fld"><span>מיקום במדף 📍</span><select class="inp" id="fLocation"><option value=""></option>${b.location&&!/^(?:[1-9]|[1-9][0-9]|100)$/.test(String(b.location))?`<option value="${esc(b.location)}" selected>${esc(b.location)}</option>`:''}${Array.from({length:100},(_,i)=>i+1).map(n=>`<option value="${n}" ${String(b.location)===String(n)?'selected':''}>${n}</option>`).join('')}</select></label>
-      <label class="fld"><span>ISBN</span><input class="inp" id="fIsbn" value="${esc(b.isbn)}"></label>
-    </div>
+    <label class="fld"><span>מיקום במדף 📍</span><select class="inp" id="fLocation"><option value=""></option>${b.location&&!/^(?:[1-9]|[1-9][0-9]|100)$/.test(String(b.location))?`<option value="${esc(b.location)}" selected>${esc(b.location)}</option>`:''}${Array.from({length:100},(_,i)=>i+1).map(n=>`<option value="${n}" ${String(b.location)===String(n)?'selected':''}>${n}</option>`).join('')}</select></label>
     <label class="fld"><span>כריכה — קישור או העלאה</span>
       <div class="row"><input class="inp" id="fCover" value="${esc(b.cover)}" placeholder="https://…" style="flex:1"><input type="file" id="fCoverUp" accept="image/*" class="hidden"><button class="btn ghost sm" onclick="$('#fCoverUp').click()">העלה תמונה</button></div></label>
 
@@ -922,6 +937,7 @@ function editBook(id){
   $('#cpAdd').addEventListener('click',()=>{syncInputs();formItems.push({id:uid(),barcode:'',status:'in',holder:null,dueDate:null});renderCopies();});
 
   $('#fCoverUp').addEventListener('change',ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#fCover').value=r.result;toast('כריכה נטענה');};r.readAsDataURL(f);});
+  $('#fDanaLookup')&&$('#fDanaLookup').addEventListener('click',()=>lookupBook($('#fDana').value.trim()||$('#fTitle').value.trim()));
   $('#fSave').addEventListener('click',()=>{
     const t=$('#fTitle').value.trim();if(!t){toast('חסר שם ספר','err');return;}
     syncInputs();
@@ -935,11 +951,44 @@ function editBook(id){
     if(!formItems.length){toast('צריך לפחות עותק אחד','err');return;}
     DB.counters.barcode+=genUsed;
     b.items=formItems;
-    Object.assign(b,{title:t,danaCode:$('#fDana').value.trim(),author:$('#fAuthor').value.trim(),authorSort:$('#fAuthorSort').value.trim(),series:$('#fSeries').value.trim(),seriesIndex:$('#fSeriesIdx').value.trim(),language:$('#fLang').value,ageBand:$('#fAge').value,genre:$('#fGenre').value,publisher:$('#fPub').value.trim(),year:$('#fYear').value.trim(),location:$('#fLocation').value.trim(),isbn:$('#fIsbn').value.trim(),cover:$('#fCover').value.trim(),notes:$('#fNotes').value.trim()});
+    Object.assign(b,{title:t,danaCode:$('#fDana').value.trim(),author:$('#fAuthor').value.trim(),authorSort:$('#fAuthorSort').value.trim(),series:$('#fSeries').value.trim(),seriesIndex:$('#fSeriesIdx').value.trim(),language:$('#fLang').value,ageBand:$('#fAge').value,genre:$('#fGenre').value,publisher:$('#fPub').value.trim(),year:$('#fYear').value.trim(),location:$('#fLocation').value.trim(),cover:$('#fCover').value.trim(),notes:$('#fNotes').value.trim()});
     if(!id)DB.books.push(b);
     logAct('book',`${id?'עריכת':'הוספת'} ספר: ${t}`);
     save();closeModal();renderCatalog();renderShelf();toast('נשמר','ok');
   });
+}
+async function lookupBook(q){
+  const msg=$('#fLookupMsg');
+  if(!q){ if(msg)msg.textContent='הקלידו מספר (מסת״ב/דנה קוד) או שם ספר, ואז לחצו שליפה.'; return; }
+  if(msg)msg.textContent='מחפש במאגרים…';
+  // 1) שליפה דרך השרת — הספרייה הלאומית (ואם אין, Google Books)
+  try{
+    if(cloudOn&&supa){
+      const {data:{session}}=await supa.auth.getSession();
+      if(session){
+        const res=await fetch(`${SUPA_URL}/functions/v1/book-lookup`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},body:JSON.stringify({q})});
+        if(res.ok){ const d=await res.json(); if(d&&d.found){ fillLookup(d); if(msg)msg.textContent='נמצא: '+(d.title||'')+(d.source?' · '+d.source:'')+' — בדקו והשלימו ז׳אנר וגיל.'; return; } }
+      }
+    }
+  }catch(e){}
+  // 2) גיבוי: שליפה ישירה מ-Google Books (עובד גם לפני הפעלת הפונקציה)
+  try{
+    const digits=q.replace(/[^0-9Xx]/g,''); const isIsbn=digits.length>=10;
+    const url=isIsbn?`https://www.googleapis.com/books/v1/volumes?q=isbn:${digits}`:`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}`;
+    const r=await fetch(url);const data=await r.json();const v=data.items&&data.items[0]&&data.items[0].volumeInfo;
+    if(!v){ if(msg)msg.textContent='לא נמצא במאגרים. ניתן למלא ידנית. (לדאנאקוד טהור אין מאגר אוטומטי — נסו לפי מסת״ב או שם.)'; return; }
+    let cov=v.imageLinks&&(v.imageLinks.thumbnail||v.imageLinks.smallThumbnail); if(cov)cov=cov.replace('http://','https://'); else if(isIsbn)cov=`https://covers.openlibrary.org/b/isbn/${digits}-L.jpg`;
+    fillLookup({title:v.title,author:(v.authors||[]).join(', '),publisher:v.publisher,year:((v.publishedDate||'').match(/\d{4}/)||[''])[0],language:LANG_MAP[v.language]||'',cover:cov});
+    if(msg)msg.textContent='נמצא: '+(v.title||'')+' · Google Books — בדקו והשלימו ז׳אנר וגיל.';
+  }catch(e){ if(msg)msg.textContent='שגיאת רשת — נסו שוב או מלאו ידנית.'; }
+}
+function fillLookup(d){
+  if(d.title&&!$('#fTitle').value)$('#fTitle').value=d.title;
+  if(d.author&&!$('#fAuthor').value)$('#fAuthor').value=d.author;
+  if(d.publisher&&!$('#fPub').value)$('#fPub').value=d.publisher;
+  if(d.year&&!$('#fYear').value)$('#fYear').value=d.year;
+  if(d.language&&$('#fLang')&&[...$('#fLang').options].some(o=>o.value===d.language))$('#fLang').value=d.language;
+  if(d.cover&&!$('#fCover').value)$('#fCover').value=d.cover;
 }
 
 /* ============ CHECKOUT ============ */
@@ -1555,6 +1604,63 @@ $('#saveSettings').addEventListener('click',()=>{
 });
 $('#saveAdminPin').addEventListener('click',()=>{DB.settings.adminPin=$('#setAdminPin').value.trim();save();toast(DB.settings.adminPin?'קוד אדמין נשמר':'קוד אדמין הוסר','ok');});
 $('#changePwBtn').addEventListener('click',()=>{ if(typeof cloudChangePassword==='function')cloudChangePassword(); });
+async function callUserFn(payload){
+  if(!cloudOn||!supa) throw new Error('יש להתחבר לענן');
+  const {data:{session}}=await supa.auth.getSession();
+  if(!session) throw new Error('אין חיבור פעיל');
+  const res=await fetch(`${SUPA_URL}/functions/v1/manage-users`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},body:JSON.stringify(payload)});
+  let out={}; try{out=await res.json();}catch(e){}
+  if(!res.ok) throw new Error(out.error||('שגיאה '+res.status));
+  return out;
+}
+async function renderUsers(){
+  const box=document.getElementById('usersList'); if(!box)return;
+  if(!cloudOn||cloudRole!=='admin'){ box.innerHTML='<p class="muted">ניהול משתמשים מותר למנהל/ת בלבד.</p>'; return; }
+  box.innerHTML='<p class="muted">טוען משתמשים…</p>';
+  let users=[];
+  try{ const out=await callUserFn({action:'list'}); users=out.users||[]; }
+  catch(e){ box.innerHTML=`<p class="muted">לא ניתן לטעון משתמשים: ${esc(e.message)}.<br>ודאו שפונקציית <b>manage-users</b> הופעלה ב-Supabase (ראו הוראות).</p>`; return; }
+  users.sort((a,b)=>(a.role===b.role?0:a.role==='admin'?-1:1)|| (a.email||'').localeCompare(b.email||''));
+  box.innerHTML='<div class="list">'+users.map(u=>{
+    const me=cloudUser&&u.id===cloudUser.id;
+    const last=u.last_sign_in_at?new Date(u.last_sign_in_at).toLocaleDateString('he-IL'):'טרם התחבר';
+    return `<div class="litem"><div class="meta"><b>${esc(u.email||'—')}</b>${me?' <span class="tag">אני</span>':''}<small>${u.role==='admin'?'מנהל/ת':'ספרן/ית'} · כניסה אחרונה: ${last}</small></div><div class="actions">
+      <button class="btn ghost sm" onclick="userSetRole('${u.id}','${u.role==='admin'?'librarian':'admin'}')">${u.role==='admin'?'הפוך לספרן/ית':'הפוך למנהל/ת'}</button>
+      <button class="btn ghost sm" onclick="userResetPw('${u.id}','${esc(u.email||'')}')">איפוס סיסמה</button>
+      ${me?'':`<button class="btn danger sm" onclick="userDelete('${u.id}','${esc(u.email||'')}')">מחיקה</button>`}
+    </div></div>`;
+  }).join('')+'</div>';
+}
+window.userSetRole=function(id,role){
+  confirmAction({title:'שינוי תפקיד',message:`לשנות את התפקיד ל${role==='admin'?'מנהל/ת':'ספרן/ית'}? (ייכנס לתוקף בהתחברות הבאה של המשתמש)`,okLabel:'שנה תפקיד'},async()=>{
+    try{ await callUserFn({action:'setRole',id,role}); logAct('data',`שינוי תפקיד משתמש ל-${role}`); toast('התפקיד עודכן','ok'); renderUsers(); }
+    catch(e){ toast(e.message,'err'); }
+  });
+};
+window.userResetPw=function(id,email){
+  modal(`<div class="mhead"><h3>איפוס סיסמה</h3><button class="x" onclick="closeModal()">×</button></div><div class="mbody"><p style="margin:0 0 10px">סיסמה חדשה עבור <b>${esc(email)}</b>:</p><label class="fld"><span>סיסמה חדשה (לפחות 6 תווים)</span><input class="inp" id="rpPass" type="text" autocomplete="off"></label><div class="row" style="margin-top:10px"><button class="btn" id="rpGo">עדכן סיסמה</button><button class="btn ghost" onclick="closeModal()">ביטול</button></div></div>`);
+  $('#rpGo').addEventListener('click',async()=>{
+    const p=$('#rpPass').value; if(p.length<6){toast('לפחות 6 תווים','err');return;}
+    try{ await callUserFn({action:'resetPassword',id,password:p}); logAct('data','איפוס סיסמת משתמש'); closeModal(); toast('הסיסמה עודכנה','ok'); }
+    catch(e){ toast(e.message,'err'); }
+  });
+};
+window.userDelete=function(id,email){
+  confirmAction({title:'מחיקת משתמש',message:`למחוק את המשתמש ${email} לצמיתות? הוא לא יוכל להתחבר יותר.`,danger:true,admin:true,okLabel:'מחק משתמש'},async()=>{
+    try{ await callUserFn({action:'delete',id}); logAct('data',`מחיקת משתמש: ${email}`); toast('המשתמש נמחק','ok'); renderUsers(); }
+    catch(e){ toast(e.message,'err'); }
+  });
+};
+$('#usersRefresh')&&$('#usersRefresh').addEventListener('click',renderUsers);
+$('#nuCreate')&&$('#nuCreate').addEventListener('click',async()=>{
+  const email=($('#nuEmail').value||'').trim(), pass=$('#nuPass').value||'', role=$('#nuRole').value;
+  if(!email||!pass){toast('מלאו אימייל וסיסמה','err');return;}
+  if(pass.length<6){toast('הסיסמה חייבת לפחות 6 תווים','err');return;}
+  const btn=$('#nuCreate'); btn.disabled=true; btn.textContent='מקים…';
+  try{ await callUserFn({action:'create',email,password:pass,role}); logAct('data',`הקמת משתמש: ${email} (${role})`); toast('המשתמש נוצר ✓','ok'); $('#nuEmail').value='';$('#nuPass').value=''; renderUsers(); }
+  catch(e){ toast('הקמה נכשלה: '+e.message,'err'); }
+  finally{ btn.disabled=false; btn.textContent='➕ הקם'; }
+});
 $('#actFilter')&&$('#actFilter').addEventListener('change',renderActivity);
 $('#actExport')&&$('#actExport').addEventListener('click',()=>{
   if(cloudOn&&cloudRole!=='admin'){toast('מותר למנהל/ת בלבד','err');return;}
@@ -1985,7 +2091,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 39';
+const APP_VERSION='גרסה 29.6.2026 · 42';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
