@@ -315,8 +315,8 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
   <!-- ===== CATALOG ===== -->
   <section id="view-catalog" class="view hidden">
     <div class="view-head">
-      <div><h2>קטלוג הספרים</h2><p>הוספה ועריכה של ספרים · שליפת כריכה ופרטים לפי ISBN/ברקוד</p></div>
-      <button class="btn" id="newBookBtn">+ ספר חדש</button>
+      <div><h2>קטלוג הספרים</h2><p>הוספה ועריכה של ספרים · שם, סופר, סדרה, ז׳אנר, מספר דנה קוד וכריכה</p></div>
+      <div class="row"><button class="btn ghost sm" id="xlBooks">⬇ ייצוא לאקסל (XLSX)</button><button class="btn ghost sm" id="dlBooks">⬇ קובץ קטלוג (CSV)</button><button class="btn ghost sm" id="upBooksBtn">⬆ עדכון מקובץ</button><input type="file" id="upBooksFile" accept=".csv,.txt" class="hidden"><button class="btn" id="newBookBtn">+ ספר חדש</button></div>
     </div>
     <div class="controls no-print">
       <label class="fld grow" style="margin:0"><span>חיפוש בקטלוג</span><input class="inp" id="catSearch" placeholder="שם, סופר, ברקוד, ISBN…"></label>
@@ -334,7 +334,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <label class="fld grow" style="margin:0"><span>חיפוש</span><input class="inp" id="studSearch" placeholder="שם תלמיד, כיתה, הורה…"></label>
       <label class="fld" style="margin:0"><span>כיתה</span><select class="inp" id="studClass"><option value="">כל הכיתות</option></select></label>
       <label class="fld" style="margin:0"><span>הצג</span><select class="inp" id="studFilter">
-        <option value="active">פעילים</option><option value="grad">סיימו (כיתה ו׳)</option><option value="all">הכל</option></select></label>
+        <option value="active">פעילים</option><option value="past">תלמידי עבר (בוגרים / לא פעילים)</option><option value="all">הכל</option></select></label>
     </div>
     <div id="studentsList"></div>
   </section>
@@ -535,6 +535,12 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <div id="activityLog" style="max-height:340px; overflow:auto"></div>
     </div>
 
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin:0 0 8px; color:var(--teal-d)">ספרים שנמחקו</h3>
+      <p class="muted" style="margin:0 0 10px">ספרים שנמחקו מהקטלוג נשמרים כאן (עד 50 אחרונים) וניתן לשחזרם — כולל כל העותקים והברקודים.</p>
+      <div id="deletedBooks"></div>
+    </div>
+
     <div class="card">
       <h3 style="margin:0 0 10px; color:var(--teal-d)">הרשאות (יחובר בשלב Supabase)</h3>
       <p class="muted" style="margin:0">אדמין — גישה מלאה · ספרן/מתנדב — קטלוג, השאלה, החזרה · הורה — צפייה בלבד בספרים של ילדם, עם מייל אוטומטי בעת השאלה. הרשאות אמיתיות בין מכשירים מצריכות את שלב ה־Supabase.</p>
@@ -616,6 +622,7 @@ function ensureItems(b){
 function migrate(){ (DB.books||[]).forEach(ensureItems);
   const s=DB.settings||(DB.settings={}); if(s.maxBooks==null)s.maxBooks=2; if(s.loanDays==null)s.loanDays=30; if(s.reminderDays==null)s.reminderDays=21; if(s.remindBeforeDays==null)s.remindBeforeDays=5; if(s.repeatDays==null)s.repeatDays=5; if(s.terms==null)s.terms=''; if(s.adminPin==null)s.adminPin=''; if(!s.libMap)s.libMap=JSON.parse(JSON.stringify(LIB_MAP));
   if(!Array.isArray(DB.activity))DB.activity=[];
+  if(!Array.isArray(DB.deletedBooks))DB.deletedBooks=[];
 }
 let cloudName='';
 function actActor(){ return cloudName || (typeof cloudUser!=='undefined'&&cloudUser&&cloudUser.email) || 'מקומי'; }
@@ -720,7 +727,7 @@ function go(v){
   if(v==='shelf')renderShelf();
   if(v==='catalog')renderCatalog();
   if(v==='students')renderStudents();
-  if(v==='settings'){renderClasses();loadSettings();renderActivity();}
+  if(v==='settings'){renderClasses();loadSettings();renderActivity();renderDeletedBooks();}
   if(v==='reminders')renderReminders();
   if(v==='map')renderMap();
   if(v==='reports')renderReports();
@@ -798,7 +805,7 @@ function bookCard(b){
 function modal(html){
   const root=$('#modalRoot');
   root.innerHTML=`<div class="modal-bg"><div class="modal">${html}</div></div>`;
-  root.querySelector('.modal-bg').addEventListener('click',e=>{if(e.target.classList.contains('modal-bg'))closeModal();});
+  // לחיצה מחוץ לחלון לא סוגרת ולא מבטלת שינויים — סגירה רק דרך כפתורי X / ביטול
   return root;
 }
 function closeModal(){$('#modalRoot').innerHTML='';}
@@ -821,7 +828,7 @@ function bookDetail(id){
   modal(`<div class="mhead"><h3>${esc(b.title)}</h3><button class="x" onclick="closeModal()">×</button></div>
   <div class="mbody">${cov}
     <div style="margin-bottom:10px">${summary} <span class="tag" style="background:${GENRE_C[b.genre]||'#5a4a32'}33;border-color:${GENRE_C[b.genre]||'#7d6128'}">${esc(b.genre||'—')}</span></div>
-    ${kv('סופר',b.author)}${kv('סדרה',b.series?b.series+(b.seriesIndex?' · '+b.seriesIndex:''):'')}${kv('מיקום במדף',b.location)}${kv('שפה',b.language)}${kv('גיל',b.ageBand)}${kv('הוצאה',b.publisher)}${kv('שנה',b.year)}${kv('ISBN',b.isbn)}${kv('הערות',b.notes)}
+    ${kv('מספר דנה קוד',b.danaCode)}${kv('סופר',b.author)}${kv('סדרה',b.series?b.series+(b.seriesIndex?' · '+b.seriesIndex:''):'')}${kv('מיקום במדף',b.location)}${kv('שפה',b.language)}${kv('גיל',b.ageBand)}${kv('הוצאה',b.publisher)}${kv('שנה',b.year)}${kv('ISBN',b.isbn)}${kv('הערות',b.notes)}
     <div style="clear:both"></div>
     <h3 style="color:var(--teal-d);font-size:16px;margin:16px 0 6px">עותקים (${itemsOf(b).length})</h3>
     <div class="list">${itemsOf(b).map(copyRow).join('')}</div>
@@ -839,13 +846,20 @@ function renderCatalog(){
   let list=DB.books.slice().sort((a,b)=>cmp(a.title,b.title));
   if(q)list=list.filter(b=>[b.title,b.author,b.isbn,b.series,b.location,itemsOf(b).map(i=>i.barcode).join(' ')].join(' ').toLowerCase().includes(q));
   $('#catalogList').innerHTML=list.map(b=>{
-    const cov=b.cover?`<img class="cover" src="${esc(b.cover)}">`:`<div class="cover" style="background:${GENRE_C[b.genre]||'#0d8b8d'};color:#fff">${esc((b.title||'')[0]||'?')}</div>`;
+    const cov=b.cover?`<img class="cover" src="${esc(b.cover)}" style="cursor:pointer" onclick="bookDetail('${b.id}')">`:`<div class="cover" style="background:${GENRE_C[b.genre]||'#0d8b8d'};color:#fff;cursor:pointer" onclick="bookDetail('${b.id}')">${esc((b.title||'')[0]||'?')}</div>`;
     const a=availItems(b).length,o=outItems(b).length,l=lostItems(b).length,n=itemsOf(b).length;
-    const st=`<span class="tag">${a}/${n} זמין</span>${o?' <span class="tag out">'+o+' מושאל</span>':''}${l?' <span class="tag lost">'+l+' אבוד</span>':''}`;
-    return `<div class="litem">${cov}<div class="meta"><b>${esc(b.title)}</b><small>${esc(b.author||'—')} · ${esc(b.genre||'—')} · ${esc(b.language||'')}${b.location?' · 📍 '+esc(b.location):''}</small></div><div class="actions">${st}<button class="btn ghost sm" onclick="editBook('${b.id}')">עריכה</button><button class="btn danger sm" onclick="delBook('${b.id}')">מחיקה</button></div></div>`;
+    const outInfo=outItems(b).map(it=>{
+      const s=DB.students.find(x=>x.id===it.holder);
+      const who=s?`${s.firstName} ${s.lastName}${s.isTeacher?' (מורה)':' ('+gradeHeb(s.grade)+(s.classLabel||'')+')'}`:'—';
+      const bd=it.borrowDate?new Date(it.borrowDate).toLocaleDateString('he-IL'):'';
+      const dd=it.dueDate?new Date(it.dueDate).toLocaleDateString('he-IL'):'';
+      return `${who}${bd?' · הושאל '+bd:''}${dd?' · עד '+dd:''}`;
+    }).join('\n');
+    const st=`<span class="tag">${a}/${n} זמין</span>${o?` <span class="tag out" style="cursor:help" title="${esc(outInfo)}">${o} מושאל</span>`:''}${l?' <span class="tag lost">'+l+' אבוד</span>':''}`;
+    return `<div class="litem">${cov}<div class="meta"><b style="cursor:pointer" onclick="bookDetail('${b.id}')">${esc(b.title)}</b><small>${esc(b.author||'—')} · ${esc(b.genre||'—')} · ${esc(b.language||'')}${b.location?' · 📍 '+esc(b.location):''}</small></div><div class="actions">${st}<button class="btn ghost sm" onclick="editBook('${b.id}')">עריכה</button><button class="btn danger sm" onclick="delBook('${b.id}')">מחיקה</button></div></div>`;
   }).join('')||'<p class="muted">אין ספרים. לחצו על "ספר חדש".</p>';
 }
-function delBook(id){const b=DB.books.find(x=>x.id===id);confirmAction({title:'מחיקת ספר',message:`למחוק לצמיתות את "${b?b.title:''}" וכל העותקים שלו?`,danger:true,admin:true,okLabel:'מחק ספר'},()=>{logAct('del_book',`מחיקת ספר: ${b?b.title:''}`);DB.books=DB.books.filter(x=>x.id!==id);save();renderCatalog();toast('הספר נמחק');});}
+function delBook(id){const b=DB.books.find(x=>x.id===id);confirmAction({title:'מחיקת ספר',message:`למחוק את "${b?b.title:''}" וכל העותקים שלו? ניתן לשחזר מההגדרות.`,danger:true,admin:true,okLabel:'מחק ספר'},()=>{logAct('del_book',`מחיקת ספר: ${b?b.title:''}`);if(b){DB.deletedBooks=DB.deletedBooks||[];DB.deletedBooks.push({book:JSON.parse(JSON.stringify(b)),deletedAt:Date.now(),by:actActor()});if(DB.deletedBooks.length>50)DB.deletedBooks=DB.deletedBooks.slice(-50);}DB.books=DB.books.filter(x=>x.id!==id);save();renderCatalog();toast('הספר נמחק — ניתן לשחזר מההגדרות');});}
 function editBook(id){
   const b=id?DB.books.find(x=>x.id===id):{id:uid(),cover:'',location:'',items:[{id:uid(),barcode:'',status:'in',holder:null,dueDate:null}]};
   ensureItems(b);
@@ -854,12 +868,8 @@ function editBook(id){
   const opt=(arr,v)=>arr.map(x=>`<option ${x===v?'selected':''}>${esc(x)}</option>`).join('');
   modal(`<div class="mhead"><h3>${id?'עריכת ספר':'ספר חדש'}</h3><button class="x" onclick="closeModal()">×</button></div>
   <div class="mbody">
-    <div class="card no-print" style="margin-bottom:14px;background:rgba(201,161,74,.08)">
-      <label class="fld" style="margin:0"><span>שליפה אוטומטית לפי ISBN או ברקוד</span>
-        <div class="row"><input class="inp" id="fIsbnLookup" placeholder="הקלידו/הדביקו ISBN" style="flex:1"><button class="btn sm" id="fLookupBtn">שלוף פרטים</button></div></label>
-      <div class="muted" id="fLookupMsg" style="margin-top:6px"></div>
-    </div>
     <label class="fld"><span>שם הספר *</span><input class="inp" id="fTitle" value="${esc(b.title)}"></label>
+    <label class="fld"><span>מספר דנה קוד</span><input class="inp" id="fDana" value="${esc(b.danaCode||'')}" placeholder="קוד הקטלוג של הספר"></label>
     <div class="grid two">
       <label class="fld"><span>סופר</span><input class="inp" id="fAuthor" list="dlAuthors" value="${esc(b.author)}"></label>
       <label class="fld"><span>מיון לפי (שם משפחה — אופציונלי)</span><input class="inp" id="fAuthorSort" value="${esc(b.authorSort)}" placeholder="${b.author?esc(authorSortKey(b.author)):'אוטומטי לפי שם'}"></label>
@@ -873,13 +883,12 @@ function editBook(id){
       <label class="fld"><span>גיל מתאים</span><select class="inp" id="fAge"><option value=""></option>${opt(AGES,b.ageBand)}</select></label>
       <label class="fld"><span>ז'אנר</span><select class="inp" id="fGenre">${opt(GENRES.map(g=>g.k),b.genre||'אחר')}</select></label>
     </div>
-    <div class="grid three">
+    <div class="grid two">
       <label class="fld"><span>הוצאה</span><input class="inp" id="fPub" list="dlPubs" value="${esc(b.publisher)}"></label>
       <label class="fld"><span>שנה</span><input class="inp" id="fYear" value="${esc(b.year)}"></label>
-      <label class="fld"><span>סיווג נושאי (דיואי)</span><input class="inp" id="fDewey" value="${esc(b.dewey)}"></label>
     </div>
     <div class="grid two">
-      <label class="fld"><span>מיקום במדף 📍</span><input class="inp" id="fLocation" list="dlLoc" value="${esc(b.location)}" placeholder="לדוגמה: ארון ב׳ · מדף 3"></label>
+      <label class="fld"><span>מיקום במדף 📍</span><select class="inp" id="fLocation"><option value=""></option>${b.location&&!/^(?:[1-9]|[1-9][0-9]|100)$/.test(String(b.location))?`<option value="${esc(b.location)}" selected>${esc(b.location)}</option>`:''}${Array.from({length:100},(_,i)=>i+1).map(n=>`<option value="${n}" ${String(b.location)===String(n)?'selected':''}>${n}</option>`).join('')}</select></label>
       <label class="fld"><span>ISBN</span><input class="inp" id="fIsbn" value="${esc(b.isbn)}"></label>
     </div>
     <label class="fld"><span>כריכה — קישור או העלאה</span>
@@ -913,7 +922,6 @@ function editBook(id){
   $('#cpAdd').addEventListener('click',()=>{syncInputs();formItems.push({id:uid(),barcode:'',status:'in',holder:null,dueDate:null});renderCopies();});
 
   $('#fCoverUp').addEventListener('change',ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#fCover').value=r.result;toast('כריכה נטענה');};r.readAsDataURL(f);});
-  $('#fLookupBtn').addEventListener('click',()=>lookupBook($('#fIsbnLookup').value.trim()||$('#fTitle').value.trim()));
   $('#fSave').addEventListener('click',()=>{
     const t=$('#fTitle').value.trim();if(!t){toast('חסר שם ספר','err');return;}
     syncInputs();
@@ -927,33 +935,11 @@ function editBook(id){
     if(!formItems.length){toast('צריך לפחות עותק אחד','err');return;}
     DB.counters.barcode+=genUsed;
     b.items=formItems;
-    Object.assign(b,{title:t,author:$('#fAuthor').value.trim(),authorSort:$('#fAuthorSort').value.trim(),series:$('#fSeries').value.trim(),seriesIndex:$('#fSeriesIdx').value.trim(),language:$('#fLang').value,ageBand:$('#fAge').value,genre:$('#fGenre').value,publisher:$('#fPub').value.trim(),year:$('#fYear').value.trim(),dewey:$('#fDewey').value.trim(),location:$('#fLocation').value.trim(),isbn:$('#fIsbn').value.trim(),cover:$('#fCover').value.trim(),notes:$('#fNotes').value.trim()});
+    Object.assign(b,{title:t,danaCode:$('#fDana').value.trim(),author:$('#fAuthor').value.trim(),authorSort:$('#fAuthorSort').value.trim(),series:$('#fSeries').value.trim(),seriesIndex:$('#fSeriesIdx').value.trim(),language:$('#fLang').value,ageBand:$('#fAge').value,genre:$('#fGenre').value,publisher:$('#fPub').value.trim(),year:$('#fYear').value.trim(),location:$('#fLocation').value.trim(),isbn:$('#fIsbn').value.trim(),cover:$('#fCover').value.trim(),notes:$('#fNotes').value.trim()});
     if(!id)DB.books.push(b);
     logAct('book',`${id?'עריכת':'הוספת'} ספר: ${t}`);
     save();closeModal();renderCatalog();renderShelf();toast('נשמר','ok');
   });
-}
-async function lookupBook(q){
-  if(!q){toast('הקלידו ISBN או שם','err');return;}
-  const msg=$('#fLookupMsg');msg.textContent='מחפש…';
-  try{
-    const isbn=q.replace(/[^0-9Xx]/g,'');
-    const url=isbn.length>=10?`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`:`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}`;
-    const r=await fetch(url);const d=await r.json();
-    const v=d.items&&d.items[0]&&d.items[0].volumeInfo;
-    if(!v){msg.textContent='לא נמצא. אפשר למלא ידנית.';return;}
-    if(v.title&&!$('#fTitle').value)$('#fTitle').value=v.title;
-    if(v.authors)$('#fAuthor').value=v.authors.join(', ');
-    if(v.publisher)$('#fPub').value=v.publisher;
-    if(v.publishedDate)$('#fYear').value=(v.publishedDate.match(/\d{4}/)||[''])[0];
-    if(v.language&&LANG_MAP[v.language])$('#fLang').value=LANG_MAP[v.language];
-    let cov=v.imageLinks&&(v.imageLinks.thumbnail||v.imageLinks.smallThumbnail);
-    if(cov)cov=cov.replace('http://','https://');
-    else if(isbn.length>=10)cov=`https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
-    if(cov)$('#fCover').value=cov;
-    if(isbn.length>=10&&!$('#fIsbn').value)$('#fIsbn').value=isbn;
-    msg.textContent='נמצא: '+(v.title||'')+' — בדקו והשלימו ז\'אנר וגיל.';
-  }catch(e){msg.textContent='שגיאת רשת — נסו שוב או מלאו ידנית.';}
 }
 
 /* ============ CHECKOUT ============ */
@@ -1078,7 +1064,7 @@ function fillStudClass(){const sel=$('#studClass');if(!sel||sel.options.length>1
 function studentRow(s){
   const open=studentOpenItems(s.id).length;
   const sib=siblingsOf(s).length;
-  const tag=s.isTeacher?'<span class="tag" style="background:var(--orange-l);border-color:#f6d4b0;color:var(--orange-d)">מורה</span>':s.graduated?'<span class="tag lost">סיים/עבר חט״ב</span>':'';
+  const tag=s.isTeacher?'<span class="tag" style="background:var(--orange-l);border-color:#f6d4b0;color:var(--orange-d)">מורה</span>':s.graduated?'<span class="tag lost">בוגר/עבר חט״ב</span>':(!s.active?'<span class="tag" style="background:#eee;border-color:#ddd;color:#777">לא פעיל</span>':'');
   const signBadge=s.isTeacher?'':(s.termsSigned?'<span class="tag" style="background:#e7f6ec;border-color:#bfe6cc;color:#2e7d46">תקנון ✓</span>':'<span class="tag" style="background:#fff3e0;border-color:#ffe0b2;color:#b5651d">ללא תקנון</span>');
   return `<div class="litem"><div class="cover" style="font-size:18px">${esc(s.firstName[0]||'')}</div><div class="meta"><b>${esc(s.firstName+' '+s.lastName)}</b><small>${tag?tag+' · ':''}${signBadge?signBadge+' · ':''}הורה: ${esc(s.parentName||'—')}${s.parentPhone?' · '+esc(s.parentPhone):''}${sib?' · 👨‍👩‍👧 '+sib+(sib>1?' אחים':' אח/אחות'):''}${open?' · '+open+' ספרים פתוחים':''}</small></div><div class="actions"><button class="btn ghost sm" onclick="studentPage('${s.id}')">תיק</button><button class="btn ghost sm" onclick="newStudent(null,'${s.id}')">עריכה</button></div></div>`;
 }
@@ -1086,7 +1072,7 @@ function renderStudents(){
   fillStudClass();
   const q=$('#studSearch').value.trim().toLowerCase(),f=$('#studFilter').value,fc=$('#studClass').value;
   let list=DB.students.slice();
-  if(f==='active')list=list.filter(s=>s.active); if(f==='grad')list=list.filter(s=>s.graduated);
+  if(f==='active')list=list.filter(s=>s.active&&!s.graduated); if(f==='past')list=list.filter(s=>s.graduated||!s.active);
   if(fc)list=list.filter(s=>(s.grade+'|'+s.classLabel)===fc);
   if(q)list=list.filter(s=>[s.firstName,s.lastName,gradeHeb(s.grade)+s.classLabel,s.parentName].join(' ').toLowerCase().includes(q));
   list.sort((a,b)=>a.grade-b.grade||cmp(a.classLabel,b.classLabel)||(a.isTeacher-b.isTeacher)||cmp(a.lastName,b.lastName));
@@ -1264,8 +1250,39 @@ function studentPage(id){
     ${open.map(o=>`<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b><small>${esc(copyLabel(o.book,o.item))} · עד ${o.item.dueDate?new Date(o.item.dueDate).toLocaleDateString('he-IL'):'—'}</small></div><div class="actions"><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','student:${s.id}')">החזרה</button><button class="btn danger sm" onclick="confirmLost('${o.book.id}','${o.item.id}','student:${s.id}')">אבוד</button></div></div>`).join('')||'<p class="muted">אין.</p>'}
     <h3 style="color:var(--teal-d);font-size:17px;margin:16px 0 6px">יומן פעילות</h3>
     ${logs.map(logRow).join('')||'<p class="muted">אין רישומים.</p>'}
+    <div class="row" style="margin-top:18px;border-top:1px solid var(--line);padding-top:12px;justify-content:space-between">
+      <button class="btn ghost sm" onclick="closeModal();newStudent(()=>studentPage('${s.id}'),'${s.id}')">✏️ עריכה</button>
+      <button class="btn danger sm" onclick="delStudent('${s.id}')">🗑 מחיקה לצמיתות</button>
+    </div>
   </div>`);
 }
+window.delStudent=function(id){
+  const s=DB.students.find(x=>x.id===id);if(!s)return;
+  if(cloudOn && cloudRole!=='admin'){toast('מחיקה מותרת למנהל/ת בלבד','err');return;}
+  const open=studentOpenItems(id).length;
+  if(open>0){toast(`לא ניתן למחוק — ${s.firstName} מחזיק/ה ${open} ספרים. יש להחזירם קודם.`,'err');return;}
+  const full=(s.firstName+' '+s.lastName).trim();
+  modal(`<div class="mhead"><h3 style="color:#b3261e">⚠ מחיקה לצמיתות</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mbody">
+    <div style="background:#fdecea;border:1px solid #f5c6c2;border-radius:10px;padding:12px 14px;margin-bottom:14px;color:#7a1c16;line-height:1.8">
+      <b>שימו לב — פעולה זו אינה הפיכה.</b><br>
+      התלמיד/ה <b>${esc(full)}</b> (${s.isTeacher?'מורה':gradeHeb(s.grade)+s.classLabel}) יוסר/תוסר <b>לחלוטין</b> מהמערכת, כולל כל ההיסטוריה והתיעוד.<br>
+      אם המטרה היא רק לסיים שנה או להוציא מהרשימה — עדיף לסמן <b>"בוגר/ת"</b> או <b>"לא פעיל/ה"</b> בעריכה (התיעוד יישמר ב"תלמידי עבר").
+    </div>
+    <label class="fld"><span>לאישור המחיקה, הקלד/י את השם המלא: <b>${esc(full)}</b></span><input class="inp" id="delConfirm" placeholder="${esc(full)}" autocomplete="off"></label>
+    <div class="row" style="margin-top:12px"><button class="btn danger" id="delGo" disabled>מחק לצמיתות</button><button class="btn ghost" onclick="closeModal()">ביטול</button></div>
+  </div>`);
+  const inp=$('#delConfirm'),btn=$('#delGo');
+  inp.addEventListener('input',()=>{btn.disabled=(inp.value.trim()!==full);});
+  inp.focus();
+  btn.addEventListener('click',()=>{
+    if(inp.value.trim()!==full)return;
+    if(s.familyId)unlinkSibling(id);
+    DB.students=DB.students.filter(x=>x.id!==id);
+    logAct('student',`מחיקת תלמיד/ה לצמיתות: ${full}`);
+    save();closeModal();renderStudents();toast('התלמיד/ה נמחק/ה לצמיתות','ok');
+  });
+};
 function newStudent(cb,id){
   const s=id?DB.students.find(x=>x.id===id):{id:uid(),grade:1,classLabel:'1',active:true,graduated:false,createdAt:Date.now()};
   const gradeOpt=GRADES_HEB.map((h,i)=>i?`<option value="${i}" ${s.grade==i?'selected':''}>${h}</option>`:'').join('');
@@ -1276,6 +1293,10 @@ function newStudent(cb,id){
     <div class="muted" id="sTeacher" style="margin:-6px 0 12px"></div>
     <label class="fld"><span>שם הורה</span><input class="inp" id="sPName" value="${esc(s.parentName)}"></label>
     <div class="grid two"><label class="fld"><span>טלפון הורה</span><input class="inp" id="sPPhone" value="${esc(s.parentPhone)}"></label><label class="fld"><span>אימייל הורה</span><input class="inp" id="sPMail" type="email" value="${esc(s.parentEmail)}"></label></div>
+    <div class="row" style="gap:20px; margin:2px 0 12px">
+      <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="sActive" ${s.active!==false?'checked':''}> פעיל/ה</label>
+      <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="sGrad" ${s.graduated?'checked':''}> בוגר/ת · מעבר לתלמידי עבר</label>
+    </div>
     ${id?`<div class="fld"><span>אחים / בני משפחה</span><div id="sFamily"></div></div>`:'<div class="muted" style="margin:-4px 0 10px">שמרו את התלמיד תחילה כדי לשייך אחים/בני משפחה.</div>'}
     <div class="row"><button class="btn" id="sSave">שמירה</button><button class="btn ghost" onclick="closeModal()">ביטול</button></div>
   </div>`);
@@ -1285,6 +1306,8 @@ function newStudent(cb,id){
   $('#sSave').addEventListener('click',()=>{
     const f=$('#sFirst').value.trim();if(!f){toast('חסר שם','err');return;}
     Object.assign(s,{firstName:f,lastName:$('#sLast').value.trim(),grade:+$('#sGrade').value,classLabel:$('#sClass').value.trim(),parentName:$('#sPName').value.trim(),parentPhone:$('#sPPhone').value.trim(),parentEmail:$('#sPMail').value.trim()});
+    if($('#sActive'))s.active=$('#sActive').checked;
+    if($('#sGrad'))s.graduated=$('#sGrad').checked;
     if(s.familyId)syncParent(s.familyId,s.id);
     logAct('student',`${id?'עדכון':'הוספת'} תלמיד: ${f} ${$('#sLast').value.trim()}`);
     if(!id)DB.students.push(s);save();closeModal();renderStudents();toast('נשמר','ok');if(cb)cb();
@@ -1312,6 +1335,54 @@ $('#dlStudents')&&$('#dlStudents').addEventListener('click',()=>{
   toast('הקובץ הורד','ok');
 });
 $('#upStudentsBtn')&&$('#upStudentsBtn').addEventListener('click',()=>$('#upStudentsFile').click());
+const BOOK_COLS=['מזהה','שם הספר','מספר דנה קוד','סופר','סדרה','מס׳ בסדרה','ז׳אנר','שפה','קטגוריית גיל','הוצאה','שנה','ISBN','כריכה (קישור)','מס׳ עותקים','הערות'];
+function coverCell(c){ if(!c)return ''; return /^https?:\/\//.test(c)?c:'מוטמעת'; }
+$('#xlBooks')&&$('#xlBooks').addEventListener('click',()=>{
+  const list=DB.books.slice().sort((a,b)=>cmp(a.title,b.title));
+  const rows=[BOOK_COLS].concat(list.map(b=>[b.id,b.title||'',b.danaCode||'',b.author||'',b.series||'',b.seriesIndex||'',b.genre||'',b.language||'',b.ageBand||'',b.publisher||'',b.year||'',b.isbn||'',coverCell(b.cover),itemsOf(b).length,(b.notes||'').replace(/\s+/g,' ')]));
+  try{ const wb=XLSX.utils.book_new(); const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=BOOK_COLS.map(()=>({wch:16})); XLSX.utils.book_append_sheet(wb,ws,'קטלוג'); XLSX.writeFile(wb,`קטלוג_דבורה_עומר_${new Date().toLocaleDateString('he-IL').replace(/\./g,'-')}.xlsx`); toast('הקטלוג יוצא לאקסל','ok'); }
+  catch(e){ toast('הייצוא נכשל','err'); }
+});
+$('#dlBooks')&&$('#dlBooks').addEventListener('click',()=>{
+  const list=DB.books.slice().sort((a,b)=>cmp(a.title,b.title));
+  const rows=[BOOK_COLS].concat(list.map(b=>[b.id,b.title||'',b.danaCode||'',b.author||'',b.series||'',b.seriesIndex||'',b.genre||'',b.language||'',b.ageBand||'',b.publisher||'',b.year||'',b.isbn||'',coverCell(b.cover),itemsOf(b).length,(b.notes||'').replace(/\s+/g,' ')]));
+  const csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='קטלוג_דבורה_עומר.csv';a.click();
+  toast('קובץ הקטלוג הורד','ok');
+});
+$('#upBooksBtn')&&$('#upBooksBtn').addEventListener('click',()=>$('#upBooksFile').click());
+$('#upBooksFile')&&$('#upBooksFile').addEventListener('change',ev=>{
+  const f=ev.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{
+    let rows; try{rows=csvParse(r.result);}catch(e){toast('קובץ לא תקין','err');return;}
+    if(!rows.length){toast('הקובץ ריק','err');return;}
+    let start=0; const h=rows[0].map(x=>(x||'').trim());
+    if(h[0]==='מזהה'||h.join(' ').indexOf('שם הספר')>-1) start=1;
+    let upd=0,add=0;
+    for(let i=start;i<rows.length;i++){
+      const c=rows[i].map(x=>(x||'').trim()); if(!c.length||(!c[0]&&!c[1]))continue;
+      const id=c[0]; let b=id&&DB.books.find(x=>x.id===id);
+      if(!b){ if(!c[1])continue; b={id:uid(),title:'',items:[]}; DB.books.push(b); add++; } else upd++;
+      if(c[1]){b.title=c[1];}
+      if(c[2]!==undefined)b.danaCode=c[2];
+      if(c[3]!==undefined&&c[3]!==''){b.author=c[3];b.authorSort=c[3];}
+      if(c[4]!==undefined)b.series=c[4];
+      if(c[5]!==undefined&&c[5]!=='')b.seriesIndex=+c[5]||c[5];
+      if(c[6])b.genre=c[6];
+      if(c[7])b.language=c[7];
+      if(c[8]!==undefined)b.ageBand=c[8];
+      if(c[9]!==undefined)b.publisher=c[9];
+      if(c[10]!==undefined&&c[10]!=='')b.year=c[10];
+      if(c[11]!==undefined)b.isbn=c[11];
+      if(c[12]&&/^https?:\/\//.test(c[12]))b.cover=c[12];   // עדכון כריכה רק אם הוזן קישור
+      if(c[14]!==undefined)b.notes=c[14];
+      // עמודת "מס׳ עותקים" (c[13]) אינפורמטיבית בלבד — עותקים מנוהלים בכרטיס הספר
+    }
+    logAct('book',`עדכון קטלוג מקובץ: ${upd} עודכנו, ${add} נוספו`);
+    save();renderCatalog();renderShelf();toast(`עודכנו ${upd} · נוספו ${add} ספרים`,'ok');
+  };
+  r.readAsText(f); ev.target.value='';
+});
 $('#upStudentsFile')&&$('#upStudentsFile').addEventListener('change',ev=>{
   const f=ev.target.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{
@@ -1431,18 +1502,21 @@ function analyzeImport(){
 }
 
 /* ============ ROLLOVER (grade bump) ============ */
-function rolloverYear(){const d=new Date();return d.getMonth()>=8?d.getFullYear():d.getFullYear()-1;}
+function rolloverYear(){const d=new Date();return d.getMonth()>=6?d.getFullYear():d.getFullYear()-1;}   // אחרי 1 ביולי
 function checkRollover(){
   const y=rolloverYear();const banner=$('#rolloverBanner');
   if((DB.settings.lastRollover||0)>=y){banner.classList.add('hidden');return;}
-  const n=DB.students.filter(s=>s.active&&!s.graduated).length;
+  const n=DB.students.filter(s=>s.active&&!s.graduated&&!s.isTeacher).length;
   banner.classList.remove('hidden');
-  banner.innerHTML=`<b>📅 תחילת שנת לימודים ${y+1}.</b> יש לקדם ${n} תלמידים שכבה. תלמידי כיתה ו׳ יסומנו כ"עברו חט״ב". <button class="btn sm" id="doRoll">בצע קידום שכבה</button> <button class="btn ghost sm" id="skipRoll">דחה</button>`;
+  banner.innerHTML=`<b>📅 מעבר שנה (${y+1}).</b> כיתות ו׳ יסומנו כ"בוגרים" (יעברו לתלמידי עבר), וכל שאר ${n} התלמידים יקודמו שכבה אחת מעלה. לאחר מכן יש להזין את כיתות א׳ החדשות. <button class="btn sm" id="doRoll">בצע קידום שכבה</button> <button class="btn ghost sm" id="skipRoll">דחה</button>`;
   $('#doRoll').addEventListener('click',()=>{
-    let bumped=0,grad=0;
-    DB.students.forEach(s=>{if(!s.active||s.graduated||s.isTeacher)return;if(s.grade>=6){s.graduated=true;s.active=false;grad++;}else{s.grade++;bumped++;}});
-    DB.settings.lastRollover=y;save();banner.classList.add('hidden');renderStudents();
-    toast(`קודמו ${bumped} תלמידים · ${grad} סיימו ו׳`,'ok');
+    confirmAction({title:'קידום שכבה שנתי',message:`לבצע מעבר שנה? כיתות ו׳ יסומנו כבוגרים (יישמרו בתלמידי עבר), וכל שאר התלמידים יקודמו שכבה. נשמר גיבוי אוטומטי לפני הפעולה.`,danger:true,admin:true,okLabel:'בצע קידום'},async()=>{
+      try{ localBackup('pre-rollover'); if(typeof cloudBackupNow==='function')await cloudBackupNow('לפני קידום שכבה',true); }catch(e){}
+      let bumped=0,grad=0;
+      DB.students.forEach(s=>{if(!s.active||s.graduated||s.isTeacher)return;if(s.grade>=6){s.graduated=true;s.active=false;grad++;}else{s.grade++;bumped++;}});
+      DB.settings.lastRollover=y; logAct('data',`קידום שכבה שנתי: ${bumped} קודמו · ${grad} סיימו ו׳`); cloudForceNextSave=true; save(); banner.classList.add('hidden'); renderStudents();
+      toast(`קודמו ${bumped} תלמידים · ${grad} עברו לתלמידי עבר`,'ok');
+    });
   });
   $('#skipRoll').addEventListener('click',()=>banner.classList.add('hidden'));
 }
@@ -1611,8 +1685,62 @@ function reportDefs(){
     {key:'signed', title:'סטטוס חתימת תקנון', icon:'✍️', headers:['תלמיד/ה','כיתה','הורה','חתם/ה','תאריך'], rows:signRows},
   ];
 }
+let repFilter={}, _repDefs=[];
+function filterRows(rows,q){ q=(q||'').trim().toLowerCase(); if(!q)return rows; return rows.filter(r=>r.some(c=>String(c==null?'':c).toLowerCase().includes(q))); }
+function repRowHtml(d,r){
+  if(d.key==='byclass'){
+    const lbl=String(r[0]).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<tr><td>${esc(r[0])}</td><td><a href="#" onclick="showClassLoans('${lbl}');return false" style="color:var(--teal-d);font-weight:700;text-decoration:underline;cursor:pointer" title="לחצו לפירוט ההשאלות">${esc(r[1])}</a></td></tr>`;
+  }
+  return `<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`;
+}
+function repBodyHtml(d){
+  const all=filterRows(d.rows, repFilter[d.key]); const N=all.length, showAll=!!repShowAll[d.key];
+  const rows=showAll?all:all.slice(0,8);
+  const toggle = N>8 ? `<div class="rep-more no-print"><button class="btn ghost sm" onclick="toggleReport('${d.key}')">${showAll?'הצג פחות ▲':`הצג את כל ${N} השורות ▼`}</button></div>` : '';
+  return N? `<div style="${showAll?'max-height:420px;overflow:auto':''}"><table class="rep-table"><thead><tr>${d.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>repRowHtml(d,r)).join('')}</tbody></table></div>${toggle}` : `<div class="rep-empty">${repFilter[d.key]?'אין תוצאות לסינון זה.':'אין נתונים בקטגוריה זו 👍'}</div>`;
+}
+window.setRepFilter=function(key,val){
+  repFilter[key]=val; repShowAll[key]=false;
+  const d=_repDefs.find(x=>x.key===key); if(!d)return;
+  const body=document.getElementById('repbody-'+key); if(body)body.innerHTML=repBodyHtml(d);
+  const cnt=document.getElementById('repcnt-'+key); if(cnt)cnt.textContent=filterRows(d.rows,val).length+' שורות';
+};
+window.toggleReport=function(k){ repShowAll[k]=!repShowAll[k]; const d=_repDefs.find(x=>x.key===k); const body=document.getElementById('repbody-'+k); if(d&&body)body.innerHTML=repBodyHtml(d); };
+window.showClassLoans=function(lbl){
+  const rows=(DB.logs||[]).filter(l=>l.type==='checkout').filter(l=>{const s=DB.students.find(x=>x.id===l.studentId);return s&&clsLabel(s)===lbl;}).sort((a,b)=>b.date-a.date);
+  const body=rows.length?`<table class="rep-table"><thead><tr><th>תאריך</th><th>ספר</th><th>תלמיד/ה</th><th>להחזרה עד</th></tr></thead><tbody>${rows.map(l=>{const b=DB.books.find(x=>x.id===l.bookId);const s=DB.students.find(x=>x.id===l.studentId);return `<tr><td style="white-space:nowrap">${new Date(l.date).toLocaleDateString('he-IL')}</td><td>${esc(b?b.title:'(נמחק)')}</td><td>${esc(s?s.firstName+' '+s.lastName:'—')}</td><td style="white-space:nowrap">${l.dueDate?new Date(l.dueDate).toLocaleDateString('he-IL'):'—'}</td></tr>`;}).join('')}</tbody></table>`:'<p class="muted">אין השאלות לכיתה זו.</p>';
+  modal(`<div class="mhead"><h3>השאלות — כיתה ${esc(lbl)} (${rows.length})</h3><button class="x" onclick="closeModal()">×</button></div><div class="mbody">${body}</div>`);
+};
+function renderDeletedBooks(){
+  const box=document.getElementById('deletedBooks'); if(!box)return;
+  const list=(DB.deletedBooks||[]).slice().reverse();
+  if(!list.length){ box.innerHTML='<p class="muted">אין ספרים שנמחקו.</p>'; return; }
+  box.innerHTML='<div class="list">'+list.map(d=>{
+    const b=d.book, n=(b.items||[]).length;
+    return `<div class="litem"><div class="meta"><b>${esc(b.title||'(ללא שם)')}</b><small>${esc(b.author||'—')}${b.genre?' · '+esc(b.genre):''} · ${n} עותקים · נמחק ${new Date(d.deletedAt).toLocaleDateString('he-IL')}${d.by?' · '+esc(d.by):''}</small></div><div class="actions"><button class="btn sm" onclick="restoreBook('${b.id}')">↩ שחזר</button><button class="btn danger sm" onclick="purgeBook('${b.id}')">מחק לצמיתות</button></div></div>`;
+  }).join('')+'</div>';
+}
+window.restoreBook=function(id){
+  const idx=(DB.deletedBooks||[]).findIndex(d=>d.book.id===id); if(idx<0)return;
+  const entry=DB.deletedBooks[idx]; const b=entry.book;
+  // avoid barcode clashes with current stock
+  (b.items||[]).forEach(it=>{ if(it.barcode){ const other=findByBarcode(it.barcode); if(other&&other.book.id!==b.id){ it.barcode=''; } } });
+  if(DB.books.find(x=>x.id===b.id))b.id=uid();
+  DB.books.push(b);
+  DB.deletedBooks.splice(idx,1);
+  logAct('book',`שחזור ספר שנמחק: ${b.title}`);
+  save();renderDeletedBooks();renderCatalog();renderShelf();toast('הספר שוחזר','ok');
+};
+window.purgeBook=function(id){
+  const entry=(DB.deletedBooks||[]).find(d=>d.book.id===id); if(!entry)return;
+  confirmAction({title:'מחיקה סופית',message:`למחוק לצמיתות את "${entry.book.title}"? לא ניתן יהיה לשחזר.`,danger:true,admin:true,okLabel:'מחק לצמיתות'},()=>{
+    DB.deletedBooks=DB.deletedBooks.filter(d=>d.book.id!==id);
+    save();renderDeletedBooks();toast('נמחק לצמיתות','ok');
+  });
+};
 function renderReports(){
-  const defs=reportDefs();
+  const defs=reportDefs(); _repDefs=defs;
   let copies=0,out=0,lost=0; DB.books.forEach(b=>itemsOf(b).forEach(it=>{copies++;if(it.status==='out')out++;if(it.status==='lost')lost++;}));
   const over60=defs[0].rows.length, overdue=defs[1].rows.length;
   const studs=DB.students.filter(s=>s.active&&!s.isTeacher).length;
@@ -1624,27 +1752,25 @@ function renderReports(){
   ];
   const p=$('#reportsPanel');
   let html=`<div class="stat-grid">`+stats.map(s=>`<div class="stat${s.warn?' warn':''}"><div class="v">${s.v}</div><div class="l">${s.l}</div></div>`).join('')+`</div>`;
-  html+=defs.map((d,i)=>{
-    const N=d.rows.length, showAll=!!repShowAll[d.key];
-    const rows=showAll?d.rows:d.rows.slice(0,8);
-    const toggle = N>8 ? `<div class="rep-more no-print"><button class="btn ghost sm" onclick="toggleReport('${d.key}')">${showAll?'הצג פחות ▲':`הצג את כל ${N} השורות ▼`}</button></div>` : '';
-    const body = N? `<div style="${showAll?'max-height:420px;overflow:auto':''}"><table class="rep-table"><thead><tr>${d.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${toggle}` : `<div class="rep-empty">אין נתונים בקטגוריה זו 👍</div>`;
-    return `<div class="card rep-card"><div class="rep-head"><div><h3>${d.icon} ${esc(d.title)}</h3></div><div class="row"><span class="cnt">${N} שורות</span>${N?`<button class="btn ghost sm no-print" onclick="exportReport(${i})">⬇ אקסל</button>`:''}</div></div>${body}</div>`;
+  html+=defs.map(d=>{
+    const cnt=filterRows(d.rows,repFilter[d.key]).length;
+    return `<div class="card rep-card"><div class="rep-head"><div><h3>${d.icon} ${esc(d.title)}</h3></div><div class="row" style="gap:8px;align-items:center"><input class="inp no-print" style="height:32px;max-width:150px;padding:4px 8px" placeholder="🔍 סינון…" value="${esc(repFilter[d.key]||'')}" oninput="setRepFilter('${d.key}',this.value)"><span class="cnt" id="repcnt-${d.key}">${cnt} שורות</span><button class="btn ghost sm no-print" onclick="exportReport('${d.key}')">⬇ אקסל</button></div></div><div id="repbody-${d.key}">${repBodyHtml(d)}</div></div>`;
   }).join('');
   p.innerHTML=html;
 }
-window.toggleReport=function(k){ repShowAll[k]=!repShowAll[k]; renderReports(); };
-function exportReport(i){
-  const d=reportDefs()[i]; if(!d.rows.length){toast('אין נתונים לייצוא','err');return;}
+function exportReport(key){
+  const d=(_repDefs.length?_repDefs:reportDefs()).find(x=>x.key===key); if(!d)return;
+  const rows=filterRows(d.rows, repFilter[d.key]);
+  if(!rows.length){toast('אין נתונים לייצוא','err');return;}
   const wb=XLSX.utils.book_new();
-  const ws=XLSX.utils.aoa_to_sheet([d.headers,...d.rows]);
+  const ws=XLSX.utils.aoa_to_sheet([d.headers,...rows]);
   XLSX.utils.book_append_sheet(wb,ws,d.title.slice(0,28).replace(/[\\\/\?\*\[\]]/g,' '));
   XLSX.writeFile(wb,`דוח_${d.key}_${new Date().toLocaleDateString('he-IL').replace(/\./g,'-')}.xlsx`);
-  toast('הדוח יוצא לאקסל','ok');
+  toast(repFilter[d.key]?'הדוח (מסונן) יוצא לאקסל':'הדוח יוצא לאקסל','ok');
 }
 $('#exportAllRep').addEventListener('click',()=>{
-  const defs=reportDefs(); const wb=XLSX.utils.book_new(); let any=false;
-  defs.forEach(d=>{ const ws=XLSX.utils.aoa_to_sheet([d.headers,...d.rows]); XLSX.utils.book_append_sheet(wb,ws,d.title.slice(0,28).replace(/[\\\/\?\*\[\]]/g,' ')); any=true; });
+  const defs=reportDefs(); _repDefs=defs; const wb=XLSX.utils.book_new(); let any=false;
+  defs.forEach(d=>{ const rows=filterRows(d.rows, repFilter[d.key]); const ws=XLSX.utils.aoa_to_sheet([d.headers,...rows]); XLSX.utils.book_append_sheet(wb,ws,d.title.slice(0,28).replace(/[\\\/\?\*\[\]]/g,' ')); any=true; });
   if(!any){toast('אין נתונים','err');return;}
   XLSX.writeFile(wb,`דוחות_ספריה_${new Date().toLocaleDateString('he-IL').replace(/\./g,'-')}.xlsx`);
   toast('כל הדוחות יוצאו לאקסל','ok');
@@ -1859,7 +1985,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 29';
+const APP_VERSION='גרסה 29.6.2026 · 39';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
