@@ -160,6 +160,10 @@ textarea.inp{resize:vertical; min-height:64px}
 .sib-chips{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px}
 .sib-chip{background:var(--teal-xl); border:1px solid var(--line); border-radius:999px; padding:3px 10px 3px 6px; font-size:12.5px; display:inline-flex; align-items:center; gap:6px}
 .sib-chip button{border:none; background:#cfe0e1; color:var(--teal-d); border-radius:50%; width:18px; height:18px; cursor:pointer; line-height:16px; font-size:13px; padding:0}
+.cls-head{display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--teal); color:#fff; padding:9px 15px; border-radius:11px; margin:0 0 12px; box-shadow:var(--shadow)}
+.cls-head .cls-name{font-weight:800; font-size:15.5px}
+.cls-head .cls-meta{font-size:12.5px; opacity:.95}
+.ver-stamp{margin-top:auto; padding:10px 12px 4px; font-size:11px; color:var(--muted); text-align:center; border-top:1px solid var(--line)}
 
 /* ---------- Lists ---------- */
 .list{display:flex; flex-direction:column; gap:9px}
@@ -247,6 +251,7 @@ textarea.inp{resize:vertical; min-height:64px}
       <button data-view="terms" class="nav-item"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg> תקנון</button>
       <button data-view="settings" class="nav-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H3a2 2 0 0 1 0-4h.1A1.6 1.6 0 0 0 4.2 7.5l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3 1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8 1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg> הגדרות</button>
     </nav>
+    <div class="ver-stamp" id="verStamp"></div>
   </aside>
 
 <main>
@@ -976,7 +981,7 @@ function renderStudents(){
   el.innerHTML=keys.map(k=>{
     const[g,l]=k.split('|');const t=teacherFor(+g,l);
     const rows=groups[k].map(studentRow).join('');
-    return `<div class="section"><div class="section-head"><span class="sh-key">כיתה ${gradeHeb(+g)+l}</span><span class="sh-count">${groups[k].length} תלמידים${t?' · מחנכת '+esc(t):''}</span><span class="sh-line"></span></div><div class="list">${rows}</div></div>`;
+    return `<div class="section"><div class="cls-head"><span class="cls-name">📚 כיתה ${gradeHeb(+g)+l}</span><span class="cls-meta">${groups[k].length} תלמידים${t?' · מחנכת '+esc(t):''}</span></div><div class="list">${rows}</div></div>`;
   }).join('');
 }
 /* ============ FAMILY / SIBLINGS ============ */
@@ -1478,6 +1483,8 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
+const APP_VERSION='גרסה 29.6.2026 · 10';
+(function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 </script>
 </body>
 </html>
