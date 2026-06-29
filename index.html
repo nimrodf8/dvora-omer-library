@@ -461,7 +461,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <div class="grid three">
         <label class="fld" style="margin:0"><span>מקסימום ספרים לתלמיד</span><input class="inp" id="setMaxBooks" type="number" min="1"></label>
         <label class="fld" style="margin:0"><span>משך השאלה (ימים)</span><input class="inp" id="setLoanDays" type="number" min="1"></label>
-        <label class="fld" style="margin:0"><span>תזכורת ראשונה אחרי (ימים)</span><input class="inp" id="setReminderDays" type="number" min="1"></label>
+        <label class="fld" style="margin:0"><span>תזכורת ראשונה — ימים לפני ההחזרה</span><input class="inp" id="setReminderDays" type="number" min="1"></label>
         <label class="fld" style="margin:0"><span>תזכורת חוזרת כל (ימים)</span><input class="inp" id="setRepeatDays" type="number" min="1"></label>
       </div>
       <button class="btn sm" id="saveSettings">שמירת מדיניות</button>
@@ -614,7 +614,7 @@ function ensureItems(b){
   return b;
 }
 function migrate(){ (DB.books||[]).forEach(ensureItems);
-  const s=DB.settings||(DB.settings={}); if(s.maxBooks==null)s.maxBooks=2; if(s.loanDays==null)s.loanDays=30; if(s.reminderDays==null)s.reminderDays=21; if(s.repeatDays==null)s.repeatDays=5; if(s.terms==null)s.terms=''; if(s.adminPin==null)s.adminPin=''; if(!s.libMap)s.libMap=JSON.parse(JSON.stringify(LIB_MAP));
+  const s=DB.settings||(DB.settings={}); if(s.maxBooks==null)s.maxBooks=2; if(s.loanDays==null)s.loanDays=30; if(s.reminderDays==null)s.reminderDays=21; if(s.remindBeforeDays==null)s.remindBeforeDays=5; if(s.repeatDays==null)s.repeatDays=5; if(s.terms==null)s.terms=''; if(s.adminPin==null)s.adminPin=''; if(!s.libMap)s.libMap=JSON.parse(JSON.stringify(LIB_MAP));
   if(!Array.isArray(DB.activity))DB.activity=[];
 }
 let cloudName='';
@@ -1004,7 +1004,8 @@ function openCheckout(b,it){
       DB.logs.push({id:uid(),type:'checkout',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:st.id,date:Date.now(),dueDate:dueTs});
       logAct('checkout',`השאלה: ${b.title} ל${st.firstName} ${st.lastName}`);
       save();renderShelf();
-      panel.innerHTML=`<div class="card"><p>✓ הושאל בהצלחה: <b>${esc(b.title)}</b> (${esc(copyLabel(b,it))}) ל־<b>${esc(st.firstName+' '+st.lastName)}</b>. להחזרה עד ${new Date(dueTs).toLocaleDateString('he-IL')}.</p><p class="muted">מייל להורה (${esc(st.parentEmail||'—')}) יישלח אוטומטית בשלב Supabase.</p></div>`;
+      const noP=!st.parentPhone, noM=!st.parentEmail;
+      panel.innerHTML=`<div class="card"><p>✓ הושאל בהצלחה: <b>${esc(b.title)}</b> (${esc(copyLabel(b,it))}) ל־<b>${esc(st.firstName+' '+st.lastName)}</b>. להחזרה עד ${new Date(dueTs).toLocaleDateString('he-IL')}.</p>${st.isTeacher?'':`<p style="margin:6px 0 8px">📩 הודעת השאלה להורה:</p><div class="row"><button class="btn sm" ${noP?'disabled title="אין טלפון הורה"':''} onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','wa')">💬 וואטסאפ</button><button class="btn ghost sm" ${noM?'disabled title="אין מייל הורה"':''} onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','mail')">📧 מייל</button><button class="btn ghost sm" onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','copy')">🔗 העתקה</button></div>`}</div>`;
       toast('הושאל','ok');setTimeout(()=>$('#scanInput').focus(),100);
     });
   });
@@ -1465,7 +1466,7 @@ $('#restoreAuto').addEventListener('click',()=>{
 function loadSettings(){
   $('#setMaxBooks').value=DB.settings.maxBooks||2;
   $('#setLoanDays').value=DB.settings.loanDays||30;
-  $('#setReminderDays').value=DB.settings.reminderDays||21;
+  $('#setReminderDays').value=DB.settings.remindBeforeDays||5;
   $('#setRepeatDays').value=DB.settings.repeatDays||5;
   if($('#setAdminPin'))$('#setAdminPin').value=DB.settings.adminPin||'';
   if($('#scanGap'))$('#scanGap').value=DB.settings.scanGap||40;
@@ -1473,7 +1474,7 @@ function loadSettings(){
 $('#saveSettings').addEventListener('click',()=>{
   DB.settings.maxBooks=Math.max(1,+$('#setMaxBooks').value||2);
   DB.settings.loanDays=Math.max(1,+$('#setLoanDays').value||30);
-  DB.settings.reminderDays=Math.max(1,+$('#setReminderDays').value||21);
+  DB.settings.remindBeforeDays=Math.max(1,+$('#setReminderDays').value||5);
   DB.settings.repeatDays=Math.max(1,+$('#setRepeatDays').value||5);
   if($('#scanGap'))DB.settings.scanGap=+$('#scanGap').value||40;
   save();toast('המדיניות נשמרה','ok');paintCount();
@@ -1490,42 +1491,70 @@ $('#actExport')&&$('#actExport').addEventListener('click',()=>{
 
 /* ============ REMINDERS ============ */
 function daysOut(it){const b=it.borrowDate||it.dueDate&&(it.dueDate-(DB.settings.loanDays||30)*864e5);if(!b)return null;return Math.floor((Date.now()-b)/864e5);}
-function reminderDue(it,d){
-  if(it.status!=='out'||d==null)return false;
-  const th=DB.settings.reminderDays||21, rep=DB.settings.repeatDays||5;
-  if(d<th)return false;
+function daysUntilDue(it){ if(!it.dueDate)return null; return Math.ceil((it.dueDate-Date.now())/864e5); }   // שלילי = באיחור
+function reminderDue(it){
+  if(it.status!=='out'||!it.dueDate)return false;
+  const before=DB.settings.remindBeforeDays||5, rep=DB.settings.repeatDays||5;
+  const now=Date.now();
+  const firstAt=it.dueDate-before*864e5;     // התזכורת הראשונה: X ימים לפני מועד ההחזרה
+  if(now<firstAt)return false;
   const sent=(it.reminders||[]).length;
-  if(sent===0)return true;                 // first reminder is due
-  if(!it.lastReminderTs)return true;        // history without timestamp — surface it
-  return (Date.now()-it.lastReminderTs)>=rep*864e5;  // next one due 5 days after the last
+  if(sent===0)return true;                   // הראשונה הגיעה
+  if(!it.lastReminderTs)return true;
+  return (now-it.lastReminderTs)>=rep*864e5; // ואז כל X ימים (כולל באיחור)
 }
 function remindersDue(){
   const res=[];
   DB.books.forEach(b=>itemsOf(b).forEach(it=>{
-    const d=daysOut(it);
-    if(reminderDue(it,d)) res.push({book:b,item:it,days:d,sent:(it.reminders||[]).length});
+    if(reminderDue(it)) res.push({book:b,item:it,days:daysOut(it),until:daysUntilDue(it),sent:(it.reminders||[]).length});
   }));
-  return res.sort((a,b)=>b.days-a.days);
+  return res.sort((a,b)=>(a.until==null?0:a.until)-(b.until==null?0:b.until));   // הדחופים (באיחור) קודם
 }
 function renderReminders(){
   const due=remindersDue();
   const p=$('#remindersPanel');
-  const rep=DB.settings.repeatDays||5, th=DB.settings.reminderDays||21;
-  const head=`<div class="banner"><b>${due.length}</b> ספרים ממתינים לתזכורת (ראשונה אחרי ${th} ימים, ואז כל ${rep} ימים עד החזרה). שליחת מייל אוטומטית תופעל בשלב ההורים/Supabase.</div>`;
+  const rep=DB.settings.repeatDays||5, before=DB.settings.remindBeforeDays||5;
+  const head=`<div class="banner"><b>${due.length}</b> ספרים ממתינים לתזכורת (ראשונה ${before} ימים לפני ההחזרה, ואז כל ${rep} ימים — כולל באיחור). הכפתורים פותחים וואטסאפ/מייל מוכן לשליחה.</div>`;
   if(!due.length){p.innerHTML=`<div class="empty-state"><div class="big">✅</div><p>אין כרגע ספרים שדורשים תזכורת.</p></div>`;return;}
   p.innerHTML=head+`<div class="list">`+due.map(o=>{
     const s=DB.students.find(x=>x.id===o.item.holder);
     const contact=s?[s.parentName,s.parentPhone,s.parentEmail].filter(Boolean).join(' · '):'';
     const hist=o.sent?`<br><span class="muted">נשלחו ${o.sent} תזכורות: ${esc((o.item.reminders||[]).join(', '))}</span>`:'<br><span class="muted">טרם נשלחה תזכורת</span>';
     const bd=o.item.borrowDate?new Date(o.item.borrowDate).toLocaleDateString('he-IL'):'—';
-    const first=o.sent===0;
-    const which=first?'תזכורת ראשונה':`תזכורת מס׳ ${o.sent+1}`;
-    const overdue=!!(o.item.dueDate&&Date.now()>o.item.dueDate);
-    const status=overdue?'<span class="tag lost">הספר באיחור</span>':'<span class="tag" style="background:#fff3e0;border-color:#ffe0b2;color:#b5651d">להחזרה בימים הקרובים</span>';
-    const msg=overdue?'הספר עבר את מועד ההחזרה ונמצא באיחור — נא להחזירו בהקדם.':'הספר צריך להיות מוחזר בימים הקרובים.';
-    const due=o.item.dueDate?new Date(o.item.dueDate).toLocaleDateString('he-IL'):'—';
-    return `<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b> ${status}<small>${s?esc(s.firstName+' '+s.lastName+' · '+gradeHeb(s.grade)+s.classLabel):'—'} · הושאל ${bd} · להחזרה עד ${due} · <b>${o.days} ימים</b> · ${which}${contact?' · '+esc(contact):' · אין פרטי קשר'}<br><span style="color:${overdue?'#b3261e':'#b5651d'}">${msg}</span>${hist}</small></div><div class="actions"><button class="btn ghost sm" onclick="markReminded('${o.book.id}','${o.item.id}')">סמן: תזכורת נשלחה</button><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','reminders')">החזרה</button></div></div>`;
+    const dueStr=o.item.dueDate?new Date(o.item.dueDate).toLocaleDateString('he-IL'):'—';
+    const overdue=o.until!=null&&o.until<0;
+    const lateBy=overdue?Math.abs(o.until):0;
+    const status=overdue?'<span class="tag lost">באיחור</span>':'<span class="tag" style="background:#fff3e0;border-color:#ffe0b2;color:#b5651d">לקראת החזרה</span>';
+    const msg=overdue?`הספר היה צריך לחזור ב‑${dueStr} — באיחור של ${lateBy} ימים.`:`הספר אמור לחזור בעוד ${o.until} ימים (עד ${dueStr}).`;
+    const noPhone=!(s&&s.parentPhone), noMail=!(s&&s.parentEmail);
+    return `<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b> ${status}<small>${s?esc(s.firstName+' '+s.lastName+' · '+gradeHeb(s.grade)+s.classLabel):'—'} · הושאל ${bd} · להחזרה עד ${dueStr}${contact?' · '+esc(contact):' · אין פרטי קשר'}<br><span style="color:${overdue?'#b3261e':'#b5651d'}">${msg}</span>${hist}</small></div><div class="actions"><button class="btn sm" ${noPhone?'disabled title="אין טלפון הורה"':''} onclick="sendReminder('${o.book.id}','${o.item.id}','wa')">💬 וואטסאפ</button><button class="btn ghost sm" ${noMail?'disabled title="אין מייל הורה"':''} onclick="sendReminder('${o.book.id}','${o.item.id}','mail')">📧 מייל</button><button class="btn ghost sm" onclick="markReminded('${o.book.id}','${o.item.id}')">סמן נשלח</button><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','reminders')">החזרה</button></div></div>`;
   }).join('')+`</div>`;
+}
+function reminderMsg(s,book,it){
+  const dueStr=it.dueDate?new Date(it.dueDate).toLocaleDateString('he-IL'):'';
+  const overdue=it.dueDate&&Date.now()>it.dueDate;
+  const name=s?s.firstName+' '+s.lastName:'';
+  if(overdue) return `שלום, התלמיד/ה ${name} טרם החזיר/ה את הספר "${book.title}" לספריית ביה״ס דבורה עומר (היה אמור לחזור עד ${dueStr}). נא להחזירו בהקדם. תודה!`;
+  return `שלום, נזכיר כי על התלמיד/ה ${name} להחזיר את הספר "${book.title}" לספריית ביה״ס דבורה עומר עד ${dueStr}. תודה!`;
+}
+window.sendReminder=function(bookId,itemId,how){
+  const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;
+  const s=DB.students.find(x=>x.id===it.holder);
+  sendParentMsg(s, reminderMsg(s,b,it), how, 'תזכורת החזרת ספר — ספריית דבורה עומר');
+  markReminded(bookId,itemId);
+};
+window.notifyCheckout=function(studentId,bookId,itemId,how){
+  const s=DB.students.find(x=>x.id===studentId);const b=DB.books.find(x=>x.id===bookId);const it=b&&itemsOf(b).find(i=>i.id===itemId);
+  if(!s||!b||!it)return;
+  const dueStr=it.dueDate?new Date(it.dueDate).toLocaleDateString('he-IL'):'';
+  const msg=`שלום, הושאל היום לתלמיד/ה ${s.firstName} ${s.lastName} הספר "${b.title}" בספריית ביה״ס דבורה עומר. להחזרה עד ${dueStr}. תודה!`;
+  sendParentMsg(s, msg, how, 'הושאל ספר — ספריית דבורה עומר');
+};
+function sendParentMsg(s, msg, how, subject){
+  if(!s){toast('אין תלמיד/ה משויך','err');return;}
+  if(how==='wa'){ let p=(s.parentPhone||'').replace(/\D/g,''); if(p.indexOf('0')===0)p='972'+p.slice(1); if(!p){toast('אין טלפון הורה בכרטיס','err');return;} window.open(`https://wa.me/${p}?text=${encodeURIComponent(msg)}`,'_blank'); }
+  else if(how==='mail'){ const to=s.parentEmail||''; if(!to){toast('אין מייל הורה בכרטיס','err');return;} window.open(`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject||'')}&body=${encodeURIComponent(msg)}`); }
+  else { if(navigator.clipboard)navigator.clipboard.writeText(msg).then(()=>toast('ההודעה הועתקה','ok')); else toast(msg); }
 }
 function markReminded(bookId,itemId){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;if(!it.reminders)it.reminders=[];it.reminders.push(new Date().toLocaleDateString('he-IL'));it.lastReminderTs=Date.now();save();renderReminders();toast('סומן כתזכורת שנשלחה','ok');}
 
@@ -1830,7 +1859,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 28';
+const APP_VERSION='גרסה 29.6.2026 · 29';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
