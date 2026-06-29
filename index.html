@@ -521,6 +521,11 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="chWa"><span>💬 וואטסאפ <span class="muted">(ידני)</span></span></label>
       <button class="btn sm" id="saveChannels" style="margin-top:8px">שמירת ערוצים</button>
       <hr style="border:none;border-top:1px solid var(--line); margin:14px 0">
+      <p class="muted" style="margin:0 0 6px">✍ טקסט קבוע שיתווסף לתחתית <b>כל</b> המיילים האוטומטיים (השאלה, תזכורת ואיחור). למשל ברכה, שעות פעילות הספרייה, או פרטי קשר.</p>
+      <label class="fld" style="margin:0"><span>טקסט קבוע למיילים</span><textarea class="inp" id="emailFooter" rows="4" placeholder="למשל: בברכה, צוות ספריית דבורה עומר · שעות פעילות: א׳–ה׳ 8:00–14:00 · טל׳ 09-0000000"></textarea></label>
+      <label class="fld" style="margin:8px 0 0; max-width:320px"><span>מייל לפניות הורים (תשובות יחזרו לכאן)</span><input class="inp" id="supportEmail" type="email" placeholder="dvoraomerlib@gmail.com"></label>
+      <button class="btn sm" id="saveFooter" style="margin-top:8px">שמירת טקסט קבוע</button>
+      <hr style="border:none;border-top:1px solid var(--line); margin:14px 0">
       <p class="muted" style="margin:0 0 8px">🔎 בדיקת חיבור: שלחו מייל בדיקה (יוצא מ-do-not-reply@dvoraomer-library.org). דורש שהדומיין יאומת ב-Resend.</p>
       <div class="row" style="align-items:flex-end">
         <label class="fld" style="margin:0; max-width:260px"><span>מייל לבדיקה</span><input class="inp" id="testMail" type="email" placeholder="name@example.com"></label>
@@ -666,6 +671,9 @@ function ensureItems(b){
 function migrate(){ (DB.books||[]).forEach(ensureItems);
   const s=DB.settings||(DB.settings={}); if(s.maxBooks==null)s.maxBooks=2; if(s.loanDays==null)s.loanDays=30; if(s.reminderDays==null)s.reminderDays=21; if(s.remindBeforeDays==null)s.remindBeforeDays=5; if(s.repeatDays==null)s.repeatDays=5; if(s.terms==null)s.terms=''; if(s.adminPin==null)s.adminPin=''; if(!s.libMap)s.libMap=JSON.parse(JSON.stringify(LIB_MAP));
   if(!s.channels)s.channels={email:true, sms:false, whatsapp:true}; else{ if(s.channels.email==null)s.channels.email=true; if(s.channels.sms==null)s.channels.sms=false; if(s.channels.whatsapp==null)s.channels.whatsapp=true; }
+  if(s.emailFooter==null)s.emailFooter='';
+  if(!s.emailFooter)s.emailFooter='בברכה,\nצוות ספריית ביה״ס דבורה עומר · כפר סבא\n\nלשאלות, בקשות או עדכון פרטים ניתן לפנות אלינו במייל: dvoraomerlib@gmail.com\n(הודעה זו נשלחה מכתובת שאינה מקבלת תשובות — נא לפנות לכתובת המייל שלמעלה.)';
+  if(s.supportEmail==null)s.supportEmail='dvoraomerlib@gmail.com';
   if(!Array.isArray(DB.activity))DB.activity=[];
   if(!Array.isArray(DB.deletedBooks))DB.deletedBooks=[];
 }
@@ -718,7 +726,7 @@ function detectSeries(title){
   return {base:'', idx:''};
 }
 function seed(){
-  const DEF={maxBooks:2, loanDays:30, reminderDays:21, repeatDays:5, scanGap:40, terms:'', channels:{email:true, sms:false, whatsapp:true}};
+  const DEF={maxBooks:2, loanDays:30, reminderDays:21, repeatDays:5, scanGap:40, terms:'', emailFooter:'', supportEmail:'dvoraomerlib@gmail.com', channels:{email:true, sms:false, whatsapp:true}};
   const day=864e5;
   const classes=SEED.classes.map(c=>({id:uid(),grade:c[0],label:c[1],teacher:c[2]||''}));
   const students=SEED.students.map(s=>({id:uid(),firstName:s[0],lastName:s[1],grade:s[2],classLabel:s[3],
@@ -1072,7 +1080,7 @@ function openCheckout(b,it){
       if(!st.isTeacher){
         const subj='הושאל ספר — ספריית דבורה עומר';
         const msg=`שלום, הושאל היום לתלמיד/ה ${st.firstName} ${st.lastName} הספר "${b.title}" בספריית ביה״ס דבורה עומר. להחזרה עד ${dueStr2}. תודה!`;
-        autoEmailParent(st,subj,msg,'checkout').then(r=>{const el=document.getElementById('coAutoStat');if(el)el.innerHTML=notifyResultText(r);});
+        autoEmailParent(st,subj,msg,'checkout',it.id).then(r=>{const el=document.getElementById('coAutoStat');if(el)el.innerHTML=notifyResultText(r);});
       }
       toast('הושאל','ok');setTimeout(()=>$('#scanInput').focus(),100);
     });
@@ -1401,7 +1409,8 @@ function newStudent(cb,id){
     <div class="grid two"><label class="fld"><span>שכבה</span><select class="inp" id="sGrade">${gradeOpt}</select></label><label class="fld"><span>כיתה</span><input class="inp" id="sClass" value="${esc(s.classLabel)}"></label></div>
     <div class="muted" id="sTeacher" style="margin:-6px 0 12px"></div>
     <label class="fld"><span>שם הורה</span><input class="inp" id="sPName" value="${esc(s.parentName)}"></label>
-    <div class="grid two"><label class="fld"><span>טלפון הורה</span><input class="inp" id="sPPhone" value="${esc(s.parentPhone)}"></label><label class="fld"><span>אימייל הורה</span><input class="inp" id="sPMail" type="email" value="${esc(s.parentEmail)}"></label></div>
+    <div class="grid two"><label class="fld"><span>טלפון הורה *</span><input class="inp" id="sPPhone" value="${esc(s.parentPhone)}" inputmode="tel" placeholder="050-0000000"></label><label class="fld"><span>אימייל הורה *</span><input class="inp" id="sPMail" type="email" value="${esc(s.parentEmail)}" placeholder="name@example.com"></label></div>
+    ${s.isTeacher?'':'<div class="muted" style="margin:-6px 0 12px">טלפון ומייל הורה הם שדות חובה (נדרשים לשליחת התראות).</div>'}
     <div class="row" style="gap:20px; margin:2px 0 12px">
       <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="sActive" ${s.active!==false?'checked':''}> פעיל/ה</label>
       <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="sGrad" ${s.graduated?'checked':''}> בוגר/ת · מעבר לתלמידי עבר</label>
@@ -1414,7 +1423,13 @@ function newStudent(cb,id){
   if(id)renderFamilyBox(s);
   $('#sSave').addEventListener('click',()=>{
     const f=$('#sFirst').value.trim();if(!f){toast('חסר שם','err');return;}
-    Object.assign(s,{firstName:f,lastName:$('#sLast').value.trim(),grade:+$('#sGrade').value,classLabel:$('#sClass').value.trim(),parentName:$('#sPName').value.trim(),parentPhone:$('#sPPhone').value.trim(),parentEmail:$('#sPMail').value.trim()});
+    const ph=$('#sPPhone').value.trim(), em=$('#sPMail').value.trim();
+    if(!s.isTeacher){
+      if(!ph){toast('חובה להזין טלפון הורה','err');$('#sPPhone').focus();return;}
+      if(!em){toast('חובה להזין אימייל הורה','err');$('#sPMail').focus();return;}
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){toast('כתובת מייל הורה אינה תקינה','err');$('#sPMail').focus();return;}
+    }
+    Object.assign(s,{firstName:f,lastName:$('#sLast').value.trim(),grade:+$('#sGrade').value,classLabel:$('#sClass').value.trim(),parentName:$('#sPName').value.trim(),parentPhone:ph,parentEmail:em});
     if($('#sActive'))s.active=$('#sActive').checked;
     if($('#sGrad'))s.graduated=$('#sGrad').checked;
     if(s.familyId)syncParent(s.familyId,s.id);
@@ -1683,6 +1698,8 @@ function loadSettings(){
   if($('#chEmail'))$('#chEmail').checked=ch.email;
   if($('#chSms'))$('#chSms').checked=ch.sms;
   if($('#chWa'))$('#chWa').checked=ch.whatsapp;
+  if($('#emailFooter'))$('#emailFooter').value=DB.settings.emailFooter||'';
+  if($('#supportEmail'))$('#supportEmail').value=DB.settings.supportEmail||'';
 }
 $('#saveSettings').addEventListener('click',()=>{
   DB.settings.maxBooks=Math.max(1,+$('#setMaxBooks').value||2);
@@ -1702,6 +1719,14 @@ if($('#saveChannels'))$('#saveChannels').addEventListener('click',()=>{
   else toast('ערוצי ההתראות נשמרו','ok');
 });
 if($('#msgLogRefresh'))$('#msgLogRefresh').addEventListener('click',renderMsgLog);
+if($('#saveFooter'))$('#saveFooter').addEventListener('click',()=>{
+  DB.settings.emailFooter=($('#emailFooter').value||'').trim();
+  const se=($('#supportEmail').value||'').trim();
+  if(se && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(se)){toast('כתובת מייל לפניות אינה תקינה','err');return;}
+  DB.settings.supportEmail=se;
+  cloudForceNextSave=true; save(); logAct('data','עדכון טקסט קבוע / מייל פניות');
+  toast('נשמר','ok');
+});
 if($('#sendTestMail'))$('#sendTestMail').addEventListener('click',async()=>{
   const to=($('#testMail').value||'').trim();
   const out=$('#testMailOut');
@@ -1756,13 +1781,15 @@ async function cloudSendNotification(p){
   return out;
 }
 // שליחת מייל אוטומטי להורה (אם הערוץ פעיל, יש מייל, ויש הסכמה). מחזיר סטטוס בלי לזרוק.
-async function autoEmailParent(student, subject, message, type){
+async function autoEmailParent(student, subject, message, type, ref){
   try{
     if(!channelsCfg().email) return {skipped:'channel'};
     if(!student || !student.parentEmail) return {skipped:'no-email'};
     if(student.notifyConsent!==true) return {skipped:'no-consent'};
     if(!cloudOn||!supa) return {skipped:'offline'};
-    const out=await cloudSendNotification({to:student.parentEmail, subject, message, channel:'email', student_id:student.id, type:type||'manual'});
+    const ft=((DB.settings&&DB.settings.emailFooter)||'').trim();
+    const fullMsg=ft?(message+'\n\n'+ft):message;
+    const out=await cloudSendNotification({to:student.parentEmail, subject, message:fullMsg, channel:'email', student_id:student.id, type:type||'manual', ref:ref||''});
     return out;
   }catch(e){ return {error:e.message||String(e)}; }
 }
@@ -1898,7 +1925,7 @@ window.sendReminderAuto=async function(bookId,itemId){
   if(!cloudOn||!supa){toast('נדרש חיבור לענן לשליחה אוטומטית','err');return;}
   const overdue=it.dueDate&&Date.now()>it.dueDate;
   toast('שולח מייל…');
-  const r=await autoEmailParent(s, 'תזכורת החזרת ספר — ספריית דבורה עומר', reminderMsg(s,b,it), overdue?'overdue':'remind_before');
+  const r=await autoEmailParent(s, 'תזכורת החזרת ספר — ספריית דבורה עומר', reminderMsg(s,b,it), overdue?'overdue':'remind_before', itemId);
   if(r&&r.ok){ markReminded(bookId,itemId); }
   else if(r&&r.error){ toast('שליחה נכשלה: '+r.error,'err'); }
   else { const code=(r&&(r.reason||r.skipped))||'דולג'; toast('לא נשלח ('+code+')','err'); }
@@ -2308,7 +2335,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 65';
+const APP_VERSION='גרסה 29.6.2026 · 68';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
