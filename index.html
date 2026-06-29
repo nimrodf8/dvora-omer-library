@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --teal:#0d8b8d; --teal-d:#0a6d6f; --teal-l:#e7f4f4; --teal-xl:#f2f9f9;
@@ -164,6 +165,17 @@ textarea.inp{resize:vertical; min-height:64px}
 .cls-head .cls-name{font-weight:800; font-size:15.5px}
 .cls-head .cls-meta{font-size:12.5px; opacity:.95}
 .ver-stamp{margin-top:auto; padding:10px 12px 4px; font-size:11px; color:var(--muted); text-align:center; border-top:1px solid var(--line)}
+.cloud-overlay{position:fixed; inset:0; background:rgba(13,40,42,.55); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; z-index:9999; padding:20px}
+.cloud-card{background:#fff; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.3); padding:26px 24px; width:100%; max-width:380px}
+.cloud-card .cloud-title{font-size:13px; font-weight:700; color:var(--teal-d); text-align:center; margin-bottom:10px}
+.cloud-card h3{margin:0 0 4px; color:var(--ink)}
+.cloud-card .fld{margin-bottom:10px}
+.cl-err{color:#b3261e; font-size:13px; min-height:18px; margin:2px 0}
+.cloud-status{font-size:11px; padding:6px 12px; text-align:center; color:var(--muted)}
+.cloud-status b{color:var(--teal-d)}
+.cloud-status .cs-link{color:var(--teal-d); cursor:pointer; text-decoration:underline}
+.cloud-dot{display:inline-block; width:7px; height:7px; border-radius:50%; margin-inline-end:4px; vertical-align:middle}
+.cloud-dot.on{background:#2e9a4f} .cloud-dot.off{background:#c0561e}
 
 /* ---------- Lists ---------- */
 .list{display:flex; flex-direction:column; gap:9px}
@@ -251,6 +263,7 @@ textarea.inp{resize:vertical; min-height:64px}
       <button data-view="terms" class="nav-item"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg> תקנון</button>
       <button data-view="settings" class="nav-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H3a2 2 0 0 1 0-4h.1A1.6 1.6 0 0 0 4.2 7.5l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3 1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8 1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg> הגדרות</button>
     </nav>
+    <div class="cloud-status" id="cloudStatus"></div>
     <div class="ver-stamp" id="verStamp"></div>
   </aside>
 
@@ -485,6 +498,19 @@ textarea.inp{resize:vertical; min-height:64px}
 <div id="modalRoot"></div>
 <div id="toasts"></div>
 
+<div id="cloudLogin" class="cloud-overlay hidden">
+  <div class="cloud-card">
+    <div class="cloud-title">ספריית ביה״ס דבורה עומר · כפר סבא</div>
+    <h3>התחברות למסד המשותף</h3>
+    <p class="muted" style="margin:0 0 14px">התחברות ספרנית. כל המכשירים המחוברים רואים את אותו מידע בזמן אמת.</p>
+    <label class="fld"><span>אימייל</span><input id="clEmail" class="inp" type="email" autocomplete="username"></label>
+    <label class="fld"><span>סיסמה</span><input id="clPass" class="inp" type="password" autocomplete="current-password"></label>
+    <div id="clErr" class="cl-err"></div>
+    <button class="btn" id="clLogin" style="width:100%; margin-top:6px">התחברות</button>
+    <button class="btn ghost" id="clLocal" style="width:100%; margin-top:8px">המשך במצב מקומי (ללא סנכרון)</button>
+  </div>
+</div>
+
 <script>
 "use strict";
 /* ============ constants ============ */
@@ -522,7 +548,7 @@ const Store={
   write(d){ mem=d; try{localStorage.setItem(KEY,JSON.stringify(d));}catch(e){} }
 };
 let DB=Store.read()||seed();
-function save(){ Store.write(DB); paintCount(); }
+function save(){ Store.write(DB); paintCount(); if(typeof cloudPushDebounced==='function')cloudPushDebounced(); }
 
 /* ---- copies (items) model + migration ---- */
 function ensureItems(b){
@@ -911,8 +937,18 @@ function openCheckout(b,it){
 /* ============ CONFIRM / ADMIN GATE ============ */
 function confirmAction(opts,onOk){
   opts=opts||{};
-  const adminSet=!!(DB.settings&&DB.settings.adminPin);
-  const adminBlock = opts.admin ? (adminSet
+  // Cloud mode: admin actions are gated by the Supabase account role.
+  if(opts.admin && cloudOn){
+    if(cloudRole!=='admin'){
+      modal(`<div class="mhead"><h3>פעולה למנהל/ת בלבד</h3><button class="x" onclick="closeModal()">×</button></div>
+      <div class="mbody"><p style="margin:0">פעולה זו (מחיקה/דריסה) מותרת למנהל/ת בלבד. החשבון שלך הוא בהרשאת <b>ספרן/ית</b> — אפשר לעדכן תלמידים ולהשאיל/להחזיר, אך לא למחוק. לביצוע הפעולה התחבר/י עם חשבון מנהל/ת.</p>
+      <div class="row" style="margin-top:16px"><button class="btn ghost" onclick="closeModal()">סגירה</button></div></div>`);
+      return;
+    }
+    // admin verified by account — confirm without PIN
+  }
+  const usePin = opts.admin && !cloudOn && !!(DB.settings&&DB.settings.adminPin);
+  const adminBlock = (opts.admin && !cloudOn) ? (usePin
     ? `<label class="fld" style="margin-top:8px"><span>קוד אדמין לאישור</span><input class="inp" id="caPin" type="password" autocomplete="off"></label>`
     : `<div class="muted" style="margin-top:8px">⚠ פעולה זו מוחקת מידע. מומלץ להגדיר קוד אדמין בהגדרות → אבטחה כדי להגביל אותה למנהל/ת בלבד.</div>`) : '';
   modal(`<div class="mhead"><h3>${esc(opts.title||'אישור פעולה')}</h3><button class="x" onclick="closeModal()">×</button></div>
@@ -923,7 +959,7 @@ function confirmAction(opts,onOk){
   </div>`);
   $('#caCancel').addEventListener('click',closeModal);
   $('#caOk').addEventListener('click',()=>{
-    if(opts.admin&&adminSet){const v=($('#caPin')&&$('#caPin').value)||'';if(v!==DB.settings.adminPin){toast('קוד אדמין שגוי','err');return;}}
+    if(usePin){const v=($('#caPin')&&$('#caPin').value)||'';if(v!==DB.settings.adminPin){toast('קוד אדמין שגוי','err');return;}}
     closeModal(); try{onOk&&onOk();}catch(e){console.error(e);}
   });
   setTimeout(()=>{const el=$('#caPin')||$('#caOk');if(el)el.focus();},30);
@@ -1506,8 +1542,101 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 12';
+const APP_VERSION='גרסה 29.6.2026 · 14';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
+
+/* ============ CLOUD SYNC (Supabase) ============ */
+const CLOUD_ENABLED=true;
+const SUPA_URL='https://icrmyrievankdbiknodl.supabase.co';
+const SUPA_KEY='sb_publishable_0MrUrVV96E6DhETmBqZYzg_hJ6SB6d7';
+let supa=null, cloudOn=false, cloudUser=null, cloudRole=null, cloudPushTimer=null, cloudIgnoreUntil=0, cloudChan=null;
+
+function cloudStatusRender(){
+  const el=document.getElementById('cloudStatus'); if(!el)return;
+  if(cloudOn&&cloudUser){ const r=cloudRole==='admin'?'מנהל/ת':'ספרן/ית';
+    el.innerHTML=`<span class="cloud-dot on"></span>מחובר לענן · <b>${esc(r)}</b><br><span class="muted">${esc(cloudUser.email||'')}</span> · <span class="cs-link" onclick="cloudSignOut()">התנתקות</span>`; }
+  else el.innerHTML=`<span class="cloud-dot off"></span>מצב מקומי · <span class="cs-link" onclick="cloudShowLogin()">התחברות לענן</span>`;
+}
+function cloudInit(){
+  if(!CLOUD_ENABLED||!window.supabase){cloudStatusRender();return;}
+  try{ supa=window.supabase.createClient(SUPA_URL,SUPA_KEY); }catch(e){ console.error('supabase init',e); cloudStatusRender(); return; }
+  // restore existing session if present
+  supa.auth.getSession().then(({data})=>{
+    if(data&&data.session){ cloudUser=data.session.user; cloudOn=true; cloudStatusRender(); cloudAfterLogin(true); }
+    else { cloudShowLogin(); }
+  }).catch(()=>cloudShowLogin());
+}
+function cloudShowLogin(){ const o=document.getElementById('cloudLogin'); if(o)o.classList.remove('hidden'); cloudStatusRender(); }
+function cloudHideLogin(){ const o=document.getElementById('cloudLogin'); if(o)o.classList.add('hidden'); }
+function cloudReRender(){ paintCount(); try{go(CUR||'shelf');}catch(e){renderShelf();} }
+
+async function cloudLoad(){
+  const {data,error}=await supa.from('library_state').select('data,updated_at').eq('id',1).maybeSingle();
+  if(error)throw error;
+  return data&&data.data&&Object.keys(data.data).length?data.data:null;
+}
+async function cloudSaveNow(){
+  if(!cloudOn||!supa)return;
+  cloudIgnoreUntil=Date.now()+2500;
+  const {error}=await supa.from('library_state').upsert({id:1,data:DB,updated_at:new Date().toISOString()});
+  if(error){console.error('cloud save',error);toast('שמירה לענן נכשלה — נשמר מקומית','err');}
+}
+function cloudPushDebounced(){
+  if(!cloudOn||!supa)return;
+  clearTimeout(cloudPushTimer);
+  cloudPushTimer=setTimeout(cloudSaveNow,900);
+}
+function cloudSubscribe(){
+  if(!supa||cloudChan)return;
+  cloudChan=supa.channel('lib-state').on('postgres_changes',{event:'*',schema:'public',table:'library_state'},payload=>{
+    if(Date.now()<cloudIgnoreUntil)return;            // ignore our own write echo
+    const nd=payload.new&&payload.new.data;
+    if(nd&&Object.keys(nd).length){ DB=nd; migrate(); cloudReRender(); toast('עודכן ממכשיר אחר','ok'); }
+  }).subscribe();
+}
+async function cloudFetchRole(){
+  try{ const {data,error}=await supa.rpc('my_role'); cloudRole=(!error&&data)?(''+data).trim()||'librarian':'librarian'; }
+  catch(e){ cloudRole='librarian'; }
+}
+async function cloudAfterLogin(silent){
+  try{
+    await cloudFetchRole();
+    const remote=await cloudLoad();
+    if(remote){ DB=remote; migrate(); cloudReRender(); if(!silent)toast('הנתונים נטענו מהענן','ok'); }
+    else {
+      // cloud empty → seed it with current local data (first-time setup)
+      await cloudSaveNow();
+      if(!silent)toast('הנתונים המקומיים הועלו לענן','ok');
+    }
+    cloudSubscribe(); cloudReRender(); cloudStatusRender();
+  }catch(e){ console.error(e); toast('טעינת הענן נכשלה — ממשיכים מקומית','err'); }
+}
+async function cloudDoLogin(email,pw){
+  const {data,error}=await supa.auth.signInWithPassword({email:email,password:pw});
+  if(error)throw error;
+  cloudUser=data.user; cloudOn=true; return data.user;
+}
+window.cloudSignOut=async function(){
+  try{ if(supa)await supa.auth.signOut(); }catch(e){}
+  cloudOn=false; cloudUser=null; cloudRole=null; if(cloudChan){try{supa.removeChannel(cloudChan);}catch(e){} cloudChan=null;}
+  cloudStatusRender(); cloudShowLogin();
+};
+
+(function wireCloudLogin(){
+  const lg=document.getElementById('clLogin'), lo=document.getElementById('clLocal');
+  if(lg)lg.addEventListener('click',async()=>{
+    const em=(document.getElementById('clEmail').value||'').trim(), pw=document.getElementById('clPass').value||'';
+    const err=document.getElementById('clErr'); err.textContent='';
+    if(!em||!pw){err.textContent='הזינו אימייל וסיסמה';return;}
+    lg.disabled=true; lg.textContent='מתחבר…';
+    try{ await cloudDoLogin(em,pw); cloudHideLogin(); cloudStatusRender(); await cloudAfterLogin(false); }
+    catch(e){ err.textContent='התחברות נכשלה: '+(e&&e.message?e.message:'בדקו אימייל/סיסמה'); }
+    finally{ lg.disabled=false; lg.textContent='התחברות'; }
+  });
+  if(lo)lo.addEventListener('click',()=>{ cloudHideLogin(); cloudOn=false; cloudStatusRender(); toast('מצב מקומי — הנתונים נשמרים במכשיר זה בלבד'); });
+})();
+
+if(CLOUD_ENABLED) cloudInit(); else cloudStatusRender();
 </script>
 </body>
 </html>
