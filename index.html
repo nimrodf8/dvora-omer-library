@@ -1180,6 +1180,24 @@ window._sendGeneric=function(how){
   else { if(navigator.clipboard){navigator.clipboard.writeText(link).then(()=>toast('הקישור הכללי הועתק','ok'),()=>toast('העתקה נכשלה','err'));} else toast(link); }
   logAct('sign_sent','שליחת קישור כללי לקבוצת הורים ('+(how==='wa'?'וואטסאפ':how==='mail'?'מייל':'קישור')+')'); save();
 };
+let _queueRows=[];
+function fillContactFromSignature(st,row){
+  if(!row)return;
+  if(!st.parentName && row.parent_name) st.parentName=row.parent_name;
+  if(!st.parentPhone && row.parent_phone) st.parentPhone=row.parent_phone;
+  if(!st.parentEmail && row.parent_email) st.parentEmail=row.parent_email;
+}
+async function linkFamilyFromSignature(row, st){
+  if(!row||!row.family_group||!supa)return;
+  try{
+    const {data}=await supa.from('signature_requests').select('id,student_id').eq('family_group',row.family_group);
+    (data||[]).forEach(r=>{
+      if(r.id===row.id||!r.student_id||r.student_id===st.id)return;
+      const other=DB.students.find(x=>x.id===r.student_id);
+      if(other)linkSibling(st.id,other.id);   // מחבר כאחים (familyId משותף) + syncParent
+    });
+  }catch(e){}
+}
 async function renderSignQueue(){
   const box=document.getElementById('signQueue'); if(!box)return;
   if(!cloudOn||!supa){ box.innerHTML='<p class="muted">שיוך חתימות זמין במצב מחובר לענן.</p>'; return; }
@@ -1188,19 +1206,27 @@ async function renderSignQueue(){
   try{ const {data,error}=await supa.from('signature_requests').select('*').eq('applied',false); if(error)throw error; rows=data||[]; }
   catch(e){ box.innerHTML='<p class="muted">שגיאה בטעינת החתימות. ודאו שהורצה supabase_signatures.sql.</p>'; return; }
   const pend=rows.filter(r=>!r.student_id || !DB.students.find(s=>s.id===r.student_id));
+  _queueRows=pend;
   if(!pend.length){ box.innerHTML='<p class="muted">אין חתימות הממתינות לשיוך 👍</p>'; return; }
   const opts=DB.students.filter(s=>!s.isTeacher).map(s=>`<option value="${esc(s.firstName+' '+s.lastName+' — '+gradeHeb(s.grade)+s.classLabel)}"></option>`).join('');
-  box.innerHTML='<datalist id="dlQueueStud">'+opts+'</datalist>'+pend.map(r=>`<div class="litem"><div class="meta"><b>${esc(r.student_name||'(ללא שם)')}</b><small>הורה: ${esc(r.parent_name||'—')}${r.signed_at?' · '+new Date(r.signed_at).toLocaleDateString('he-IL'):''}</small></div><div class="actions"><input class="inp qstud" list="dlQueueStud" data-id="${esc(r.id)}" data-parent="${esc(r.parent_name||'')}" placeholder="שייך לתלמיד/ה…" style="max-width:220px; padding:6px 8px"><button class="btn sm qassign" data-id="${esc(r.id)}">שייך ואשר</button></div></div>`).join('');
+  box.innerHTML='<datalist id="dlQueueStud">'+opts+'</datalist>'+pend.map(r=>{
+    const contact=[r.parent_phone,r.parent_email].filter(Boolean).join(' · ');
+    const sib=r.family_group?' <span class="tag" style="background:#eaf6ec;color:#2e7d46">👨‍👩‍👧 אח/אחות</span>':'';
+    return `<div class="litem"><div class="meta"><b>${esc(r.student_name||'(ללא שם)')}</b>${sib}<small>הורה: ${esc(r.parent_name||'—')}${contact?' · '+esc(contact):''}${r.signed_at?' · '+new Date(r.signed_at).toLocaleDateString('he-IL'):''}</small></div><div class="actions"><input class="inp qstud" list="dlQueueStud" data-id="${esc(r.id)}" placeholder="שייך לתלמיד/ה…" style="max-width:220px; padding:6px 8px"><button class="btn sm qassign" data-id="${esc(r.id)}">שייך ואשר</button></div></div>`;
+  }).join('');
   box.querySelectorAll('.qassign').forEach(btn=>btn.addEventListener('click',()=>{
     const id=btn.dataset.id; const inp=box.querySelector('.qstud[data-id="'+id+'"]');
     const st=studentByLabel(inp.value.trim());
     if(!st){toast('בחרו תלמיד/ה מהרשימה','err');return;}
-    _assignSignature(id, st, inp.dataset.parent);
+    _assignSignature(id, st);
   }));
 }
-async function _assignSignature(reqId, st, parent){
-  markSigned(st, parent||st.parentName||'');
-  logAct('sign_recv',`שיוך חתימה לתלמיד/ה: ${st.firstName} ${st.lastName} (${parent||''})`);
+async function _assignSignature(reqId, st){
+  const row=(_queueRows||[]).find(r=>r.id===reqId)||{id:reqId};
+  fillContactFromSignature(st,row);
+  markSigned(st, row.parent_name||st.parentName||'');
+  await linkFamilyFromSignature(row, st);
+  logAct('sign_recv',`שיוך חתימה לתלמיד/ה: ${st.firstName} ${st.lastName} (${row.parent_name||''})`);
   save();
   try{ if(supa)await supa.from('signature_requests').update({applied:true,student_id:st.id,student_name:st.firstName+' '+st.lastName}).eq('id',reqId); }catch(e){}
   toast('שויך — תיק נפתח: '+st.firstName+' '+st.lastName,'ok');
@@ -1792,7 +1818,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 25';
+const APP_VERSION='גרסה 29.6.2026 · 26';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
@@ -1995,8 +2021,10 @@ async function cloudApplySignatures(){
     for(const row of data){
       const st=row.student_id?DB.students.find(x=>x.id===row.student_id):null;
       if(st){
+        fillContactFromSignature(st,row);
         logAct('sign_recv',`התקבלה חתימת הורה: ${st.firstName} ${st.lastName} (${row.parent_name||''})`);
-        markSigned(st,row.parent_name||st.parentName||''); n++;
+        markSigned(st,row.parent_name||st.parentName||'');
+        await linkFamilyFromSignature(row, st); n++;
         try{ await supa.from('signature_requests').update({applied:true}).eq('id',row.id); }catch(e){}
       }
       // rows without a matching student stay unapplied → appear in the matching queue (עמוד תקנון)
@@ -2015,14 +2043,29 @@ function showSignPage(sid){
     <div class="cloud-title">ספריית ביה״ס דבורה עומר · כפר סבא</div>
     <h3 style="margin:0 0 10px">חתימת הורה על תקנון הספרייה</h3>
     <div style="max-height:240px; overflow:auto; background:#f7fafa; border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:14px">${terms}</div>
-    <p style="margin:0 0 12px">קראתי את התקנון, הבנתי את תוכנו, ואני מתחייב/ת כי בני/בתי ינהג/תנהג על פיו, וכי במקרה של אובדן או נזק אדאג להחלפה או לפיצוי כמפורט בתקנון.</p>
-    <div class="grid" style="grid-template-columns:2fr 1fr; gap:10px"><label class="fld"><span>שם התלמיד/ה</span><input class="inp" id="spChild" placeholder="שם מלא של הילד/ה"></label><label class="fld"><span>כיתה</span><input class="inp" id="spClass" placeholder="למשל: ג׳2"></label></div>
-    <div class="grid" style="grid-template-columns:1fr 1fr; gap:10px"><label class="fld"><span>שם ההורה/אפוטרופוס</span><input class="inp" id="spParent"></label><label class="fld"><span>ת"ז (לא חובה)</span><input class="inp" id="spId" inputmode="numeric"></label></div>
+    <p style="margin:0 0 12px">קראתי את התקנון, הבנתי את תוכנו, ואני מתחייב/ת כי ילדיי ינהגו על פיו, וכי במקרה של אובדן או נזק אדאג להחלפה או לפיצוי כמפורט בתקנון.</p>
+    <div id="spChildren"></div>
+    <button type="button" class="btn ghost sm" id="spAddChild" style="margin:0 0 14px">➕ הוספת אח/אחות</button>
+    <div class="grid" style="grid-template-columns:1fr 1fr; gap:10px"><label class="fld"><span>שם ההורה/אפוטרופוס</span><input class="inp" id="spParent"></label><label class="fld"><span>טלפון ההורה</span><input class="inp" id="spPhone" inputmode="tel" placeholder="050-0000000"></label></div>
+    <label class="fld"><span>אימייל ההורה (לא חובה)</span><input class="inp" id="spEmail" inputmode="email" placeholder="name@example.com"></label>
     <div class="fld"><span>חתימה</span><div class="sig-wrap"><canvas id="spSig" class="sig-pad"></canvas><button type="button" class="btn ghost sm sig-clear" id="spSigClear">נקה</button></div></div>
-    <label style="display:flex; gap:8px; align-items:flex-start; margin:6px 0 12px; font-size:14px"><input type="checkbox" id="spAgree" style="margin-top:3px"><span>אני מאשר/ת את תקנון הספרייה וחותם/ת עליו עבור בני/בתי.</span></label>
+    <label style="display:flex; gap:8px; align-items:flex-start; margin:6px 0 12px; font-size:14px"><input type="checkbox" id="spAgree" style="margin-top:3px"><span>אני מאשר/ת את תקנון הספרייה וחותם/ת עליו עבור ילדיי הרשומים מעלה.</span></label>
     <div id="spErr" class="cl-err"></div>
     <button class="btn" id="spSubmit" style="width:100%">שליחת חתימה לספרייה</button>`;
   document.getElementById('signPage').classList.remove('hidden');
+  // children blocks (supports adding siblings)
+  const kidsBox=document.getElementById('spChildren');
+  function addChild(first){
+    const row=document.createElement('div'); row.className='sp-child'; row.style.marginBottom='10px';
+    row.innerHTML=`<div class="grid" style="grid-template-columns:2fr 1fr auto; gap:10px; align-items:end">
+      <label class="fld" style="margin:0"><span>${first?'שם התלמיד/ה':'שם האח/אחות'}</span><input class="inp spc-name" placeholder="שם מלא"></label>
+      <label class="fld" style="margin:0"><span>כיתה</span><input class="inp spc-class" placeholder="ג׳2"></label>
+      ${first?'<span></span>':'<button type="button" class="btn ghost sm spc-del" style="margin-bottom:2px">− הסר</button>'}</div>`;
+    kidsBox.appendChild(row);
+    const del=row.querySelector('.spc-del'); if(del)del.addEventListener('click',()=>row.remove());
+  }
+  addChild(true);
+  document.getElementById('spAddChild').addEventListener('click',()=>addChild(false));
   // signature pad
   const c=document.getElementById('spSig'); let ctx=null,draw=false;
   function fit(){const w=c.clientWidth||500,h=c.clientHeight||90,dpr=window.devicePixelRatio||1;c.width=w*dpr;c.height=h*dpr;ctx=c.getContext('2d');ctx.scale(dpr,dpr);ctx.lineWidth=2;ctx.lineCap='round';ctx.strokeStyle='#143';}
@@ -2037,19 +2080,26 @@ function showSignPage(sid){
   c.addEventListener('touchend',()=>draw=false);
   document.getElementById('spSigClear').addEventListener('click',()=>{ctx.clearRect(0,0,c.width,c.height);drew=false;});
   document.getElementById('spSubmit').addEventListener('click',async()=>{
-    const child=document.getElementById('spChild').value.trim(), parent=document.getElementById('spParent').value.trim();
-    const cls=(document.getElementById('spClass').value||'').trim();
+    const parent=document.getElementById('spParent').value.trim();
+    const phone=document.getElementById('spPhone').value.trim();
+    const email=document.getElementById('spEmail').value.trim();
+    const kids=[...document.querySelectorAll('.sp-child')].map(d=>({name:d.querySelector('.spc-name').value.trim(), cls:(d.querySelector('.spc-class').value||'').trim()})).filter(k=>k.name);
     const err=document.getElementById('spErr'); err.textContent='';
-    if(!child||!parent){err.textContent='נא למלא שם תלמיד/ה ושם הורה';return;}
+    if(!kids.length||!parent){err.textContent='נא למלא שם תלמיד/ה ושם הורה';return;}
     if(!document.getElementById('spAgree').checked){err.textContent='נא לאשר את התקנון';return;}
     if(!drew){err.textContent='נא לחתום במסגרת';return;}
     const btn=document.getElementById('spSubmit'); btn.disabled=true; btn.textContent='שולח…';
     try{
       if(!supa)throw new Error('no-conn');
-      const sname = cls ? (child+' · '+cls) : child;
-      const {error}=await supa.from('signature_requests').insert({student_id: generic?'':sid, student_name:sname, parent_name:parent});
-      if(error)throw error;
-      inner.innerHTML=`<div class="cloud-title">ספריית ביה״ס דבורה עומר · כפר סבא</div><h3 style="margin:10px 0">✓ תודה!</h3><p>החתימה נשלחה לספרייה. תיק הספרייה של ${esc(child)} ייפתח להשאלה. אפשר לסגור את החלון.</p>`;
+      const fg = kids.length>1 ? ('fg_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7)) : '';
+      for(let i=0;i<kids.length;i++){
+        const sname = kids[i].cls ? (kids[i].name+' · '+kids[i].cls) : kids[i].name;
+        const sid_i = (i===0 && !generic) ? sid : '';   // הקישור הישיר חל על הילד הראשון; אחים → לשיוך ידני
+        const {error}=await supa.from('signature_requests').insert({student_id:sid_i, student_name:sname, parent_name:parent, parent_phone:phone, parent_email:email, family_group:fg});
+        if(error)throw error;
+      }
+      const names=kids.map(k=>k.name).join(', ');
+      inner.innerHTML=`<div class="cloud-title">ספריית ביה״ס דבורה עומר · כפר סבא</div><h3 style="margin:10px 0">✓ תודה!</h3><p>החתימה נשלחה לספרייה עבור: <b>${esc(names)}</b>. התיקים ייפתחו להשאלה. אפשר לסגור את החלון.</p>`;
     }catch(e){ err.textContent='השליחה נכשלה. בדקו חיבור לאינטרנט ונסו שוב.'; btn.disabled=false; btn.textContent='שליחת חתימה לספרייה'; }
   });
 }
