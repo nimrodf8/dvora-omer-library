@@ -1084,13 +1084,24 @@ window._toggleSigned=function(id,on){
   studentPage(id); renderStudents();
 };
 function signLink(id){ return location.origin+location.pathname+'?sign='+encodeURIComponent(id); }
-window._sendSign=function(id,how){
-  const s=DB.students.find(x=>x.id===id);if(!s)return;
+window._sendSign=function(id,how){  const s=DB.students.find(x=>x.id===id);if(!s)return;
   const link=signLink(id);
   const msg=`שלום, לפתיחת תיק הספרייה של ${s.firstName} ${s.lastName} בביה״ס דבורה עומר נדרשת חתימת הורה על תקנון הספרייה. למילוי וחתימה דיגיטלית (כדקה): ${link}`;
   if(how==='mail'){ const to=s.parentEmail||''; window.open(`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent('חתימת הורה — ספריית דבורה עומר')}&body=${encodeURIComponent(msg)}`); }
   else if(how==='wa'){ let p=(s.parentPhone||'').replace(/\D/g,''); if(p.indexOf('0')===0)p='972'+p.slice(1); if(!p){toast('אין מספר טלפון להורה בכרטיס','err');return;} window.open(`https://wa.me/${p}?text=${encodeURIComponent(msg)}`,'_blank'); }
   else { if(navigator.clipboard){navigator.clipboard.writeText(link).then(()=>toast('הקישור הועתק','ok'),()=>toast('העתקה נכשלה','err'));} else toast(link); }
+};
+window._sendSignMenu=function(id){
+  const s=DB.students.find(x=>x.id===id);if(!s)return;
+  modal(`<div class="mhead"><h3>שליחת תקנון לחתימת הורה</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mbody">
+    <p style="margin:0 0 10px">תלמיד/ה: <b>${esc(s.firstName+' '+s.lastName)}</b> · ${gradeHeb(s.grade)+s.classLabel}</p>
+    <div class="kv"><b>מייל הורה</b><span>${esc(s.parentEmail||'— לא הוזן —')}</span></div>
+    <div class="kv"><b>טלפון הורה</b><span>${esc(s.parentPhone||'— לא הוזן —')}</span></div>
+    <p class="muted" style="margin:12px 0">בחר/י כיצד לשלוח את הקישור. ההורה ימלא ויחתום דיגיטלית — והתיק ייפתח אוטומטית בכל המכשירים המחוברים.</p>
+    <div class="row"><button class="btn" onclick="_sendSign('${s.id}','mail');closeModal()">📧 שליחה במייל</button><button class="btn" onclick="_sendSign('${s.id}','wa');closeModal()">💬 שליחה בוואטסאפ</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn ghost" onclick="_sendSign('${s.id}','copy')">🔗 העתקת הקישור</button></div>
+  </div>`);
 };
 
 function studentPage(id){
@@ -1104,8 +1115,8 @@ function studentPage(id){
   <div class="mbody">
     <div class="kv"><b>כיתה</b><span>${gradeHeb(s.grade)+s.classLabel} · מחנך/ת ${esc(teacherFor(s.grade,s.classLabel)||'—')}</span></div>
     <div class="kv"><b>הורה</b><span>${esc(s.parentName||'—')} · ${esc(s.parentPhone||'')} · ${esc(s.parentEmail||'')}</span></div>
-    ${s.isTeacher?'':`<div class="kv"><b>תקנון</b><span>${s.termsSigned?`<span style="color:#2e9a4f">✓ נחתם${s.termsSignedAt?' · '+new Date(s.termsSignedAt).toLocaleDateString('he-IL'):''}${s.termsSignedBy?' · '+esc(s.termsSignedBy):''}</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',false)">בטל פתיחת תיק</button>`:`<span style="color:#b5651d">טרם נחתם — התיק סגור להשאלה</span> <button class="btn sm" onclick="_toggleSigned('${s.id}',true)">סמן כחתום</button>`}</span></div>
-    ${s.termsSigned?'':`<div class="kv"><b>שליחת תקנון לחתימת הורה</b><span><button class="btn ghost sm" onclick="_sendSign('${s.id}','mail')">📧 מייל</button> <button class="btn ghost sm" onclick="_sendSign('${s.id}','wa')">💬 וואטסאפ</button> <button class="btn ghost sm" onclick="_sendSign('${s.id}','copy')">🔗 העתק קישור</button></span></div>`}`}
+    ${s.isTeacher?'':`<div class="kv"><b>תקנון</b><span>${s.termsSigned?`<span style="color:#2e9a4f">✓ נחתם${s.termsSignedAt?' · '+new Date(s.termsSignedAt).toLocaleDateString('he-IL'):''}${s.termsSignedBy?' · '+esc(s.termsSignedBy):''}</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',false)">בטל פתיחת תיק</button>`:`<span style="color:#b5651d">טרם נחתם — התיק סגור להשאלה</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',true)">סמן כחתום ידנית</button>`}</span></div>
+    <div class="kv"><b>חתימת הורה</b><span><button class="btn sm" onclick="_sendSignMenu('${s.id}')">✍ שליחת תקנון לחתימה</button>${s.termsSigned?' <span class="muted">כבר נחתם — אפשר לשלוח שוב</span>':''}</span></div>`}
     ${sibHtml}
     <h3 style="color:var(--teal-d);font-size:17px;margin:16px 0 6px">ספרים פתוחים (${open.length})</h3>
     ${open.map(o=>`<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b><small>${esc(copyLabel(o.book,o.item))} · עד ${o.item.dueDate?new Date(o.item.dueDate).toLocaleDateString('he-IL'):'—'}</small></div><div class="actions"><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','student:${s.id}')">החזרה</button><button class="btn danger sm" onclick="confirmLost('${o.book.id}','${o.item.id}','student:${s.id}')">אבוד</button></div></div>`).join('')||'<p class="muted">אין.</p>'}
@@ -1618,7 +1629,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 18';
+const APP_VERSION='גרסה 29.6.2026 · 19';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
