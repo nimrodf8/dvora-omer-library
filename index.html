@@ -521,6 +521,13 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="chWa"><span>💬 וואטסאפ <span class="muted">(ידני)</span></span></label>
       <button class="btn sm" id="saveChannels" style="margin-top:8px">שמירת ערוצים</button>
       <hr style="border:none;border-top:1px solid var(--line); margin:14px 0">
+      <p class="muted" style="margin:0 0 8px">🔎 בדיקת חיבור: שלחו מייל בדיקה (יוצא מ-do-not-reply@dvoraomer-library.org). דורש שהדומיין יאומת ב-Resend.</p>
+      <div class="row" style="align-items:flex-end">
+        <label class="fld" style="margin:0; max-width:260px"><span>מייל לבדיקה</span><input class="inp" id="testMail" type="email" placeholder="name@example.com"></label>
+        <button class="btn sm" id="sendTestMail">שלח מייל בדיקה</button>
+      </div>
+      <div id="testMailOut" class="muted" style="margin-top:8px"></div>
+      <hr style="border:none;border-top:1px solid var(--line); margin:14px 0">
       <div class="row" style="justify-content:space-between; align-items:center">
         <h3 style="margin:0; color:var(--teal-d); font-size:16px">יומן הודעות שנשלחו</h3>
         <button class="btn ghost sm" id="msgLogRefresh">↻ טען יומן</button>
@@ -1695,6 +1702,26 @@ if($('#saveChannels'))$('#saveChannels').addEventListener('click',()=>{
   else toast('ערוצי ההתראות נשמרו','ok');
 });
 if($('#msgLogRefresh'))$('#msgLogRefresh').addEventListener('click',renderMsgLog);
+if($('#sendTestMail'))$('#sendTestMail').addEventListener('click',async()=>{
+  const to=($('#testMail').value||'').trim();
+  const out=$('#testMailOut');
+  if(!to){out.innerHTML='<span style="color:#b3261e">נא להזין כתובת מייל</span>';return;}
+  if(!cloudOn||!supa){out.innerHTML='<span style="color:#b3261e">נדרש חיבור לענן</span>';return;}
+  if(!channelsCfg().email){out.innerHTML='<span style="color:#b5651d">ערוץ המייל כבוי — סמנו אותו ושמרו תחילה</span>';return;}
+  const btn=$('#sendTestMail'); btn.disabled=true; btn.textContent='שולח…'; out.innerHTML='שולח מייל בדיקה…';
+  try{
+    const r=await cloudSendNotification({to, subject:'מייל בדיקה — ספריית דבורה עומר', message:'זוהי הודעת בדיקה ממערכת ספריית ביה״ס דבורה עומר. אם קיבלת אותה — חיבור המייל פעיל ותקין. אין צורך להשיב.', channel:'email', type:'manual'});
+    if(r&&r.ok) out.innerHTML='<span style="color:#2e9a4f">✓ נשלח! בדקו את תיבת הדואר (גם ספאם). מזהה: '+esc(String(r.id||''))+'</span>';
+    else if(r&&r.skipped) out.innerHTML='<span style="color:#b5651d">לא נשלח: '+esc(String(r.reason||'דולג'))+'</span>';
+    else out.innerHTML='<span style="color:#b5651d">תגובה לא צפויה מהשרת</span>';
+  }catch(e){
+    let m=e.message||String(e);
+    if(/email not configured/.test(m)) m='חסר מפתח RESEND_API_KEY בהגדרות הסודות של Supabase';
+    else if(/resend-failed/.test(m)) m='Resend דחה את הבקשה — בדרך כלל הדומיין עדיין לא מאומת (Verified). נסו שוב לאחר האימות';
+    out.innerHTML='<span style="color:#b3261e">שגיאה: '+esc(m)+'</span>';
+  }
+  finally{ btn.disabled=false; btn.textContent='שלח מייל בדיקה'; }
+});
 async function renderMsgLog(){
   const box=document.getElementById('msgLogList'); if(!box)return;
   if(!cloudOn||!supa){ box.innerHTML='<p class="muted">יומן ההודעות זמין רק בחיבור לענן.</p>'; return; }
@@ -2281,7 +2308,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 64';
+const APP_VERSION='גרסה 29.6.2026 · 65';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
