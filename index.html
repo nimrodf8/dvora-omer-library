@@ -507,8 +507,12 @@ textarea.inp{resize:vertical; min-height:64px}
     </div>
 
     <div class="card" style="margin-bottom:16px">
-      <p class="muted" style="margin:0 0 10px">הנתונים נשמרים על המכשיר הזה. ייצאו גיבוי כדי להעביר בין מכשירים. בשלב הבא נחבר ל־Supabase למסד משותף ולמיילים להורים.</p>
+      <p class="muted" style="margin:0 0 10px">הנתונים נשמרים על המכשיר ובענן. <b>גיבוי בענן</b> שומר תמונת-מצב מלאה שאפשר לשחזר ממנה בכל רגע (וגם נשמר גיבוי אוטומטי תקופתי). גיבוי JSON שומר קובץ במכשיר.</p>
       <div class="row">
+        <button class="btn sm" id="cloudBackupBtn">☁ גיבוי לענן עכשיו</button>
+        <button class="btn ghost sm" id="cloudRestoreBtn">☁ שחזור מגיבוי בענן</button>
+      </div>
+      <div class="row" style="margin-top:8px">
         <button class="btn ghost sm" id="exportData">⬇ ייצוא גיבוי (JSON)</button>
         <button class="btn ghost sm" id="importDataBtn">⬆ שחזור מגיבוי</button>
         <input type="file" id="importDataFile" accept=".json" class="hidden">
@@ -1406,6 +1410,8 @@ function checkRollover(){
 
 /* ============ data export/import ============ */
 $('#exportData').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='dvora_library_backup.json';a.click();});
+$('#cloudBackupBtn')&&$('#cloudBackupBtn').addEventListener('click',()=>{ if(typeof cloudBackupNow==='function')cloudBackupNow('ידני'); });
+$('#cloudRestoreBtn')&&$('#cloudRestoreBtn').addEventListener('click',()=>{ if(typeof cloudShowBackups==='function')cloudShowBackups(); });
 $('#importDataBtn').addEventListener('click',()=>$('#importDataFile').click());
 $('#importDataFile').addEventListener('change',ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{let parsed;try{parsed=JSON.parse(r.result);}catch(e){toast('קובץ לא תקין','err');return;}confirmAction({title:'שחזור מגיבוי',message:'שחזור מגיבוי יחליף את כל הנתונים הקיימים במכשיר זה. להמשיך?',danger:true,admin:true,okLabel:'שחזר ודרוס'},()=>{DB=parsed;migrate();save();toast('שוחזר','ok');go('shelf');});};r.readAsText(f);ev.target.value='';});
 $('#resetData').addEventListener('click',()=>{confirmAction({title:'טעינת נתוני בית הספר',message:'פעולה זו תטען מחדש את נתוני בית הספר ותמחק כל שינוי מקומי שביצעת. להמשיך?',danger:true,admin:true,okLabel:'טען ודרוס'},()=>{logAct('data','טעינת נתוני בית הספר מחדש');DB=seed();save();toast('נטענו נתוני בית הספר','ok');go('shelf');});});
@@ -1786,7 +1792,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 23';
+const APP_VERSION='גרסה 29.6.2026 · 24';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
@@ -1853,7 +1859,47 @@ async function cloudFetchRole(){
 }
 function dbScore(d){ if(!d||!Array.isArray(d.students))return -1; let p=0; d.students.forEach(s=>{if(s.parentName)p++;if(s.parentPhone)p++;if(s.parentEmail)p++;if(s.familyId)p++;}); return (d.students.length*10)+p+((d.books&&d.books.length)||0); }
 function localBackup(tag){ try{ localStorage.setItem('dvora_lib_backup', JSON.stringify({ts:Date.now(),tag:tag||'',data:DB})); }catch(e){} }
-function cloudFinishLogin(){ cloudSubscribe(); cloudReRender(); cloudStatusRender(); cloudApplySignatures&&cloudApplySignatures(); }
+async function cloudBackupNow(label, silent){
+  if(!cloudOn||!supa){ if(!silent)toast('גיבוי לענן זמין רק במצב מחובר','err'); return false; }
+  try{
+    await supa.from('library_backups').insert({label:label||'ידני', by_user:(cloudUser&&cloudUser.email)||'', students_count:(DB.students||[]).length, books_count:(DB.books||[]).length, data:DB});
+    // שמירה על 20 הגיבויים האחרונים בלבד
+    try{ const {data}=await supa.from('library_backups').select('id,created_at').order('created_at',{ascending:false});
+      if(data&&data.length>20){ for(const r of data.slice(20)){ try{ await supa.from('library_backups').delete().eq('id',r.id); }catch(e){} } } }catch(e){}
+    if(!silent)toast('גיבוי נשמר בענן ✓','ok');
+    return true;
+  }catch(e){ console.warn('cloud backup',e); if(!silent)toast('הגיבוי נכשל — ודאו שהורצה supabase_backups.sql','err'); return false; }
+}
+async function cloudAutoBackup(){
+  if(!cloudOn||!supa)return;
+  try{
+    const {data}=await supa.from('library_backups').select('created_at').order('created_at',{ascending:false}).limit(1);
+    const last=data&&data[0]?new Date(data[0].created_at).getTime():0;
+    if(Date.now()-last > 2*60*60*1000){ await cloudBackupNow('אוטומטי',true); }   // לכל היותר אחת ל-2 שעות
+  }catch(e){}
+}
+async function cloudShowBackups(){
+  if(!cloudOn||!supa){ toast('שחזור מענן זמין רק במצב מחובר','err'); return; }
+  modal(`<div class="mhead"><h3>שחזור מגיבוי בענן</h3><button class="x" onclick="closeModal()">×</button></div><div class="mbody"><p class="muted">טוען גיבויים…</p></div>`);
+  let rows=[];
+  try{ const {data,error}=await supa.from('library_backups').select('id,created_at,label,by_user,students_count,books_count').order('created_at',{ascending:false}).limit(30); if(error)throw error; rows=data||[]; }
+  catch(e){ modal(`<div class="mhead"><h3>שחזור מגיבוי בענן</h3><button class="x" onclick="closeModal()">×</button></div><div class="mbody"><p class="muted">לא ניתן לטעון. ודאו שהורצה <b>supabase_backups.sql</b> ב-Supabase.</p></div>`); return; }
+  const list = rows.map(r=>`<div class="litem"><div class="meta"><b>${new Date(r.created_at).toLocaleString('he-IL')}</b><small>${esc(r.label||'גיבוי')} · ${r.students_count||0} תלמידים · ${r.books_count||0} ספרים${r.by_user?' · '+esc(r.by_user):''}</small></div><div class="actions"><button class="btn sm" onclick="cloudRestoreBackup('${r.id}')">שחזר</button></div></div>`).join('')||'<p class="muted">אין עדיין גיבויים בענן. לחצו "☁ גיבוי לענן עכשיו".</p>';
+  modal(`<div class="mhead"><h3>שחזור מגיבוי בענן</h3><button class="x" onclick="closeModal()">×</button></div><div class="mbody"><p class="muted" style="margin:0 0 12px">בחר/י גיבוי לשחזור. המצב הנוכחי יוחלף — ולכן נשמר אוטומטית גיבוי נוסף לפני השחזור.</p>${list}</div>`);
+}
+window.cloudRestoreBackup=function(id){
+  confirmAction({title:'שחזור מגיבוי בענן',message:'לשחזר את כל הנתונים מהגיבוי הנבחר? המצב הנוכחי יוחלף (וייגבה אוטומטית קודם).',danger:true,admin:true,okLabel:'שחזר'},async()=>{
+    let row;
+    try{ const {data,error}=await supa.from('library_backups').select('data,created_at,students_count').eq('id',id).maybeSingle(); if(error)throw error; row=data; }
+    catch(e){ toast('שגיאה בטעינת הגיבוי','err'); return; }
+    if(!row||!row.data){ toast('הגיבוי ריק או לא נמצא','err'); return; }
+    await cloudBackupNow('לפני שחזור',true);   // גיבוי בטיחות של המצב הנוכחי
+    localBackup('pre-restore');
+    DB=row.data; migrate(); save(); closeModal();
+    toast(`שוחזר מהגיבוי (${row.students_count||0} תלמידים)`,'ok'); go('shelf');
+  });
+};
+function cloudFinishLogin(){ cloudSubscribe(); cloudReRender(); cloudStatusRender(); cloudApplySignatures&&cloudApplySignatures(); cloudAutoBackup&&cloudAutoBackup(); }
 function cloudSyncConflict(remote){
   const rc=(remote.students||[]).length, lc=(DB.students||[]).length;
   modal(`<div class="mhead"><h3>סנכרון נתונים</h3></div>
