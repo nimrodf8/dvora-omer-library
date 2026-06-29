@@ -514,6 +514,21 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
     </div>
 
     <div class="card dev-only" style="margin-bottom:16px">
+      <h3 style="margin:0 0 10px; color:var(--teal-d)">ערוצי התראות</h3>
+      <p class="muted" style="margin:0 0 10px">אילו ערוצים פעילים לשליחת התראות להורים. <b>מייל</b> חינמי (Resend) ונשלח אוטומטית מ-do-not-reply@dvoraomer-library.org. <b>SMS</b> בנוי אך כבוי — הפעלתו תדרוש ספק וקרדיט בתשלום ולכן הוא לא ישלח עד שיופעל כאן. וואטסאפ = כפתורי שליחה ידנית.</p>
+      <label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="chEmail"><span>📧 מייל אוטומטי <span class="muted">(מומלץ · חינמי)</span></span></label>
+      <label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="chSms"><span>📱 SMS <b style="color:#b5651d">(בתשלום — כבוי כברירת מחדל)</b></span></label>
+      <label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="chWa"><span>💬 וואטסאפ <span class="muted">(ידני)</span></span></label>
+      <button class="btn sm" id="saveChannels" style="margin-top:8px">שמירת ערוצים</button>
+      <hr style="border:none;border-top:1px solid var(--line); margin:14px 0">
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <h3 style="margin:0; color:var(--teal-d); font-size:16px">יומן הודעות שנשלחו</h3>
+        <button class="btn ghost sm" id="msgLogRefresh">↻ טען יומן</button>
+      </div>
+      <div id="msgLogList" style="margin-top:10px"><p class="muted">לחצו "טען יומן" כדי לראות הודעות אחרונות.</p></div>
+    </div>
+
+    <div class="card dev-only" style="margin-bottom:16px">
       <div class="row" style="justify-content:space-between; align-items:center">
         <h3 style="margin:0; color:var(--teal-d)">ניהול משתמשים (אדמין)</h3>
         <button class="btn ghost sm" id="usersRefresh">↻ רענון</button>
@@ -643,6 +658,7 @@ function ensureItems(b){
 }
 function migrate(){ (DB.books||[]).forEach(ensureItems);
   const s=DB.settings||(DB.settings={}); if(s.maxBooks==null)s.maxBooks=2; if(s.loanDays==null)s.loanDays=30; if(s.reminderDays==null)s.reminderDays=21; if(s.remindBeforeDays==null)s.remindBeforeDays=5; if(s.repeatDays==null)s.repeatDays=5; if(s.terms==null)s.terms=''; if(s.adminPin==null)s.adminPin=''; if(!s.libMap)s.libMap=JSON.parse(JSON.stringify(LIB_MAP));
+  if(!s.channels)s.channels={email:true, sms:false, whatsapp:true}; else{ if(s.channels.email==null)s.channels.email=true; if(s.channels.sms==null)s.channels.sms=false; if(s.channels.whatsapp==null)s.channels.whatsapp=true; }
   if(!Array.isArray(DB.activity))DB.activity=[];
   if(!Array.isArray(DB.deletedBooks))DB.deletedBooks=[];
 }
@@ -695,7 +711,7 @@ function detectSeries(title){
   return {base:'', idx:''};
 }
 function seed(){
-  const DEF={maxBooks:2, loanDays:30, reminderDays:21, repeatDays:5, scanGap:40, terms:''};
+  const DEF={maxBooks:2, loanDays:30, reminderDays:21, repeatDays:5, scanGap:40, terms:'', channels:{email:true, sms:false, whatsapp:true}};
   const day=864e5;
   const classes=SEED.classes.map(c=>({id:uid(),grade:c[0],label:c[1],teacher:c[2]||''}));
   const students=SEED.students.map(s=>({id:uid(),firstName:s[0],lastName:s[1],grade:s[2],classLabel:s[3],
@@ -1044,7 +1060,13 @@ function openCheckout(b,it){
       logAct('checkout',`השאלה: ${b.title} ל${st.firstName} ${st.lastName}`);
       save();renderShelf();
       const noP=!st.parentPhone, noM=!st.parentEmail;
-      panel.innerHTML=`<div class="card"><p>✓ הושאל בהצלחה: <b>${esc(b.title)}</b> (${esc(copyLabel(b,it))}) ל־<b>${esc(st.firstName+' '+st.lastName)}</b>. להחזרה עד ${new Date(dueTs).toLocaleDateString('he-IL')}.</p>${st.isTeacher?'':`<p style="margin:6px 0 8px">📩 הודעת השאלה להורה:</p><div class="row"><button class="btn sm" ${noP?'disabled title="אין טלפון הורה"':''} onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','wa')">💬 וואטסאפ</button><button class="btn ghost sm" ${noM?'disabled title="אין מייל הורה"':''} onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','mail')">📧 מייל</button><button class="btn ghost sm" onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','copy')">🔗 העתקה</button></div>`}</div>`;
+      const dueStr2=new Date(dueTs).toLocaleDateString('he-IL');
+      panel.innerHTML=`<div class="card"><p>✓ הושאל בהצלחה: <b>${esc(b.title)}</b> (${esc(copyLabel(b,it))}) ל־<b>${esc(st.firstName+' '+st.lastName)}</b>. להחזרה עד ${dueStr2}.</p>${st.isTeacher?'':`<p id="coAutoStat" class="muted" style="margin:6px 0 4px">שולח מייל אוטומטי…</p><p style="margin:8px 0 6px">שליחה ידנית נוספת:</p><div class="row"><button class="btn sm" ${noP?'disabled title="אין טלפון הורה"':''} onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','wa')">💬 וואטסאפ</button><button class="btn ghost sm" ${noM?'disabled title="אין מייל הורה"':''} onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','mail')">📧 מייל</button><button class="btn ghost sm" onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','copy')">🔗 העתקה</button></div>`}</div>`;
+      if(!st.isTeacher){
+        const subj='הושאל ספר — ספריית דבורה עומר';
+        const msg=`שלום, הושאל היום לתלמיד/ה ${st.firstName} ${st.lastName} הספר "${b.title}" בספריית ביה״ס דבורה עומר. להחזרה עד ${dueStr2}. תודה!`;
+        autoEmailParent(st,subj,msg,'checkout').then(r=>{const el=document.getElementById('coAutoStat');if(el)el.innerHTML=notifyResultText(r);});
+      }
       toast('הושאל','ok');setTimeout(()=>$('#scanInput').focus(),100);
     });
   });
@@ -1650,6 +1672,10 @@ function loadSettings(){
   $('#setRepeatDays').value=DB.settings.repeatDays||5;
   if($('#setAdminPin'))$('#setAdminPin').value=DB.settings.adminPin||'';
   if($('#scanGap'))$('#scanGap').value=DB.settings.scanGap||40;
+  const ch=channelsCfg();
+  if($('#chEmail'))$('#chEmail').checked=ch.email;
+  if($('#chSms'))$('#chSms').checked=ch.sms;
+  if($('#chWa'))$('#chWa').checked=ch.whatsapp;
 }
 $('#saveSettings').addEventListener('click',()=>{
   DB.settings.maxBooks=Math.max(1,+$('#setMaxBooks').value||2);
@@ -1661,6 +1687,28 @@ $('#saveSettings').addEventListener('click',()=>{
 });
 $('#saveAdminPin').addEventListener('click',()=>{DB.settings.adminPin=$('#setAdminPin').value.trim();save();toast(DB.settings.adminPin?'קוד אדמין נשמר':'קוד אדמין הוסר','ok');});
 $('#changePwBtn').addEventListener('click',()=>{ if(typeof cloudChangePassword==='function')cloudChangePassword(); });
+if($('#saveChannels'))$('#saveChannels').addEventListener('click',()=>{
+  const wasSms=channelsCfg().sms, nowSms=$('#chSms').checked;
+  DB.settings.channels={email:$('#chEmail').checked, sms:nowSms, whatsapp:$('#chWa').checked};
+  cloudForceNextSave=true; save(); logAct('data','עדכון ערוצי התראות');
+  if(nowSms && !wasSms){ toast('שים/י לב: ערוץ SMS הופעל — הודעות עלולות להיות כרוכות בתשלום','err'); }
+  else toast('ערוצי ההתראות נשמרו','ok');
+});
+if($('#msgLogRefresh'))$('#msgLogRefresh').addEventListener('click',renderMsgLog);
+async function renderMsgLog(){
+  const box=document.getElementById('msgLogList'); if(!box)return;
+  if(!cloudOn||!supa){ box.innerHTML='<p class="muted">יומן ההודעות זמין רק בחיבור לענן.</p>'; return; }
+  box.innerHTML='<p class="muted">טוען…</p>';
+  try{
+    const {data,error}=await supa.from('message_log').select('*').order('created_at',{ascending:false}).limit(60);
+    if(error)throw error;
+    if(!data||!data.length){ box.innerHTML='<p class="muted">עדיין לא נשלחו הודעות.</p>'; return; }
+    const ch={email:'📧 מייל',sms:'📱 SMS',whatsapp:'💬 וואטסאפ'};
+    const stt={sent:'<span style="color:#2e9a4f">✓ נשלח</span>',error:'<span style="color:#b3261e">✗ נכשל</span>',skipped:'<span style="color:#b5651d">— דולג</span>'};
+    const ty={checkout:'השאלה',remind_before:'תזכורת מראש',overdue:'איחור',manual:'ידני'};
+    box.innerHTML=data.map(m=>`<div class="kv"><b>${new Date(m.created_at).toLocaleString('he-IL')}</b><span>${ch[m.channel]||esc(m.channel||'')} · ${stt[m.status]||esc(m.status||'')}${m.type?' · '+(ty[m.type]||esc(m.type)):''} · ${esc(m.to_addr||'')}${m.error?' · <span class="muted">'+esc(m.error)+'</span>':''}</span></div>`).join('');
+  }catch(e){ box.innerHTML='<p class="muted">טעינת היומן נכשלה: '+esc(e.message||String(e))+'</p>'; }
+}
 async function callUserFn(payload){
   if(!cloudOn||!supa) throw new Error('יש להתחבר לענן');
   const {data:{session}}=await supa.auth.getSession();
@@ -1669,6 +1717,35 @@ async function callUserFn(payload){
   let out={}; try{out=await res.json();}catch(e){}
   if(!res.ok) throw new Error(out.error||('שגיאה '+res.status));
   return out;
+}
+function channelsCfg(){ const c=(DB.settings&&DB.settings.channels)||{}; return {email:c.email!==false, sms:c.sms===true, whatsapp:c.whatsapp!==false}; }
+async function cloudSendNotification(p){
+  if(!cloudOn||!supa) throw new Error('יש להתחבר לענן כדי לשלוח התראות');
+  const {data:{session}}=await supa.auth.getSession();
+  if(!session) throw new Error('אין חיבור פעיל');
+  const res=await fetch(`${SUPA_URL}/functions/v1/send-notification`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},body:JSON.stringify(p)});
+  let out={}; try{out=await res.json();}catch(e){}
+  if(!res.ok) throw new Error(out.error||('שגיאה '+res.status));
+  return out;
+}
+// שליחת מייל אוטומטי להורה (אם הערוץ פעיל, יש מייל, ויש הסכמה). מחזיר סטטוס בלי לזרוק.
+async function autoEmailParent(student, subject, message, type){
+  try{
+    if(!channelsCfg().email) return {skipped:'channel'};
+    if(!student || !student.parentEmail) return {skipped:'no-email'};
+    if(student.notifyConsent!==true) return {skipped:'no-consent'};
+    if(!cloudOn||!supa) return {skipped:'offline'};
+    const out=await cloudSendNotification({to:student.parentEmail, subject, message, channel:'email', student_id:student.id, type:type||'manual'});
+    return out;
+  }catch(e){ return {error:e.message||String(e)}; }
+}
+function notifyResultText(r){
+  if(!r) return '';
+  if(r.ok) return '<span style="color:#2e9a4f">✓ נשלח מייל אוטומטי להורה</span>';
+  if(r.error) return '<span class="muted">המייל האוטומטי נכשל — אפשר לשלוח ידנית למטה</span>';
+  const code=(r.skipped===true)?r.reason:r.skipped;
+  const map={'channel':'ערוץ המייל כבוי','channel-disabled':'ערוץ המייל כבוי','no-email':'אין מייל להורה','no-consent':'ההורה לא אישר קבלת הודעות','offline':'אין חיבור לענן'};
+  return '<span class="muted">לא נשלח מייל אוטומטי ('+(map[code]||code||'דולג')+')</span>';
 }
 async function renderUsers(){
   const box=document.getElementById('usersList'); if(!box)return;
@@ -1755,7 +1832,7 @@ function renderReminders(){
   const due=remindersDue();
   const p=$('#remindersPanel');
   const rep=DB.settings.repeatDays||5, before=DB.settings.remindBeforeDays||5;
-  const head=`<div class="banner"><b>${due.length}</b> ספרים ממתינים לתזכורת (ראשונה ${before} ימים לפני ההחזרה, ואז כל ${rep} ימים — כולל באיחור). הכפתורים פותחים וואטסאפ/מייל מוכן לשליחה.</div>`;
+  const head=`<div class="banner"><b>${due.length}</b> ספרים ממתינים לתזכורת (ראשונה ${before} ימים לפני ההחזרה, ואז כל ${rep} ימים — כולל באיחור). "📧 שלח מייל אוטומטי" שולח מייל אמיתי מהמערכת (אם ערוץ המייל פעיל ויש אישור הורה); וואטסאפ/מייל ידני פותחים הודעה מוכנה.</div>`;
   if(!due.length){p.innerHTML=`<div class="empty-state"><div class="big">✅</div><p>אין כרגע ספרים שדורשים תזכורת.</p></div>`;return;}
   p.innerHTML=head+`<div class="list">`+due.map(o=>{
     const s=DB.students.find(x=>x.id===o.item.holder);
@@ -1768,7 +1845,7 @@ function renderReminders(){
     const status=overdue?'<span class="tag lost">באיחור</span>':'<span class="tag" style="background:#fff3e0;border-color:#ffe0b2;color:#b5651d">לקראת החזרה</span>';
     const msg=overdue?`הספר היה צריך לחזור ב‑${dueStr} — באיחור של ${lateBy} ימים.`:`הספר אמור לחזור בעוד ${o.until} ימים (עד ${dueStr}).`;
     const noPhone=!(s&&s.parentPhone), noMail=!(s&&s.parentEmail);
-    return `<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b> ${status}<small>${s?esc(s.firstName+' '+s.lastName+' · '+gradeHeb(s.grade)+s.classLabel):'—'} · הושאל ${bd} · להחזרה עד ${dueStr}${contact?' · '+esc(contact):' · אין פרטי קשר'}<br><span style="color:${overdue?'#b3261e':'#b5651d'}">${msg}</span>${hist}</small></div><div class="actions"><button class="btn sm" ${noPhone?'disabled title="אין טלפון הורה"':''} onclick="sendReminder('${o.book.id}','${o.item.id}','wa')">💬 וואטסאפ</button><button class="btn ghost sm" ${noMail?'disabled title="אין מייל הורה"':''} onclick="sendReminder('${o.book.id}','${o.item.id}','mail')">📧 מייל</button><button class="btn ghost sm" onclick="markReminded('${o.book.id}','${o.item.id}')">סמן נשלח</button><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','reminders')">החזרה</button></div></div>`;
+    return `<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b> ${status}<small>${s?esc(s.firstName+' '+s.lastName+' · '+gradeHeb(s.grade)+s.classLabel):'—'} · הושאל ${bd} · להחזרה עד ${dueStr}${contact?' · '+esc(contact):' · אין פרטי קשר'}<br><span style="color:${overdue?'#b3261e':'#b5651d'}">${msg}</span>${hist}</small></div><div class="actions"><button class="btn sm" ${noMail?'disabled title="אין מייל הורה"':''} onclick="sendReminderAuto('${o.book.id}','${o.item.id}')">📧 שלח מייל אוטומטי</button><button class="btn ghost sm" ${noPhone?'disabled title="אין טלפון הורה"':''} onclick="sendReminder('${o.book.id}','${o.item.id}','wa')">💬 וואטסאפ</button><button class="btn ghost sm" ${noMail?'disabled title="אין מייל הורה"':''} onclick="sendReminder('${o.book.id}','${o.item.id}','mail')">✉ מייל ידני</button><button class="btn ghost sm" onclick="markReminded('${o.book.id}','${o.item.id}')">סמן נשלח</button><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','reminders')">החזרה</button></div></div>`;
   }).join('')+`</div>`;
 }
 function reminderMsg(s,book,it){
@@ -1783,6 +1860,21 @@ window.sendReminder=function(bookId,itemId,how){
   const s=DB.students.find(x=>x.id===it.holder);
   sendParentMsg(s, reminderMsg(s,b,it), how, 'תזכורת החזרת ספר — ספריית דבורה עומר');
   markReminded(bookId,itemId);
+};
+window.sendReminderAuto=async function(bookId,itemId){
+  const b=DB.books.find(x=>x.id===bookId);const it=b&&itemsOf(b).find(i=>i.id===itemId);if(!it)return;
+  const s=DB.students.find(x=>x.id===it.holder);
+  if(!s){toast('אין תלמיד/ה משויך','err');return;}
+  if(!channelsCfg().email){toast('ערוץ המייל כבוי — הפעילו בהגדרות → ערוצי התראות','err');return;}
+  if(!s.parentEmail){toast('אין מייל הורה בכרטיס','err');return;}
+  if(s.notifyConsent!==true){toast('ההורה לא אישר קבלת הודעות','err');return;}
+  if(!cloudOn||!supa){toast('נדרש חיבור לענן לשליחה אוטומטית','err');return;}
+  const overdue=it.dueDate&&Date.now()>it.dueDate;
+  toast('שולח מייל…');
+  const r=await autoEmailParent(s, 'תזכורת החזרת ספר — ספריית דבורה עומר', reminderMsg(s,b,it), overdue?'overdue':'remind_before');
+  if(r&&r.ok){ markReminded(bookId,itemId); }
+  else if(r&&r.error){ toast('שליחה נכשלה: '+r.error,'err'); }
+  else { const code=(r&&(r.reason||r.skipped))||'דולג'; toast('לא נשלח ('+code+')','err'); }
 };
 window.notifyCheckout=function(studentId,bookId,itemId,how){
   const s=DB.students.find(x=>x.id===studentId);const b=DB.books.find(x=>x.id===bookId);const it=b&&itemsOf(b).find(i=>i.id===itemId);
@@ -2189,7 +2281,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 63';
+const APP_VERSION='גרסה 29.6.2026 · 64';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
