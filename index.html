@@ -1413,14 +1413,14 @@ $('#exportData').addEventListener('click',()=>{const blob=new Blob([JSON.stringi
 $('#cloudBackupBtn')&&$('#cloudBackupBtn').addEventListener('click',()=>{ if(typeof cloudBackupNow==='function')cloudBackupNow('ידני'); });
 $('#cloudRestoreBtn')&&$('#cloudRestoreBtn').addEventListener('click',()=>{ if(typeof cloudShowBackups==='function')cloudShowBackups(); });
 $('#importDataBtn').addEventListener('click',()=>$('#importDataFile').click());
-$('#importDataFile').addEventListener('change',ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{let parsed;try{parsed=JSON.parse(r.result);}catch(e){toast('קובץ לא תקין','err');return;}confirmAction({title:'שחזור מגיבוי',message:'שחזור מגיבוי יחליף את כל הנתונים הקיימים במכשיר זה. להמשיך?',danger:true,admin:true,okLabel:'שחזר ודרוס'},()=>{DB=parsed;migrate();save();toast('שוחזר','ok');go('shelf');});};r.readAsText(f);ev.target.value='';});
-$('#resetData').addEventListener('click',()=>{confirmAction({title:'טעינת נתוני בית הספר',message:'פעולה זו תטען מחדש את נתוני בית הספר ותמחק כל שינוי מקומי שביצעת. להמשיך?',danger:true,admin:true,okLabel:'טען ודרוס'},()=>{logAct('data','טעינת נתוני בית הספר מחדש');DB=seed();save();toast('נטענו נתוני בית הספר','ok');go('shelf');});});
+$('#importDataFile').addEventListener('change',ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{let parsed;try{parsed=JSON.parse(r.result);}catch(e){toast('קובץ לא תקין','err');return;}confirmAction({title:'שחזור מגיבוי',message:'שחזור מגיבוי יחליף את כל הנתונים הקיימים במכשיר זה. להמשיך?',danger:true,admin:true,okLabel:'שחזר ודרוס'},()=>{DB=parsed;migrate();cloudForceNextSave=true;save();toast("שוחזר","ok");go('shelf');});};r.readAsText(f);ev.target.value='';});
+$('#resetData').addEventListener('click',()=>{confirmAction({title:'טעינת נתוני בית הספר',message:'פעולה זו תטען מחדש את נתוני בית הספר ותמחק כל שינוי מקומי שביצעת. להמשיך?',danger:true,admin:true,okLabel:'טען ודרוס'},()=>{logAct('data','טעינת נתוני בית הספר מחדש');DB=seed();cloudForceNextSave=true;save();toast('נטענו נתוני בית הספר','ok');go('shelf');});});
 $('#restoreAuto').addEventListener('click',()=>{
   let bk; try{bk=JSON.parse(localStorage.getItem('dvora_lib_backup')||'null');}catch(e){}
   if(!bk||!bk.data){toast('אין גיבוי אוטומטי שמור','err');return;}
   const when=bk.ts?new Date(bk.ts).toLocaleString('he-IL'):'';
   const cnt=(bk.data.students||[]).length;
-  confirmAction({title:'שחזור מגיבוי אוטומטי',message:`לשחזר את הגיבוי האוטומטי האחרון (${when}, ${cnt} תלמידים)? המצב הנוכחי יוחלף.`,danger:true,okLabel:'שחזר'},()=>{DB=bk.data;migrate();save();toast('שוחזר מהגיבוי האוטומטי','ok');go('shelf');});
+  confirmAction({title:'שחזור מגיבוי אוטומטי',message:`לשחזר את הגיבוי האוטומטי האחרון (${when}, ${cnt} תלמידים)? המצב הנוכחי יוחלף.`,danger:true,okLabel:'שחזר'},()=>{DB=bk.data;migrate();cloudForceNextSave=true;save();toast("שוחזר מהגיבוי האוטומטי","ok");go('shelf');});
 });
 
 /* ============ SETTINGS (policy) ============ */
@@ -1792,7 +1792,7 @@ $('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 24';
+const APP_VERSION='גרסה 29.6.2026 · 25';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 
 /* ============ CLOUD SYNC (Supabase) ============ */
@@ -1810,11 +1810,23 @@ function cloudStatusRender(){
 function cloudInit(){
   if(!CLOUD_ENABLED||!window.supabase){cloudStatusRender();return;}
   try{ supa=window.supabase.createClient(SUPA_URL,SUPA_KEY); }catch(e){ console.error('supabase init',e); cloudStatusRender(); return; }
+  setupTabGuard();
+  window.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden')cloudFlushPush(); });
+  window.addEventListener('pagehide',cloudFlushPush);
+  window.addEventListener('beforeunload',cloudFlushPush);
   // restore existing session if present
   supa.auth.getSession().then(({data})=>{
     if(data&&data.session){ cloudUser=data.session.user; cloudOn=true; cloudStatusRender(); cloudAfterLogin(true); }
     else { cloudShowLogin(); }
   }).catch(()=>cloudShowLogin());
+}
+function setupTabGuard(){
+  try{
+    const bc=new BroadcastChannel('dvora_tabs'); let warned=false;
+    const warn=()=>{ if(warned)return; warned=true; toast('⚠ האתר פתוח בעוד לשונית/חלון — עבדו בלשונית אחת בלבד כדי למנוע דריסת נתונים','err'); };
+    bc.onmessage=(e)=>{ if(e.data==='ping'){ bc.postMessage('pong'); warn(); } else if(e.data==='pong'){ warn(); } };
+    bc.postMessage('ping');
+  }catch(e){}
 }
 function cloudShowLogin(){ const o=document.getElementById('cloudLogin'); if(o)o.classList.remove('hidden'); cloudStatusRender(); }
 function cloudHideLogin(){ const o=document.getElementById('cloudLogin'); if(o)o.classList.add('hidden'); }
@@ -1825,25 +1837,47 @@ async function cloudLoad(){
   if(error)throw error;
   return data&&data.data&&Object.keys(data.data).length?data.data:null;
 }
-async function cloudSaveNow(){
+let cloudPushPending=false, cloudForceNextSave=false, cloudGuardBusy=false;
+async function cloudSaveNow(force){
   if(!cloudOn||!supa)return;
+  const skipGuard = force || cloudForceNextSave; cloudForceNextSave=false;
+  if(!skipGuard){
+    try{
+      const remote=await cloudLoad();
+      if(remote){
+        const rs=dbScore(remote), ls=dbScore(DB);
+        const rStud=(remote.students||[]).length, lStud=(DB.students||[]).length;
+        if((rStud - lStud >= 3) || (rs - ls >= 25)){   // הענן מכיל הרבה יותר — חשד לדריסה
+          if(!cloudGuardBusy){ cloudGuardBusy=true; cloudOverwriteGuard(remote, rStud, lStud); }
+          return;   // לא דורסים עד שתחליט
+        }
+      }
+    }catch(e){ /* אם הבדיקה נכשלה — ממשיכים לשמירה רגילה */ }
+  }
   cloudIgnoreUntil=Date.now()+2500;
   const {error}=await supa.from('library_state').upsert({id:1,data:DB,updated_at:new Date().toISOString()});
   if(error){console.error('cloud save',error);toast('שמירה לענן נכשלה — נשמר מקומית','err');}
 }
+function cloudOverwriteGuard(remote, rStud, lStud){
+  modal(`<div class="mhead"><h3>⚠ אזהרת דריסת נתונים</h3></div>
+  <div class="mbody">
+    <p style="margin:0 0 10px">המכשיר עומד לשמור לענן <b>פחות</b> נתונים ממה שכבר קיים שם. ייתכן שזו דריסה בטעות.</p>
+    <div class="kv"><b>קיים בענן</b><span>${rStud} תלמידים</span></div>
+    <div class="kv"><b>במכשיר זה</b><span>${lStud} תלמידים</span></div>
+    <p class="muted" style="margin:10px 0 0">מה לעשות?</p>
+    <div class="row" style="margin-top:12px"><button class="btn" id="ogLoad">⬇ טען מהענן (שמור על הנתונים המלאים)</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn danger" id="ogOver">⬆ שמור בכל זאת (דרוס את הענן)</button></div>
+  </div>`);
+  $('#ogLoad').addEventListener('click',()=>{ cloudGuardBusy=false; closeModal(); DB=remote; migrate(); Store.write(DB); cloudReRender(); toast('נטען מהענן — הנתונים המלאים נשמרו','ok'); });
+  $('#ogOver').addEventListener('click',()=>{ cloudGuardBusy=false; closeModal(); cloudSaveNow(true); toast('הענן עודכן מהמכשיר','ok'); });
+}
 function cloudPushDebounced(){
   if(!cloudOn||!supa)return;
+  cloudPushPending=true;
   clearTimeout(cloudPushTimer);
-  cloudPushTimer=setTimeout(cloudSaveNow,900);
+  cloudPushTimer=setTimeout(()=>{ cloudPushPending=false; cloudSaveNow(); },250);   // כמעט מיידי
 }
-function cloudSubscribe(){
-  if(!supa||cloudChan)return;
-  cloudChan=supa.channel('lib-state').on('postgres_changes',{event:'*',schema:'public',table:'library_state'},payload=>{
-    if(Date.now()<cloudIgnoreUntil)return;            // ignore our own write echo
-    const nd=payload.new&&payload.new.data;
-    if(nd&&Object.keys(nd).length){ DB=nd; migrate(); cloudReRender(); toast('עודכן ממכשיר אחר','ok'); }
-  }).subscribe();
-}
+function cloudFlushPush(){ if(cloudPushPending){ cloudPushPending=false; clearTimeout(cloudPushTimer); cloudSaveNow(); } }
 async function cloudFetchRole(){
   cloudRole='librarian';
   try{
@@ -1895,7 +1929,7 @@ window.cloudRestoreBackup=function(id){
     if(!row||!row.data){ toast('הגיבוי ריק או לא נמצא','err'); return; }
     await cloudBackupNow('לפני שחזור',true);   // גיבוי בטיחות של המצב הנוכחי
     localBackup('pre-restore');
-    DB=row.data; migrate(); save(); closeModal();
+    DB=row.data; migrate(); cloudForceNextSave=true; save(); closeModal();
     toast(`שוחזר מהגיבוי (${row.students_count||0} תלמידים)`,'ok'); go('shelf');
   });
 };
@@ -1911,7 +1945,7 @@ function cloudSyncConflict(remote){
     <div class="row" style="margin-top:14px"><button class="btn" id="syUp">⬆ העלה מהמכשיר לענן (מומלץ אם הזנת כאן פרטים)</button></div>
     <div class="row" style="margin-top:8px"><button class="btn ghost" id="syDown">⬇ טען מהענן (דורס את המכשיר)</button></div>
   </div>`);
-  $('#syUp').addEventListener('click',()=>{ closeModal(); cloudSaveNow().then(()=>{toast('הנתונים מהמכשיר הועלו לענן','ok'); cloudFinishLogin();}); });
+  $('#syUp').addEventListener('click',()=>{ closeModal(); cloudSaveNow(true).then(()=>{toast("הנתונים מהמכשיר הועלו לענן","ok"); cloudFinishLogin();}); });
   $('#syDown').addEventListener('click',()=>{ closeModal(); DB=remote; migrate(); toast('נטען מהענן','ok'); cloudFinishLogin(); });
 }
 async function cloudAfterLogin(silent){
@@ -1931,9 +1965,26 @@ function cloudSubscribe(){
   cloudChan=supa.channel('lib-state').on('postgres_changes',{event:'*',schema:'public',table:'library_state'},payload=>{
     if(Date.now()<cloudIgnoreUntil)return;            // ignore our own write echo
     const nd=payload.new&&payload.new.data;
-    if(nd&&Object.keys(nd).length){ DB=nd; migrate(); cloudReRender(); toast('עודכן ממכשיר אחר','ok'); }
+    if(!(nd&&Object.keys(nd).length))return;
+    const inScore=dbScore(nd), curScore=dbScore(DB);
+    const inStud=(nd.students||[]).length, curStud=(DB.students||[]).length;
+    if((curStud - inStud >= 3) || (curScore - inScore >= 25)){   // עדכון מוחק חלק גדול — לא להחיל בשקט
+      cloudIncomingGuard(nd, inStud, curStud);
+    } else { DB=nd; migrate(); cloudReRender(); toast('עודכן ממכשיר אחר','ok'); }
   }).subscribe();
   try{ supa.channel('sig-reqs').on('postgres_changes',{event:'INSERT',schema:'public',table:'signature_requests'},()=>cloudApplySignatures()).subscribe(); }catch(e){}
+}
+function cloudIncomingGuard(nd, inStud, curStud){
+  modal(`<div class="mhead"><h3>⚠ עדכון חשוד מהענן</h3></div>
+  <div class="mbody">
+    <p style="margin:0 0 10px">התקבל עדכון מהענן עם <b>פחות</b> נתונים מהמצב הנוכחי. ייתכן שמכשיר/לשונית אחר/ת דרס/ה בטעות.</p>
+    <div class="kv"><b>בעדכון שהתקבל</b><span>${inStud} תלמידים</span></div>
+    <div class="kv"><b>במכשיר זה כעת</b><span>${curStud} תלמידים</span></div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="igKeep">⬆ שמור על הנתונים שלי (ושחזר לענן)</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn danger" id="igApply">⬇ החל את העדכון (פחות נתונים)</button></div>
+  </div>`);
+  $('#igKeep').addEventListener('click',()=>{ closeModal(); cloudSaveNow(true); toast('הנתונים שלך נשמרו חזרה לענן','ok'); });
+  $('#igApply').addEventListener('click',()=>{ closeModal(); DB=nd; migrate(); Store.write(DB); cloudReRender(); toast('העדכון הוחל','ok'); });
 }
 async function cloudApplySignatures(){
   if(!cloudOn||!supa)return;
