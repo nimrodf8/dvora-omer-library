@@ -1,0 +1,1423 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ספריית דבורה עומר · כפר סבא</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --teal:#0d8b8d; --teal-d:#0a6d6f; --teal-l:#e7f4f4; --teal-xl:#f2f9f9;
+  --orange:#f0871e; --orange-d:#d9740f; --orange-l:#fdeede;
+  --lime:#9bc53d; --lime-d:#7da82f; --lime-l:#eff7df;
+  --ink:#1d2a30; --muted:#62757d; --line:#e2eaec; --bg:#f4f7f8; --card:#ffffff;
+  --danger:#e0533d; --danger-l:#fbeae6;
+  --shadow:0 1px 2px rgba(20,45,50,.06), 0 4px 14px rgba(20,45,50,.05);
+  --shadow-lg:0 10px 34px rgba(20,45,50,.14);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:'Rubik',system-ui,sans-serif; color:var(--ink); background:var(--bg); min-height:100vh; line-height:1.5; -webkit-text-size-adjust:100%}
+h1,h2,h3{font-family:inherit; font-weight:700}
+button{font-family:inherit; cursor:pointer}
+input,select,textarea{font-family:inherit}
+.hidden{display:none !important}
+
+/* ---------- Topbar ---------- */
+header.topbar{position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:14px; padding:10px 22px; background:var(--card); border-bottom:1px solid var(--line); box-shadow:0 1px 0 rgba(20,45,50,.03)}
+.brand{display:flex; align-items:center; gap:14px; min-width:0}
+.brand .city-logo{height:38px; width:auto; flex:0 0 auto}
+.brand .titles{min-width:0; border-inline-start:1px solid var(--line); padding-inline-start:14px}
+.brand .titles b{font-weight:800; font-size:17px; color:var(--teal-d); display:block; white-space:nowrap}
+.brand .titles span{font-size:11.5px; color:var(--muted); display:block}
+.spacer{flex:1}
+.count-pill{font-size:12.5px; color:var(--teal-d); background:var(--teal-l); border:1px solid #cfe7e7; padding:6px 13px; border-radius:999px; white-space:nowrap; font-weight:500}
+
+/* ---------- Layout + Sidebar ---------- */
+.layout{display:flex; align-items:stretch; min-height:calc(100vh - 60px)}
+.sidebar{flex:0 0 232px; background:var(--card); border-inline-end:1px solid var(--line); padding:16px 12px; position:sticky; top:60px; align-self:flex-start; height:calc(100vh - 60px); overflow-y:auto}
+.nav{display:flex; flex-direction:column; gap:3px}
+.nav-item{display:flex; align-items:center; gap:11px; width:100%; text-align:start; background:transparent; color:#41525a; border:none; border-radius:10px; padding:11px 13px; font-size:14.5px; font-weight:500; border-inline-start:3px solid transparent}
+.nav-item svg{width:20px; height:20px; flex:0 0 auto; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round}
+.nav-item:hover{background:var(--teal-xl); color:var(--teal-d)}
+.nav-item.active{background:var(--teal-l); color:var(--teal-d); font-weight:700; border-inline-start-color:var(--teal)}
+main{flex:1; min-width:0; padding:24px 30px 80px; max-width:1240px}
+
+/* ---------- Generic UI ---------- */
+.view-head{display:flex; align-items:flex-end; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:20px}
+.view-head h2{margin:0; font-size:25px; color:var(--ink); font-weight:800}
+.view-head p{margin:4px 0 0; font-size:13.5px; color:var(--muted)}
+.btn{background:var(--teal); color:#fff; border:1px solid var(--teal); padding:10px 17px; border-radius:10px; font-weight:600; font-size:14px; box-shadow:var(--shadow); transition:filter .12s, transform .05s}
+.btn:hover{filter:brightness(1.06)} .btn:active{transform:translateY(1px)}
+.btn.ghost{background:#fff; color:var(--teal-d); border:1px solid var(--line); box-shadow:none}
+.btn.ghost:hover{border-color:var(--teal); background:var(--teal-xl)}
+.btn.danger{background:var(--danger); border-color:var(--danger); color:#fff}
+.btn.sm{padding:7px 12px; font-size:13px; box-shadow:none}
+.btn.accent{background:var(--orange); border-color:var(--orange)}
+.card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; box-shadow:var(--shadow)}
+label.fld{display:block; margin:0 0 13px}
+label.fld > span{display:block; font-size:12.5px; color:#51626a; margin-bottom:6px; font-weight:600}
+.inp, select.inp, textarea.inp{width:100%; background:#fff; color:var(--ink); border:1px solid var(--line); border-radius:9px; padding:10px 12px; font-size:15px; transition:border-color .12s, box-shadow .12s}
+.inp:focus{outline:none; border-color:var(--teal); box-shadow:0 0 0 3px rgba(13,139,141,.16)}
+textarea.inp{resize:vertical; min-height:64px}
+.grid{display:grid; gap:14px}
+.grid.two{grid-template-columns:1fr 1fr}
+.grid.three{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:760px){ .grid.two,.grid.three{grid-template-columns:1fr} }
+.row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.muted{color:var(--muted); font-size:13px}
+.tag{display:inline-block; font-size:11.5px; padding:3px 10px; border-radius:999px; background:var(--teal-l); border:1px solid #cfe7e7; color:var(--teal-d); font-weight:600}
+.tag.out{background:var(--orange-l); border-color:#f6d4b0; color:var(--orange-d)}
+.tag.lost{background:var(--danger-l); border-color:#f2c9c0; color:var(--danger)}
+
+/* ---------- Controls bar ---------- */
+.controls{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:20px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; box-shadow:var(--shadow)}
+.controls .grow{flex:1 1 240px}
+
+/* ---------- Book grid ---------- */
+.section{margin-bottom:26px}
+.section-head{display:flex; align-items:center; gap:10px; margin:0 0 12px}
+.section-head .sh-key{font-weight:800; font-size:16px; color:var(--ink); background:var(--lime-l); border:1px solid #dcecb8; color:var(--lime-d); padding:3px 13px; border-radius:8px}
+.section-head .sh-count{font-size:12.5px; color:var(--muted)}
+.section-head .sh-line{flex:1; height:1px; background:var(--line)}
+.book-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(158px,1fr)); gap:16px}
+.book-card{background:var(--card); border:1px solid var(--line); border-radius:13px; overflow:hidden; cursor:pointer; display:flex; flex-direction:column; transition:transform .12s, box-shadow .12s, border-color .12s; box-shadow:var(--shadow)}
+.book-card:hover{transform:translateY(-4px); box-shadow:var(--shadow-lg); border-color:#cde6e6}
+.book-card:focus-visible{outline:3px solid var(--teal); outline-offset:2px}
+.book-card .cv{position:relative; aspect-ratio:3/4; background:#eef3f4; display:flex; align-items:center; justify-content:center; overflow:hidden}
+.book-card .cv img{width:100%; height:100%; object-fit:cover}
+.fcover{position:relative; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:16px 13px; overflow:hidden; background:var(--gc); background:linear-gradient(140deg, var(--gc), color-mix(in srgb, var(--gc) 70%, #000 14%))}
+.fcover::before{content:""; position:absolute; inset-inline-start:0; top:0; bottom:0; width:8px; background:rgba(0,0,0,.17)}
+.fcover::after{content:""; position:absolute; inset-inline-start:10px; top:0; bottom:0; width:1px; background:rgba(255,255,255,.22)}
+.fcover .ft{color:#fff; font-weight:700; font-size:14.5px; line-height:1.22; text-shadow:0 1px 2px rgba(0,0,0,.28); display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; z-index:1}
+.fcover .frule{width:30px; height:2px; border-radius:2px; background:rgba(255,255,255,.5); margin:9px 0}
+.fcover .fa{color:rgba(255,255,255,.85); font-size:10px; font-weight:500; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; z-index:1}
+.book-card .genre-bar{position:absolute; inset-inline:0; bottom:0; height:5px; background:var(--gc)}
+.book-card .cv .avail{position:absolute; top:8px; inset-inline-start:8px; z-index:2; font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:999px; box-shadow:0 1px 4px rgba(0,0,0,.22)}
+.avail.ok{background:#9bc53d; color:#283a0c}
+.avail.out{background:#f0871e; color:#fff}
+.avail.lost{background:#e0533d; color:#fff}
+.book-card .bd{padding:9px 10px 11px; display:flex; flex-direction:column; gap:2px}
+.book-card .bd b{font-size:13px; font-weight:600; color:var(--ink); line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+.book-card .bd small{color:var(--muted); font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.shelf{position:relative; display:flex; flex-wrap:wrap; align-items:flex-end; gap:6px; padding:18px 20px 0; min-height:175px}
+.shelf::after{content:""; position:absolute; left:0; right:0; bottom:0; height:15px; border-radius:5px; background:linear-gradient(180deg,#ecd2a6,#dcb87f 45%,#c79a63); box-shadow:0 7px 16px rgba(150,110,55,.22), inset 0 2px 0 rgba(255,247,229,.7)}
+.spine{position:relative; flex:0 0 auto; border:none; border-radius:4px 4px 1px 1px; padding:0; width:var(--w); height:var(--h); margin-bottom:15px; cursor:pointer; background:linear-gradient(90deg, rgba(0,0,0,.24), rgba(255,255,255,.12) 14%, rgba(255,255,255,.16) 50%, rgba(0,0,0,.18)); background-color:var(--c); box-shadow:2px 3px 7px rgba(40,60,65,.22); overflow:hidden; transition:transform .14s, box-shadow .14s}
+.spine::before{content:""; position:absolute; top:8px; left:5px; right:5px; height:2px; background:rgba(255,255,255,.5); box-shadow:0 calc(var(--h) - 20px) 0 rgba(255,255,255,.5)}
+.spine:hover{transform:translateY(-12px); box-shadow:0 16px 24px rgba(40,60,65,.3); z-index:3}
+.spine:focus-visible{outline:3px solid var(--teal); outline-offset:2px}
+.spine .lbl{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; transform:rotate(90deg); transform-origin:center}
+.spine .lbl .t{width:calc(var(--h) - 28px); max-width:calc(var(--h) - 28px); text-align:center; font-weight:700; font-size:13px; line-height:1.15; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.spine .lbl .a{width:calc(var(--h) - 28px); text-align:center; font-size:9.5px; color:rgba(255,255,255,.82); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px}
+.spine .dot{position:absolute; bottom:6px; left:50%; transform:translateX(-50%); width:7px; height:7px; border-radius:50%; box-shadow:0 0 0 2px rgba(255,255,255,.65)}
+.empty-state{text-align:center; padding:70px 20px; color:var(--muted)}
+.empty-state .big{font-size:54px; margin-bottom:10px}
+.map-grid{display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start}
+.map-unit{flex:1 1 150px; min-width:140px; background:var(--teal-xl); border:1px solid var(--line); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:6px}
+.map-unit-t{font-size:12px; font-weight:700; color:var(--teal-d); text-align:center; margin-bottom:2px; padding-bottom:6px; border-bottom:1px dashed var(--line)}
+.map-sec{display:block; width:100%; text-align:start; border:none; border-inline-start:5px solid var(--c); background:#fff; color:var(--ink); padding:7px 10px; border-radius:7px; font-size:13px; font-weight:600; box-shadow:var(--shadow); cursor:pointer; transition:transform .1s}
+.map-sec:hover{transform:translateX(-3px)}
+.map-sec.edit{position:relative; cursor:grab; padding-inline-end:26px}
+.map-sec.edit:active{cursor:grabbing}
+.map-sec.edit .chip-x{position:absolute; inset-inline-end:5px; top:50%; transform:translateY(-50%); border:none; background:#0000000d; color:#b3261e; border-radius:50%; width:17px; height:17px; line-height:15px; font-size:12px; cursor:pointer; padding:0}
+.map-unit.edit{position:relative; padding-top:8px}
+.map-unit.edit .map-secs{display:flex; flex-direction:column; gap:6px}
+.map-unit-inp{width:100%; font-size:12px; font-weight:700; text-align:center; padding:5px; color:var(--teal-d)}
+.map-del{position:absolute; top:5px; inset-inline-end:5px; border:none; background:#fdecec; color:#b3261e; border-radius:6px; width:21px; height:21px; line-height:1; cursor:pointer; padding:0; font-size:14px}
+.map-landmark{flex:0 0 64px; align-self:stretch; display:flex; align-items:center; justify-content:center; text-align:center; background:#eef3f4; border:1px dashed #c2d2d6; border-radius:12px; color:var(--muted); font-size:12px; font-weight:600; padding:8px}
+.terms-doc{line-height:1.7; color:var(--ink)}
+.terms-doc h3{font-size:20px; color:var(--teal-d); margin:0 0 2px; text-align:center}
+.terms-doc .t-sub{text-align:center; color:var(--muted); margin:0 0 18px}
+.terms-doc h4{font-size:15px; color:var(--teal-d); margin:18px 0 4px}
+.terms-doc p{margin:0 0 8px}
+.terms-doc .t-intro{background:var(--teal-xl); border-inline-start:4px solid var(--teal); padding:12px 14px; border-radius:10px; margin:0 0 14px}
+.terms-doc .t-sec{margin:0 0 10px}
+.terms-doc .t-sec b{color:var(--ink)}
+.terms-doc .t-sub-item{margin-inline-start:16px; color:#3f4b53}
+.terms-doc pre{white-space:pre-wrap; font:inherit; margin:0}
+.sig-wrap{position:relative; display:inline-block; width:100%}
+.sig-pad{width:100%; height:90px; border:1px solid var(--line); border-radius:10px; background:#fff; touch-action:none; cursor:crosshair; display:block}
+.sig-clear{position:absolute; top:6px; inset-inline-end:6px}
+.stat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:18px}
+.stat{background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow)}
+.stat .v{font-size:26px; font-weight:800; color:var(--teal-d); line-height:1}
+.stat .l{font-size:12.5px; color:var(--muted); margin-top:4px}
+.stat.warn .v{color:var(--orange-d)}
+.rep-card{margin-bottom:16px}
+.rep-card .rep-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; flex-wrap:wrap}
+.rep-card h3{margin:0; font-size:16px; color:var(--teal-d)}
+.rep-card .cnt{font-size:12.5px; color:var(--muted)}
+.rep-table{width:100%; border-collapse:collapse; font-size:13px}
+.rep-table th{text-align:start; color:var(--muted); font-weight:600; padding:6px 8px; border-bottom:2px solid var(--line); white-space:nowrap}
+.rep-table td{padding:6px 8px; border-bottom:1px solid var(--line)}
+.rep-table tr:last-child td{border-bottom:none}
+.rep-more{font-size:12px; color:var(--muted); margin-top:8px}
+.rep-empty{color:var(--muted); padding:8px 2px}
+.sib-chips{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px}
+.sib-chip{background:var(--teal-xl); border:1px solid var(--line); border-radius:999px; padding:3px 10px 3px 6px; font-size:12.5px; display:inline-flex; align-items:center; gap:6px}
+.sib-chip button{border:none; background:#cfe0e1; color:var(--teal-d); border-radius:50%; width:18px; height:18px; cursor:pointer; line-height:16px; font-size:13px; padding:0}
+
+/* ---------- Lists ---------- */
+.list{display:flex; flex-direction:column; gap:9px}
+.litem{display:flex; align-items:center; gap:13px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:11px 14px; box-shadow:var(--shadow)}
+.litem .cover{width:42px; height:58px; border-radius:5px; object-fit:cover; background:#eef3f4; border:1px solid var(--line); flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--teal-d); text-align:center; font-weight:700}
+.litem .meta{flex:1; min-width:0}
+.litem .meta b{display:block; font-size:15.5px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.litem .meta small{color:var(--muted)}
+.litem .actions{display:flex; gap:7px; flex:0 0 auto; flex-wrap:wrap; justify-content:flex-end}
+
+/* ---------- Modal ---------- */
+.modal-bg{position:fixed; inset:0; background:rgba(20,40,45,.45); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; padding:18px; z-index:60}
+.modal{background:var(--card); border:1px solid var(--line); border-radius:16px; max-width:580px; width:100%; max-height:90vh; overflow:auto; box-shadow:var(--shadow-lg)}
+.modal .mhead{display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--card)}
+.modal .mhead h3{margin:0; color:var(--ink); font-size:20px; font-weight:800}
+.modal .mbody{padding:20px}
+.x{background:var(--bg); border:none; color:var(--muted); font-size:20px; line-height:1; padding:4px 11px; border-radius:8px}
+.x:hover{background:var(--line)}
+
+/* ---------- Toast & banner ---------- */
+#toasts{position:fixed; bottom:22px; left:50%; transform:translateX(-50%); z-index:80; display:flex; flex-direction:column; gap:8px; align-items:center}
+.toast{background:var(--ink); border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:14px; font-weight:500; box-shadow:var(--shadow-lg); animation:pop .2s; border-inline-start:4px solid var(--teal)}
+.toast.ok{border-inline-start-color:var(--lime)} .toast.err{border-inline-start-color:var(--danger)}
+@keyframes pop{from{transform:translateY(8px); opacity:0}}
+.banner{display:flex; gap:12px; align-items:center; flex-wrap:wrap; background:var(--teal-l); border:1px solid #cfe7e7; border-radius:12px; padding:13px 16px; margin-bottom:18px; color:var(--teal-d)}
+.banner b{color:var(--teal-d); font-weight:700}
+
+/* book detail */
+.detail-cover{width:128px; height:178px; border-radius:8px; overflow:hidden; border:1px solid var(--line); background:#eef3f4; float:inline-start; margin:0 0 10px 16px; flex:0 0 auto}
+.detail-cover img{width:100%; height:100%; object-fit:cover; display:block}
+.kv{display:flex; gap:10px; font-size:14px; padding:6px 0; border-bottom:1px solid var(--line)}
+.kv b{color:#51626a; min-width:104px; flex:0 0 auto; font-weight:600}
+
+/* barcode print */
+.label-sheet{background:#fff; color:#000; padding:6mm; display:grid; grid-template-columns:repeat(3,1fr); gap:2mm; border-radius:8px; box-shadow:var(--shadow)}
+.bclabel{border:1px dashed #bbb; border-radius:4px; padding:3px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center}
+.bclabel svg{max-width:100%; height:34px}
+.bclabel .num{font-size:11px; font-family:monospace; letter-spacing:1px}
+.bclabel .nm-top{font-size:7.5px; font-weight:700; color:#0a6e70; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px}
+
+@media(max-width:860px){
+  .layout{flex-direction:column}
+  .sidebar{flex:none; width:100%; height:auto; position:static; border-inline-end:none; border-bottom:1px solid var(--line); padding:8px 12px}
+  .nav{flex-direction:row; overflow-x:auto; gap:4px}
+  .nav-item{flex:0 0 auto; border-inline-start:none; border-bottom:3px solid transparent; border-radius:9px}
+  .nav-item.active{border-inline-start:none; border-bottom-color:var(--teal)}
+  main{padding:18px 16px 70px}
+}
+@media print{
+  body{background:#fff}
+  header.topbar, .sidebar, .view-head, .controls, .no-print{display:none !important}
+  .layout{display:block} main{padding:0; max-width:none}
+  .label-sheet{border:none; padding:0; box-shadow:none}
+  @page{size:A4; margin:8mm}
+}
+@media(prefers-reduced-motion:reduce){ *{transition:none !important; animation:none !important} }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand" id="brandHome" style="cursor:pointer" title="חזרה לעמוד הראשי" role="button" tabindex="0">
+    <img class="city-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAiYAAACqCAYAAACZI4TMAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAALiIAAC4iAari3ZIAAAAZdEVYdFNvZnR3YXJlAFBhaW50Lk5FVCA1LjEuMTITAUd0AAAAuGVYSWZJSSoACAAAAAUAGgEFAAEAAABKAAAAGwEFAAEAAABSAAAAKAEDAAEAAAACAAAAMQECABEAAABaAAAAaYcEAAEAAABsAAAAAAAAAN+TBADoAwAA35MEAOgDAABQYWludC5ORVQgNS4xLjEyAAADAACQBwAEAAAAMDIzMAGgAwABAAAAAQAAAAWgBAABAAAAlgAAAAAAAAACAAEAAgAEAAAAUjk4AAIABwAEAAAAMDEwMAAAAAALLLdBIBfLCwAAVzJJREFUeF7tnQeAFEX2xt/EzSxLziCIgSSYXUUwJ9QzK2K8U9TzL2bPgIhgOPXMWU9FET3jmdMpKopZDCgCIjkuaYFNE//f1z2LGyZPz+zs7vvpo6p7Z7qre7q7vq569UoURVEURVEURVEURVGUBthCqaIorZypM0rdSNrA8mDM8/lQE7LyMcNnMlUURUkrKkwUpZUDQZKL5FHYbrBaYcJ1fD5Uw6pg5bBlsDmwb2Ffw+ZBrASQKoqiWIYKE0Vp5UCY9EYyD8ZWknihYPkF9ibsJQiU2VypKIqSKipMFKWVA2HClpIvYA5jReKwi+cD2P0QKO8ZaxRFUZLEHkoVRWm9FMOSFSUkBzYK9i5EzvuwvYy1iqIoSaDCRFGUwlBqBQfBZkCc3Auj4FEURUkIFSaKoljdpcvWl/+DfQ5xsoexRlEUJU5UmCiK4g2lVjMQNh3i5AxzUVEUJTYqTBRF2RxK0wGHHj8FcXKVuagoihIdFSaKoqyFpTt42q0QJzeE8oqiKBFRYaIoymrYJjObViZAnFwUyiuKooRFhYmiKBtgS8xs2rkb4uSoUF5RFKURKkwUpZUzZvhMP5JMRW7lCKDHIE76mYuKoij1UWGiKAr5LJRmgk6w+8ysoihKfVSYKIpCKEw4WV+mOGzqjNJzQnlFUZSt6Fw5iqIYQCjMQLKPuZQROFvxzmOGzywzFxVFUbTFRFGUP3khlGaKHjAdpaMoSj1UmCiKUsvLMMY0ySR/mzqjlD4niqIoBipMFEUxGDN85gok08yljNEFdrKZVRRFUWGiKEp97oWVm9mMcerUGaX6LFIUxUAfBoqibGXM8JkLkNxvLmWMXWBDzayiKK0dFSaKojTkNthcM5sRHLBDzKyiKK0dFSaKotRjzPCZnDfnYnMpY4wMpYqitHJUmCiK0giIk3eR3GQuZYQBU2eUloTyiqK0YlSYKIoSifGwV81s2ukK621mFUVpzWjkV0VRIjJ1RmkbJG/D9jZWpJdjxwyfmSkhFBPPtJ70fcmH5cByYVXu0UvXIVUUJY2oMFEUJSoQJ+2RvA4rNVakj4sgTDI+uR8ESCESttb0h20P48zHPWEM/FYMK4B1hP0LwuQqpIqipBEVJoqixATipB2S52EHGSvSwyQIk+tD+bQBIVKEZCcYW4Fog2DdYW5YNO6BMMm0U7CitDrUx0RRlJhAMKxHMgr2sLEiPbDlIi1AjLSHHQubgsWfYJyw8FbYkbBtYLFECQmEUkVR0ogKE0VR4gLixAM7H9mzYRQqVkN/DsuACHHCDoD9G4s/wzgX0OmwPjBFUbIUFSaKoiQExMmTSHaHsaK3ks2hNCUgREpg5yH7Jex/MAopjvpRFKUZoMJEUZSEgThZADse2cNgnxkrUyclYQIx0hF2LbI/wh6CMdS9oijNDBUmiqIkDcQJA7HtC2NI+RdhjBqbLGtCaUJAjBTBrkD2B9hkGEfUKIrSTFFhoihKSkCcBGHvw07EIke7jIX9F7YMlojD6NJQGjcQJCcj+QbG+X26cZ2iKM0bHS6sKEpamDqjtC2SbWGMDbIdjENyOey41snVB9sIK4P9DnsW4obLMYEgGYDkdtjhxorMcJd79NJLQ3lFUdKEChNFUZoVECWXILkBxqi0mUSFiaJkAO3KURSlWQBB0hv2FrJ3wjItShRFyRAqTBRFyXogSI5A8jksk103iqI0AQkJk8lP3dBh8lPXt4ipyYPBoHZjKUozAKKE89O8AaOPiqIoLZyEhMn0P7574I15M1+66L6L6cDWbDnqxuPHHDjhqBduefbGeMJQK4rSBECQuGGPI8vQ8foioSithLiFyZE3nnDpWs/GE6v8Vft/v+q3j/76r3N3CP2pWbHf+FH/t6RyzZQ1NeuP/3je9+yrVhQly4Ag4YgeDjn+q7FCUZRWQ1xvISfdcsaI+eWLPvCLz2XDV4LBoLjs7rI+hV3Oe+na514JfSyrmTHrQ9fEV++5fZ2nfFxAfDgKmwSCIh1y2l7y0Y1v3h36mKIoccDWDCSdYF3qWGdYL9hr7tFL30aaFNg2t8tw9/sYK7KHB3BcF4byiqKkiZjC5PKHrujy6dJZn9f4q/qKzSZrsY79OA5BrY5/O+a0fWhAx21uvufCexhMKev4avbHrjtef3SnlRXr79jk2zLCjiOujfhkxzE4be5A/+Jexz73jymvhVYritIAiIUiJENgpbDdYANhnH+GLRsNnyNXowJn90vCYD/c5puwnY0VTQdjrHCiQj7yGGelEjYNxzUVqaIoaSSqMKGD6MjrR72xwbPxCDtECWNN/wX364dBpyzDck9U7EHok1xHzlqXzfVbvsu9uNhdyBs5rpaYdEL9Ue6p7LTFW7VTlb96e1/Q53SgzJyMw4cyM8ITRYoDB+C0u9YPab/tAU9e/jhDWltG8cRJ3E0Hc8kSeF7Xlk8YX2EuZh4cE9+MrfTNMRWuyGocV5Wxpg7YH89fAYyfyxTVMFZMNTSUi/lWB0RCIZKRsGNg+8PinZX3ClTgd4TycYP90bH+HdgexorMQhHCGYi/gM2CzYMth23CsfA6iAmuVV7HvD+YthbKwt234cD5YYtajrnU5PhhvM+ZsvxeHEciUYrTwtQZpXlIOppLGYHHzOPneaD49jKSM9ImJaqAOGTCXyauql53vd0WlFlBm9zhqJFz3GWyyJ8nz3jbyB1Bl/TE39qFBEq2QlHFs/4zjmGULSD/cG4yOnOO9RZLN5Sf4iTfWTB3+3a9933qsseSmq8jHLgROcnZFFhcD7Y4cME4Y+pR8T4MrATHMxQJK45cmFW/OI+JUT8PwDE1mkof++Qb6rEwPkQyBX8vXjJe2BbYOthqGFsFWWHRWOYVKDM/16KAQOiP5AzYSTBGbk2UhIUJ9skHMkfeHGCsyAwrYe/BuN8vUeYVXJksuFZZoXBCQ4qTFnddhIEvKCfhHmBsmZjg/LyPhC1uHmNF08IKmfd5bcXMiMN89vMeXwCbA+N9vhjHZ9XzOyYQJpxz6iUYnz2ZoO55oDDhM5jnYTFsPuwX2DyIlYz2iEQUJsffdOqRCzYvez2IKnyZ2FEz+GRy7hppY2eVHpTqoEO+8xbJc/4CeSzgNL5TgK2xvdeNv9d61bL2qt1JuJqsbgHqfpY0/Hyi2zHbYm1SiRX9sfYSCKujXBulI9Ig1r9R3U5O8BfKThAnAYiTts6iDyYfc/moEbseaMmNgxvxVCTpaPp9DDfLuaF8xsDxvI7kSHPJUsbieB4N5euRxn2mSjmM4oRC8SPYFzgGVnTNFogDOrQzqupoGFtLkiUZYfIcEs57kwk+hj0BewflZAuvJeBaZYsAH+TtjRWtg2Nx3b8aykcF5+drJOwGbC5QsCyEcS6mD2AzcKxLkKYNCBM+6/jMyyb4rKNQo+jmefgSQiWVyTpjUrc+38rf7x3X95uVsz+vCVZ3qcBHeqDSfjRnnfR2VhktDYT/OiCyKiBKZvsKZE4gB6W3y4agTcqD9iZ/XaA4yce/3ewB6W7zy86OSpS/0ih3AP8yZSvP1JoOMtafJ0MhTrhc7GrzyKeT3z6P20gV3Ih8wD9rLlnOhbhJHgjl0w6OJV03zAzYSBwLFXsjsF+OzDjaXMpqWMF9AvsP7F0cT0pT+GcSiAI6m14No9itnccmFRISJtj/zUi4/3TC64uO+veibLzmLAfXKs8ju4OYthYSESYU8U3RTWcVrKB5j/OZ/haO2/IudQiTUUjYgpfNUKyxjJzbimLTchoJk9c/ecn9z/cf+2Czb8u+QZtNVqOyftVVLru6yyFKGo8urhUobIHgKBc/Ur8Ru6zRpjMOW3ZctoA4KDpYrgZlovNrdcAud9d0kokBtwwLfa53QbcrXxv/H04QlhJpFiZs1TkYNwdvlLSC42C/8EyY1Q6J1K8UJVTiYWlGwqQuf8CegrFla5WxJkuBKBiD5BZYD2OFNcQtTEL7f8ZcShvsQrgRZWLk2LShwiQ6LUCY1IXdHA/DnsDxxzXxZDw0E2FSC8X+h7C7IFDYxW8ZjZTGPR8+9c8tvop96ZdBn4z7nZWyi5s+GZFCnrCzhy0kkAH4jhOVu9tOC8D8kgMz8/Ut11gf/m+RjNuKuD1H4+25UA4UaWv5GsKWkzx87nz3Ojnf5pP5hqAKyJKKVf88ctLx9GvIZti/OwU3e09zMa3wTTodoySejCZKmjF9YTfCfsDvcz2s2FibRbCVBMbuE4oCK0VJ3GD/HOVzv7mUFhbBToUgOSTdokRpddAP61+w73F//w0Wd0ywFgSP+SDY2xBU78P2NNZaQL2TefSkk0Zv8Gy+2AZx8QMq7dvsNXKYe71RgYeDLRI1QaeYQ4fNNpIqLFMMkAA2vxn1Jz/H1gmuNj8ZlHUBt5hR4bnGNDrZkj/X/Gn8l9umb0vt9upS7ndhjc1YX/sdlntz0GWsYxkbfodQsJQ4vHjFWy8H4BvruPWgz7a6csOTp9x6ZlMPWYxFb9iTuCnoQJoWsG068v3DXLIUDsFk5d2Soc/BRNg3OI8c2ZIVQBAMR8IWsEz5dDQCZWCX0b9h6RJt9CHZDYJkmrmoKGlhG9hjsP/hHh9krGmdUKDMgDi5G5byBJtbhcmZd5w7eHll2QMMPjYXq89HekbOeqMFpHF1bnaDLPQXyj9qOsssX7E4Uamvh9i4rqqTfFyWI/ZgQH70tZErqjvJXTVd5HVPR9nid+BzQVnsL8D6jnIfvvugp4vc7+ls5L+uKBR/wHSc5fZrjfIlELTL894OchM+dw+29z9PO/EEbNgr5BryY7CdO2C/Yp+2UMvNT8hfWdNJ7sbnX/N0kE1+iKiQaKoL/Wa6O6tkknuDdMHBbsH3awLVbX4vX/z8pQ9c1i30sWyFoxgSHpqZAFfA0nEObi2fMH5pKN/S4dvVK3hwPQKjf3iTAUFwJhJ2bfQzVjQdFGy7mllLoR/AaRAkf4VZ5tiqKDHYD/Y57u+zzMVWCUfBjIN9BnGSkpOzIUzOveu8XvM3LJriCdS0pXvoCeKXy93rpa3da7Q6RII+JSt9NtnL21aer+wov3nz5UGU7bBFdlm+ReQ3n1MWb/TKh5ttcqI/X+6a65Qaf1B+DeTKdHHIP7D+nXUB+WQDXm+wbt/f7bJwfUBqbA5ZK7myDrbFlsM2DLxe58hPlUH5boNP3sf3RvmK5Ml5LpntKZTjawqk/Jd1snydV85FWaauKpTyGhuEiUsW4vPT8fkLsf/rVhXL6s0BI35JQ9jds71ri9zn3mjUwj6IE0/A2/+blb8+O/au8xn0KZu5CDfE2aG8ZWCbbGo/31yylO9hGXPczSLYJTYd5zWZIbgpA1HCyfCehHG4d5OBcvAhfpm5ZCkcETMCgkSDoClNAVsKnsD9fZu52GoZDJsOccJRqUlhCJOl5WvGbvJVDqNfCcdHdbUFjGHB4VpKauHfejiqZYeAV8YtWiOfQkBcArGw9/JN8gxETYdCh5yUs1ZeLlklzxSukZPsAZlV7hd/QOQw1zoZ76wRqfLL9TXL5eGSDbKbHVvcUC1uB+SWp0i2WVYkPZYWydnf2+SPjTbpgn1NLlgjz5eUyRNFZXICtvfxhqD0tlXKFFeVbLt+k9zSdpUc7/LJuWV2KdvsldNzsf92q+U/bVbKBEeNPFZjl6+W+cMKk1ra2PxShKOjVya7pDZ6N41cWr76YvOvWc19uCEs6+MLcQOM8SWs5rryDMYGyDJ2gVGc7G4uZgaIgZuQJBWN1UpQDl5PnKMqyl2YFHTC2w+i5EdzUVGajCtwf/8bZvU13pxgUMypECeXmouJYQiT00qPndDWVXgfF9ujUr476JJJ1R1lrc+11X+kIfziskCu3BZwSadil1xrL5NjXAH5vHORdOrVUVxBv8wNtJEPHB3lY2eJrMVzyNarWDZ47UY3y572SpGSHHmvqKs8gc9MXbpFJto3SvcSh+xl2yhfu1fId+5lcmP3TdK9CEIIgibfjbf4vKC0yQka0VvtgYBUBexCZ9suQzvL/1xd5Xe2JlX7jHLPDRbJ/xwd5H17B5lpw5fXbpEeEXq/OLLoZ2+RjK1pL3NQViOCWNAmbZwFTxwyYMQE81NZDfvsn8HNQJ+QlMF2DkWSDr+IFyBKLPXgbobQ2fTtTIkTiAEOxb3GXGpyGCeFgfqshKNCRkGU0G9JUbIBtmDT96S18y+Ik8tD+bgxhMnog8f4Zkx+96LueR1vsqGK3hGV9L0QJ3fQLwPCI5zTKFkXcAibQK5d4pVlqzbLJTllcqXLJ4d8Wyl/bHHKi9X5cvJqp4xe45APN9TI2+s88tkfNRK02WUbR6WMd/rkZr9bJny/QSavXCZjdy+AaMErOrTFwC5uGdQ1TwZ0yTFaUVgCxhkJQCzQ82TnLZtlD9kkP0uRnLLeJXdCRJ2E/Ty+okpOKVsr+W3y5ckt2P8qp5xU5pRpSypl7IZ1skNnl/gbHA5FzLeeYjnLUyLLsf823FvQznmA7v78pvf/Ou7EcZmMOpoK7CJ4HBWe8bsmC75PZ9p0OKYyKM/1ZrbVwyBcL+Fcp7VbB6KEs/MyTkiTg7JwtBJ9lqyEouQUiJLmco8qrYe/4v6eFMq3Zm6HOEkoIGi9CuytCS9f16ew+/UUJ0NtAblbXPJoDZ1M7Y3aXel7Msi+RWZ4lskn3TfJwO65eGWvkcucq2X6Dh7p1SYoZwXWyEf+ZfJxYIV87Fsh09uuk4P7uw1hkGsPyEWuNfJGxQr5uucmGbdPgRTnmn4r1A2+AC1opHV1BPO5Np+cWbhRzti1QEqd5fKpf7lM93E/y+VDWSnj93RDVPjl/OBq+SiA9fj7R67VcvU++YboocCphaLka28bGe0tlppaUYK1vQu7TvrfjW/w7a65cQSMcSlS4W+wdERovKt8wvi5obwiwqHe0/DwYrOn5UAI0JfjQXMpK2CrDSf9swq2vFGUtNZuQSX7uQ73d5ONfssiHoA4OTCUj0mjN+tXr3tuUo/8zpOCQbsMRSV9XSBHvvC1adRqwqV8R0B27+6QPXvnGBW+L2iTIldQSns5JQfSpTfEyd59XLIXlmmlfdzSJpfDcU0BUuAMyMH9bLJTN5cxWobr4gKf65BvM4RMAcqwR0+HlPZ2Gfsd0ccpfds7JICN9SmWrftn2rnQDAJXC8XWZr9DHvQUScBmM/pCOPqne16Xy14b/5/m/GZ/JW4GBndLGHyPk+alIwon552gb4FSHwpAy53lIErosE1HVysnXEwalIdD708zlyyBDtSMUaKiRMl27sVzlcOKWzMcsfNviJO4RniGbfJ/4/oXr++QU/wC549xo/b+3g+ZEUY0cFVty0btn5l6/Db5sLKNbPA7IRBqP2Na3daKP79v5hOB5eG2arfBYcbrfU55r6rE2D9FBz9Tu31aw2Nga8nyYK48j1wH5Pnn9u42V7814YWWUIE+jJshmTgsbGpPR9C268snjE/r/ArNmAvwWx0eylsFRz0xzk1TwIdQQ3hdWSWSOKEiW0o2mIuKktVwckcGY2vt9ILdbWajE9EXoY07/3WO0nGitjZif9DiwBAEsHdthVKBCp8eIZmA+63E/t4K5Bn7j4+grA1NQEhZkmvPLduz5yAGfWoJMF4GnWHjnlAMnx2I5O/mkqVw7hjOIaNE5macf0tGQHmm9WRXXKYDunHeEM6h8S3sV66oBeXZCYmV5TkHooQtcIrSXDgG93fWBFlsQk6YOqOUs5ZHJaIwyXPmltS2SMTSJPw7Wx9qP8cgaoUwipq6XUD8e11Lhkjb4P7tKLCx39A++XfOk1P3cw2p/awhTGzu9YcNPYjT3LcUBsDCztobAXZfWe3vwDl9rjWzSeEIpS0dVt4px6KBCGBTaSYc7jhJIWcaZVRg9h0zdsFQCAZGW2042SNj4XC+JSu4HdvP1rlE+KgJ11qkKGQ8xEms+yBaddVSmAhxEnX28ojCxGF3xBXmnGexIuiUP7xBqfJtEvGvk+9rXDI76JAnPG3lB28R7lQGpw8aXSl1LVEolBgHpa5xu9z+j9428rCnnfyIssyoyZGAb6lUecvkt4oqw48k0oH+ud70ffH7/S3twjgWNwPjkUQFn2FI4RPNJUt5oHzCePoDJAsnwVsDY5TYdBmnMud+OBmXF9ZUMFBeqsKQItCSIeMRWACjGKEIORj2T9iHsIWwRl11EEocGn2CuZQys2DZPHSf4Y8Ww1bAwl1n2WC81ithzRm+7NQeS8Pji2T8LJ8j7P7j95uCYbDjzWxE+NushIU7BquMw+oZIbmpnnXbw6KO0olYCY+57axLfl43/855NptMtNfIhbmrIQEaf5yi4DtvgdzQZh85Eu8KbbD8QY1Ppq+fK8vtLjkgGJBb3eWyCRLgQ3++ISToAeLDd3vg31Nz1ok7Qtj7WrhXOtY+U91efofIqFVM3MZBrmrp7PDJJE+xvAox1D1QI/t3GiKHFRTKFiiXjwIuOafsfSlFGfzYe90jYNm/xPdGeNvKEPy1rbPt3BtGjdt5/70OseTGRSWTztmFE+V4CISXQ/l6oJx8y+NU8FYHaFsG2wX75QMhKVA2Kmv6JiQhZROClxX3w0g39LFhC8DesL1gnPMmU5yC8/V8KJ8QoS6Tr2BWtU7UZR2MAdoeDSdAIoEyMcCSFf3r/P0PxL4/MhezD1yrfM/h9cM03ddrsrAymgKzapLSpphd+DsY4yyxCkjkRZL3N+9zin+Kdw5fpx8e73He75lwFOccVfvgnIW9PqbOKGX52A2fzuuHzwc+87mf7jBOmcHAj/xt2MoescHCQjgD+7Axw2eGfZYkLUwoMDb4XfKkt53MhwDost2R4nC6UNWLVFdvkbvmvye9nHlShe+UNTzF3AyExqOOSjkttwzfiX1tsavmjZr2coIP9RSEzFZCWZ5pzga2xlchF257kJQUtRef3ye5DqfMnv2q9MF3LnSvl06Omq37CydMJkCYHNAyhcl62L64IRi2ux4oJ30S0hEM6Fzsr1kHGcK5oeMaH4JjYRQq6Yb+OIeF8gkBEfA0EitHvtTyFmwcRAFbS+IG5WE3HIUSH3qpMgX75zw/SorgmubEhqeYSynTFMLkS+yTYsISUC5WxPSvOw7GayzdTuMUJlk32zVEEYUZgx+yVYfh5NM9T9xZECZPhfL1SFoZUaSwpaMSAsNtc8um316S9T9Pk42wmt/fknEutxyDyn40RO1FNtPG0exm+lfYQIiEuj4oxB70GYKBQqQh2zmq5QqHR6631zEuw66Cncd8jlvaLHpHvD8+ITL7GalG2s8elCJbQPJsbGmNhClWbOzPaZm0g9EZtt5srljm+lR8QCLBG48zvDZr8AApgz2DLGfk5YOrnmNnGhiO3yThoGsQATsgYfmsZjIEAaOqJiRKQrASskKU8K1qsplVLCD2m2B2YwuJCUvA/R2A/Qxjlze7W66D0YcqXWRlXBOIBA/sa9iVWOR54PmIu3U0CSK+aKQgTETy7H65KneN3J67Um4p2CK3FlYYdkvBJrkxZ5XcmGvapJAZy1wPuxPf2cm5GbLlzyJwDM96Vy/52t9BfvYXY+nPNho/cv0clTIB370yZ3UUWyXX5G+S6wqr5drCKli1XId1l+askQKUN57WmRYML7aHzOxWGC64j5m1DF4e1+BGj6YEmxU4liDsFWTZ3dXwHFoJm5kZGC1RTocxFI+VsJVkfCifDFaNQngE5fg9lFeUtIF7fAOM80rtA2OXUTo4DMIqLUEVrQLiZA2MM4CXwtjNnw5Kp84o5USxjYgoTNwOJwfVbO0qiQTnvXHZg+K2ByQngvFv/Ex9Y8uI1xxNYwgQn1S6u8m7OX3lG49Ndqsulrc97Yzd2/E3zmXDETacgI+T6zGtNS6zHJGs9jPR4WcdjiBj0bdsTsFNQedFtpZsh+RC5i3mKdzcn4byLQoc12bYBcimY3bcWg4IpXHhmdaTfcVWOy5fAjFwbyifMCgTm4XZBZYqfGN72MwqSmbAPf4TEo42S4dPUz8YXxKzHogTdv1zYEQ6ZuymPw0jlTciYiXs9fvoWBQTCge2bGwM5MjUqnx5rMIlj1c4TasqkKeqiqQskGt8hp81DS/Sjrbya8EuMttXKGuCeRAdufJzYX+pKZsjfptDtoGgeNqXL9X+oFQ4u8svvvayLuA2nGCpMf7cFg8iKL/5CuSRynx5vDJHHttiw/5d8mhlnrxZUyxeaI2YugT4g36/zQYV1fKZDFHCgF4MEc5KzUrWwqi0WzR4cDEIX1IzZ8bBUPw+nEcyXkbC+LCzinshSuIKhBSFQbAdzWxKvIiy0FFOUTIK7nGO0qOT8NfGCmsZEUqzHogTRldmi2w6xMkhobQeEYUJK3yjMo+jRjfG2fjXy8buB8v6HU+XqiHnSeXgc2Vhj0Nkbqd9xOfdLA6j1SNoWtAni4p3kZcrfPKL3yXHVraTJY4+sgACZUnAJyXilS74XAcImKC7q7zs7iezvSITqjvIe94S7I2tLKYfCuOQMG8POmXFNkfK6m1PEMce/5CNO5wuS7b5i6zM64W/xRO1mlsFLdfHpC50SnwBRgcnq/knbmgOmWzx4DjvQnKPuWQpHGJLi5ejQqkV0Fn1KjObEuyOSjUGDW/GZu+npDRfcI9zWC19IShSrIRdJM0GiBPei+fAOKrISoZMnVHa6FmXcrcFWytoRY6gdPVukZKK9bJtTp70cTqlfc1m6eqrlEKHS3519JUfvIWyyJeHT7vF4/fIQO86+SWQI3OwhaVVa+TQ4EbZvuOOUp7TWUodNrnYtV5sue2kxLNFVgdtssVmk3f9ueIN2GRVsI185m0rv2CbWwIuaWf3SmdPhXSs3iT98wuks69aumD/3SBK3LZ4GkFCgiR2n09TkI75QNjHaXUwqB9h95vZVgO7xVKJ0xIO/jZxza3hmdaT0WL3NZdShkNJL3ZbM1MvW3FShW+qX5hZRWkaIE7mILE6aOGA4omTrG6tTisQJ3wuMFgiozxbRQmMQ7XrkZIwYVVeBmGxIpArq6WD7Lr+bTl45VTZftZ1suvsCXJB+Uty/pZXpLx4qDznzZclfpcM93SQOb5c6VO9ROa62sqgYLVMctTIEMcWab/+dTk61y9f5nSQ85wrZXtXtRRU/SH5RSXiwc5K8dw8CZ+zu9vLS9JVVvvtMgHi5D/e9hAmlTKmbJocvOpF6T7jXBm++GEZteYlGeJbKMshYqqCdK2NBv5qaJOQQMku3oOxhSPbuQ43cauafj50vOwSs5p4HZIZdyDhUTwReBqihEM6UwJiiTMIM6ZKqryC8mTlDam0OhhBe76ZtQTGUUmkVTQrgDih743Vzv+N5nSLKkyiPRHYSrLa55Zbqovliuoiuaa6jUzy9ZIbfX1kgn9beSowQDy29pJjLxBfbjsIEK/8EHRLB2x0UTBf8qvnyV+K2kqwoIec614uefaA+G0l4qhcIRN986SD3S8MiBYIVMquVculuOP2cqBjg+ztWCU1eb1lhzbdZaE/IPkSkAUBdhTZZHagh1zn6yGTAwNlsr+/UZ4JNSVyEco23cu4RzGecVQu2fkYrIIx1kijGCRZxMuopN8M5VsVOG4Kx/fNJcuI96HF4bgpt3wCXmPsmrIC+rswcFMqMDrn22ZWUZoW3OOcqiRszI0koQ9Zc51xmK3iVnZtJdZiYrQwRKio6VfSIbhQhvYeLjsPO1X23u1sOfWoSTJg8AkyaKeTpSSvu+QHK43hwD0qF8uGoi6ybcAj57j8sqdjC+SEH09ejwyze8VlM3cStDnFWb1Y+gZWSE6oAYPWtmaF7GLzSGdnjdgduVJYOU+KituKzVEoh+fly0m5fsm1eWUbh1f2HHoKynCiHLbfZXLofpdKvx2OlEEDj5MCCBz6pEQFfw5Gb1ZpKly4MTiung5I6Rxfnyy8aTnPTmvm8VBqFYwvEw9WxAkh77lHL7VK+PJBk6pYYll+M7OKkhUwXICVLcJWh2nICGOGz6QPIYMuWkWfqTNK6z0vkn54sIp3OrtI77Lvpce8D6Tb4q+lYNEs6b3gI+mzYLoM8C4Xu92Fit4tzqrf5VCnR2oKu8tfXculLQSE39ZG8jd/Kf19v3A0jIhvkUgNzLNM/DXLJGjkYf4V4g9skKEV30ienYOG7eLzrZVhm5ZKx66DZF9ZLUPsGyBznJJv90n336dLrwX/k87LZ0v7Rd9K/8WfyvaLPpXuzrpRUcJhihZzzE92AnFCX4bzzKWs4m6ULd2Bx7IdDivkHClWEW//M+edsAIrZ3+2ohtnBoRSXCMDFSVDcEZrK1ute4XS5sh/Q6kVMMJsvbguMYVJ1BYEm0NGyu9yUnCWHL7pVdn116vkBPlZTvJ/LyOcq/Bdbh6CAMKjfdUy2VPKxc2RNvxuYB2EyEoJeJaL5PYTe4+x4hh2izj2uEecMMfud4t94PVi63giSpknwaolplAJerDJHHFv/lVKvWukOFgugaAXgsUmRTafHOP/Vk6U2VK68EbZb8WdcqJtjpyC8vV3VmPPUQ8mlMZoVWkathYKAoDhpDlnSbbAwFd3mNnWC34XziXzjbmUGTzTevJmtuLhxonNrAyixCi0qWK197+ipATucY6isPIe7xRKmyPfwqxqvedLGP3SthJTmMRqP2BLhV9yJGBvK0FXH+QhPSAc6B9SS9DmklzPCtkhuEQCgfUiVYvEVlQqzn0fk9y//ij5F7yJ9D7JOe4fknPkReKG5Rw1TnJPnih5Y5+U/L9/Ju7Rn4pj8CQUyC1SvRjb2Sj9Nn8vuXZ20JilZO3tt+UaZQg6+0jA0Rt5l1k+4xPRwLeNzcQ64qyAIeStbEpLhQm4YTmkTsmwMAHs7ql3QyfJb+7RS/GGkDoQS5y2ipMgpgJHof1sZhUlq5gdSq2g3vQgzQy2DnPGZivgyMLEhIllDQi2oASql4it+ABxHfOW5I59TtyH/E2qum8vvoK2sqmqWlatXSlVNVWydsNa2bRlk3i8HllVvkEq8tuKc9BwyTnxOsk9b4Y493kY5aqSgG/xVlGSOqHtNIM4JiHlfjasqfvgPwi14CgmVoZNj+fC5oPNijD0HA5pFXz7SfVNkNO+c2ZqRck2loZSK7B6ComMMWb4TDqnW3UuGCWa4mQrUYWJUUWnXO9jA4GNeAdaKs7hj0juOU+La7fDxQYxQpatWCifff+pzPnjV3n541fkf199IH8s/12mffCc/LZwjjz/wfPy3+mvQi+YgsHesYe4DxuL7Xwr9j7jRKoWYm32iwmrgSBYg4TOsFaOKU8ExrxIx+R/zRkrfUzi+V3ZlcMWilRZFEqtoD2sXn9xEix3j16azsnDFCVZOEu7VSQS3TkbYR1kBVQZ9URaZGECJZCyJuH+fBAO9mLJHfOluA89V6SQ8VT+pKKqUuYunSs57hxxOd3StX1X2X3QntKrU09ZvWGNbN9zOynMLZRAoH5njL1bP8k9/TZxjnhcgpWLUV4KuNRLnKUB1sICccKug7+bSxnn4dD+lT+x0mOffh+xsOpiLQulVsDWklTfBC3pVlKyDqsq4qas0DkC0ao34fziiZOaT4XTGCtfHuppkYgn5aw7zrn8u7I5t89HRT3RXiMX5q5OsNsEn4UosbU9UvJO/JdUdOolb3/6pozceV/pWNLR+ARbQdh1w9+ZDSJV1VXSoaSD8bfK6grx+nzisLO8NinIK4Bm+HP/L3/0siFgenbqLt4vXhfvu0eLOLrjo5wXKD6cEpAvPcUywttWhohf2rvazb/u8L/vfEDpYbz4UgYX3Wgkz5pLKcEYIceH8o3Afm5HwlmCMwVbBnZBmVaZiwrB77AbEqvm1bgI5/e+UD4snmk9OdOxFZFRz3GPXmrJcGeUifFXOA9TsjNLMxrxLJRn63nENjnnDmd8jSeEcyTYsvQQttvqY6PgOn0OiVVT7x+L6/TVUD4q2O8YJPQ/SmXWcU5zwC6EZ7HfjDeV4xiGIuHoSCsExec4Bs5i3CyZOqOU8UysejE+YMzwmVsnTIx4ck+//exLf1w771/zkhUmwUpYQPLO/Fh8vQfKfc/fLZdNv0TuGHmHjBw6QnbZcVfjY1sqt8iy1ctkm+7byM+//yQlRSXidrll2ZrlMqDvAPxtqRTlF0mvrr2Nz69et1re++o9eXTms9Ipr0TuO/dO6d6xm3imPye+D6AD8uIfGt5QmLRzlswbP+r/hh2w16EofOrgIs6UMOHNSmfYsBMipYELUJ50Tv3fLMHvsD+SD82llPkLzvFroXxYLBQm41BhJz2TcLrBcXKukifNpZQ4Hcf5TCjfasF12iTCpCWAc0chYdUItvdw7qyYgbtJgDBh3cY6zgpGQJhsnZE+YldOoNapIynw1eo1knPkNAlClDz28sNy2ecTZVi74XL5p5fLzNlfis9vhigIBPzy7W/fyoZN6yFMfpY3Pn/DWO5U0km+nv0VhMgqmfmT+exlkVaUrZQzXjtDyn2b5KN1P8nVT02QDZs3inu/k8Q++HozFkpSYtZmHLMVMjjT4OLmG8hZsAXGivTCH+MxM6s0wKoQ07w54vH7oJ+PFW+NDI+dzfQPpamiDrVKqtCHyiqae5weq54bbAmt1xgQ1fk1ucYqfKlmsTiGTRbHzgfJ25+9I3//+GIZWjiIHTYyuLhUXv75Tbnq0atlS+VmaVNYLDtvv7OUFLeT9sXtpXTQ3jKgz0CZv3S+7NhnR3E6XNK/p/lcmvrOs3L1fybI4JJScdqc0jengzyz/AP513/ukhp/QHIP+7tI4R44zCRHr/J4M944aA0QJxzJwKZS9o2lC56da7EvDXwVHivid5DVsHhmaGYcASta96yq+NMFu3JShSJOux6VVDGb7q2h2YZZmDqjlH5kqYYFqIXhARIQJqyGEq2og9iHq53k7HeG/L5ikZz2ymUizm6o802V47DZZXHVGpm/dpHUeMxJc9llk+PKkaNGHC27D9pdtu+zvRyy1yHSo0tP2XeXEbLLgF2MlpX1WzbIe+s+N7ZRSy9Xidz0zY3yzoy3RNp2EtfIa3GYyThO40B5rM3I+bUhEAycgO0icyktTME+pofySmOgii1hDs5zPHNR8DNWjMra0TOtJ4fsZR0oF4cRDjSXUoLnKh6HYkWJxqBQagVrQ2lzhD4TVkWu5ct0vXszujBJBs8Kce5yg/jadZV/v/Vv2a/9TnLnHuOk0v/nzP3FjnxZU71exj16hSxYGr73oa6jKx1kb5xyk7w6+20ZlP9nBO6Nvgo5ZdsjZPzuN8i179wqK9evEdfQ/cTW8XAxIssmAvdn7DJRJZZdoEKjE+Pd5pLl9CqeOMmK4aktDpwXvj00miUzST4LpbHgzWzFiBrOTpytrSacPZmTAqYKz5MKEyVpcI/TMZsO7lbBVu7myt4wq+oCvjTUaz2KLUwSakAIGJ9373yYzFk8X279ZrLs028POeXAEyXX4RRPwOwBoOioDtTIs4uekgXLY7tFlG8ulym/vi6rIGacodYSesAsrPpejtvnaDl8t4Pl1zVfyrsz3xHJLRTH4BNFahKMlks9Emo0aQFcCdvq4WwhdO60agbalsZRMCuisJK4WqXco5eye+IPcykl+IA5yMxmHaNgdO5OlT9wvv58O1KUxGGXohWtd7VYGT8o0xwbSq1g+ZjhM+PvyjEq6URqav8ysXcdI9Kxu3z47YcieT1NEeKpgRDxSVtXoazzbsYmOb4HCgY6pWF8knD4A35Z5FlnaCR+b4u/Wuxs4XD1k/KKTeL1e6W4ZIC8OusNKa+qENeOe5qDDhMZXWhuvEUok/IJ41lhnQFj9DmrOR9vDtk4kWCTgfPBbpBzzKWUmQtLJD6MVSGyT/FM62l9C2oKhLpxTjKXUubHUKooycJrMf54FLGJx48s65g6o5QtwweYS5bQKGJ21AcR6+mE8AXEuU2pbPb55Y3Z78nD+10jnYs7yZKVS+SWQ/8hxw8aJRftfJp0zm1v+In8c8Rt0q0DJxaMTn5uvjw88moZUtJfVng2ylmDj5FdOg2Sz898WlaUrRCf3y+PHHa9zN28VBYu/UNsHXuJrS27cxLwLQoJkoSPOUuBOOEIBIoTK4N+1XI3KuN9Q3nFPM9WzKhLODQ8EQdmq+Km7A7LtlaT42BWOL4S+l8pSlLgecfROIy0bRV0hGyuLSZXwKwUaI1eGqztygkwxtmOsmbjevmo7A3p2q6rdO/YVSqqK6RNQZHMW/WHHLTrAUYLx6/VK+XovY+UIdsNCX05MiVtSuSsUWdIYU6BrK7+WXbZdmfZoct2sn7TenG5XBIMBmS7nv1lY6BC/lixQMSdJ7ZO2K4/AWHSUhRJHVDBcbz9JeaSpbDpfwpu1u7mYusF54C+JRPNpZShiEw07s0smFWzfF4dSpucUGsJuyStgL4lPE+KkiyXwqwahULYBcvRd82KqTNKj0RiVQycWhiwrh6xu3LiBp9G5W4rbGsETePgH7crR4b0HyK5ObmytnydHDJ0f/H7AzJ9069SVT1fNm6JXzhwQr+Vm9dA+bSTZWtXylF7HyHzl/8ubfPbSK/OPaVzuy6ypvpXWVpmzitkb4s6M4GenK0H28IECsTJw0geNJcshV7ZFCdWKudmBY6dvg+PwroaK1LnVfxev4byceEevZTNwT+YSykzAoLgr6F8U0NBPdjMpsx3OE8a5l5JCtzndPS8zFyyjB9wrydSQzU5ECUcKv2AuWQZdABu9MyzsCsHNTu3llcoldWVMnrAaYZAKWnTTnbss4McuNsBMrDvAJnyISejtckpvU+XLhAT8UKRc9D2IyFMiuXxL5+VNevXyKkHnyLDdhgm2/bazli+eqdrDH8WYssrSExZ1R5sYmqsucCH/Mdm1lLYz8hw+K0VBpqzKnIjJ3tK9ly+G0qt4BaIE47SaTKw/72QjDeXLOHNUKooCQFRsg0SRgu2ejTiJ6G0WQBRwjmwXoJZ2WpEvh4zfGajIbTRu3ISUiahGt1mNxxei3KKpV1Rify28Dfp0qGr4Qdy7uMXywMLXpNd83vJafucJL27xR+rhmHqj9pnlJzQaS9Z5Vkv+zy6j8xdNM/YthHWvmyZ9O+6rXh99PsE9iSbPuhU28KAMmelx7De6Yh8OQ43b7a8ZWcEHG8ejA8rRtu1ikfwOyXb3fA6zKoRJ5zI6kmIgyaZkh37Zffg0zCrJmrjvFcqTJSEwT2+HRLOrURxYiXsep1pZrMfiBKGEuDLjzmPjLW8E0rrEVGYGNVzQq0H2BQbpqq3SGFegTzyy/3igpjoGJqU79NZM+TjDTPEH6yRI/rvLwftGd7PjqHqV5aFnz2+X49+8rf9zpBFlbOka/5gmTbjRaOLhyN0duizvTzz9YtSUlhsfDZYlWBAzGDtTEAts8kElR6b/Om8RZFiNffiJuZbbosHx8lJvDicl1F2rYJj5pP2U3GPXsqROfQnsgrOBzIFIsEY25YpsD86GPKtzMoWm/dxfjIxVYPSgsB9zuGwbNWwKppzXb7G89iKYf5pB6LkVCR8tgwzVlgLfTnCtvZGFCYuh/PPh1JcjQj4EOr04JZNUkxxkNtBPvj+I2nftoMxx81Pi36B6tgsx3baW/p27meEmm8IJ/O74alJcuAdx8hrn/AlsLFIKC4oltG9T5f1AY98sPwL2bh5o+RDCC1bvVymL3xbtu1mPtMC5StjtQc1wmFzOFDWBL/VfMDNwAo1HbMQ8+2a/ibZPudK0uDYesBuRfZzmFURXmv5P/w2CUYEbIQVk9zVhZNGPpeplpNQSwlbNjgxoZVYMmuy0jrAPT4M9h9kX4al63nGbWc1ECT7wthaNBXW2VhpPR+MGT4z7JDpiJWwx+8zo6FRG8TbiABt4l81X0qKIB66Hymj9z/RWM1RM93bd5Enj3hKLjrkPDn1kPpOvYxT8tmsGXL+IxfLzbOfNRpejvvvpfLUW88Y/ip12XXgrnLbGTfJLXucL5fsfqYhesjOOwyTi/a4VDpjP+KrkWDZHCgNOvbHi018Qb/fZrM3K4ekREEFyKn00zEJH5v7nsRNbUUwrKwAx1IE2w9G52F2s1wFs7qivgK/SdjmzAThTMSMgWIlFCcfQDSkNSosts8WGr6dWi1KOET4PTOrKOHB/d0TNhpGYcxrxqy40gOHCfOtO6uACHHCtoddAOMsv/RJPMz4Y/p4IpQ2ImJbyJjbzrrk53Xz75yHj0x01MiFuauhT2I0nfgWib3H+ZJz5l3y9tcfyl6D9jB8S2bNnSU5LreM2HWkBAMBsdtRd21aazjKSlWF1LhyZN7yRXLx01fI2poNYrM7xeOrkB1KdpBJJ4+XgV3pb2PDd31ic7pFclg3BOX3pQvklz9my+B+g6VD2w7y3W/fy0477CztKtZL5UN9IbvwPVvketIJCfSlp1hGeNvKEOTbOovn3jDqop333+vQBPuBwsOLHUmiwz/DwdgWrCQsAeWiYnsfxgrBam5HWa0a5smysuuEby7pFoxUuGwlpJMXLh5cEmZsEqv7l+vCYXL/gHHfsVrqePPRkz/iEENU8Jwn6R5zyVI4p8dV7tFLIz5IkgHlLUDCmAgcppyOuXpORJlfDOWVELinnkNi1ZDPY3FNvhrKRwX7ZaycEli8r7pWU3uPt4MxgBYFN0d+MVaO6QOQfh7F+RobyjcCooA+Xgxgls5zxG2zy4J+Fqxc2V3F5x3PRyJv86nA+Et7jRk+M+xzPbYwsUGY2OMUJkGGcl0h+RcskHV5beWx1x6VEUOGy4RXbpUnzr9fenTuKVWeannmfy9J7x+mye/tB8o26+fK3E47yaacAnl37nRjTh2etUAwIP3b9JSBvYbJ4LI54rO7xe6tknUOt3QYNkqO3+cIw0/1soeukoOGjJQ/Vi2UETsNlyHbDRXvZy+L923U43kc0RqZ+sLED2HSFsJkHITJIS1amBCUjZUv+w5jR7hLnNNRXjqHpgzKybcLjp1vifCmTKTr8CSc1xdC+UagoofSN6LGpqNfnPAt6hZU9hS1SYNy8uHHPnwKEitDfNeFb30jUdamqgSzliYUJqyMrJxrprlB/749cL4iDu+HMOGzLutaVNLAiRAlEV8aoj8UY+iQRtggRj0B8c2eIfm5efJH2WKjq+WYIYcbooR8OvNtmfvhpfJJVYUsX/KZfFy5WYoXviWj5z0iU90b5JW8Knk1b4u8ll8t//L+JPv+9oRUbPxNfOt/EM/meVK0YZZUfjRJ/lj0qzjsDvnLHqPEbrNL2aZ14nLjeef3iO/n1xJ//0r0WJs5uDnofMVRJaFhTJbyIB5CVnlwt+SutUT9maJWsqiEOQJlkrmUFkbC3oOw+Bx2AYziNi7wWSdsMOw6LH4HY991ukQJr5nxKkqyjpZ8L8fDtGiiJERruGY/iiZKSNQHo+G+kehpyukgnq8fkLzqCjnviLGG/0j/7n9ODrp/775y6xE3y/V9d5cbRpwlk3c7XE7tvqP0KughfY++SXr13EP6HneP9Oyyk2xz3AMysrCNnDnyHBnddaCcVnqGnDrgKDmj9BzZrpP5or9NN7Olff+dRhgjc3xzvpLgUrysO6K3ljQiGFImIZ+V1gBuEr75WtbtUge+uT8DccJmSSWDoDJmoCArfFaiUQpjoKUfIDRmwu6FnQc7HLYvbHfYSNjRsHEw+jSxJedbGIWTVWHmI/EIzgNbTBQlW+AMujeZ2VYNX4SvMbORiSpMjKo60ZYEe5HI5q/E8/lLMmy7wVIMYbG2nF3UJi6nW2xOl9gcLrHDbA4nvmMXvz1PgiXdJJBbLMGOvZCWSLBDT/GjAAFXDv7uEr8rV/w5BRJw56NcZsEYw2RTZbnsNXRvsVVtFu9H9+Lp3MqaP1IA4uRuJE+ZS5bC7oTHIU70x8g8jFKZwHwMSYObXThM/P9gD8HegtGJ9QsYR4D9F8br628w+gqlw4+kIfNhVgZnUxQruBnP2kaT1bVCbhszfOZXoXxEYjclJ9yAgC/k9hTf52NFFvwofXtvL6s3rpVfFvwii9eskFVrlknNJ+PFu+S/Uv3VfVLz41PiXf2J0R1j91SK3e8RW7WZ2muqxOZZJ77P7hIp+1z8X90vwd+eE/+vb0iV1wOrkc9nfyE7bjNIciB4PB9Pk+CqlxJvLalD62kvqceFsHRMcnYUbLKZVTKFe/TSOUg4gqipSLSLyirYVXABjj/VodeKYiUfwe40s60a+jTG1dUcvSuH/yT1vuvA/zlS9fJFUrhprZx/wgXy3dxZ0uf67nLm85fLLVVd5ObKIrl5i1Nu3Jwjj3m6Splnk6x6+1+ydvk3svq/N8q61T/Imtcmy5e2znJ3TaE84O8oD3iK5EFPody3fr2c/dDFcvq/zpE9Bu4uQ/oPFt/3H0DAnCeS1wv7T0JehI6zNb7eQ8lXIDkNlo5Jpa4pnjjJqqnrlThB5fwIEkZQbU1cg+P+XyivKNnAKti5eMb6zcVWC+eqOnPM8JlxRaiO+WZDlwtW1glX2I5uIltmSNXzV4q7vExOP3yMvHfGezLPXiA3VW+SJ4JueTKYK1MkR+7358iZlTly6sqlclp5QE5dsUhO2yRIF8sllXa5utIj11Z45LpKr1yG9Mo1s6QK5Zp44tWyU/8h4vv5E/G8drBIDuPAJPaytvW4arVMa1QmINTMeDYsHQ5qD0OcsClfySxsCYvZbNpCeBqi5J+hvKJkA6yEOUKxtUceplP+KRAlcUe7jVqLs47Owz+VQZsEap1D4wY1vWsbCa5+TqqmnCfBFb/LwXsdLB+Oe06u3vEEWV0xXzyeddIlGJAifHaVzycrg3ZZ6febacAvy5H68fdhNpv0C/qkumaZtPeVy4P73SRPjHtEBvTdUXzfvS+eF0fiSNqjwInHvvI1OK5W5PvaCNxAjPTHuBpW0xZGZ1jGD1AyBCpqzsnBYaHNIvx1CjCIWsTYEIrSBLAmORPP1A/MxVYLW+NPgChhN07cxOzKaY9/5wcdUgVLvDEBW3BDnKz7r1Q9eazR3bJNt95y4zk3yjfnvSVjdzhONvmr5MeKX2VOzSrZ6C2XKn+leLBui2+LlHk3yM9VS2RWxRwpcRXK3XtdKl9c/Jqcf+xYaYeS17xxn3heOUTE2RlH0sbcX4JUhpxoQ9+1Jb6FlgVuJM5wy6GcVjMIxu4FJYNAnCxCwpghbFJuiXAytFNwnNXmoqI0OYxXMgbP0ufNxVYLfb2OgShJePbziMKEAc4IIyH9FLRLedCJDydTbeM7rm1EfMvF89LBUv30VWJfPEd2HbCLTIJA+fiKN+SdU1+QO/YaJ6P7j5KRXXeTvTsPlSN67itjB5wgjx04ST4/92159coXZNyJ/yf9O3czBE7VwyeL/8uLRHJ7QU6wlMlJio0BMzKsDf/5xV85eLuB6ZjkrrlxAYxDO63m+OKJk24I5ZUMgUr7RySjYOFnx2y+cATQUTi+DeaiojQ5a2BHQpRw2H5r5hfY/hAlSbUYRRQmDltwrtvuoBur/GSzye/+XFTdybYn4Hts0cjrI4Hfb5fqxwdK9ZTLsOHp0tsWlEO3HyyXHnWG/PPsCfLA+XfIQ3+/U+4ae4vcePo/5G/7HSWl3XpJx4oN4p3xglQ9NMYQOMFNn0KUMIZJ1EafiLCdxAvBNT/oEk5pyiMrduf91rlDT3OOoFYMbip2AdAZtsxYYS0TIE6OCeWVDIHKm0HNOKX3b8aK5g+jjY7CcekIHCVbYOyc4Xh+phQZuQUwBTYcouQnczFxItbq5x405n+59twfA8Gg9EK1/aovP8nunAa4+uAp2UsCC+6Umv/sL5X39ZTKe4dI1SNniG/qleJ443ZxvXW32F6ZLJ6nxknVg8fi712l8qF+4n33JAlueMsMNe/glCbJCiUeeFBWB3LkTQiTrhBHNptd2uYUcyI0BeDmYgXG+BPJn+TIML4Ju3aUDIJK/Fck+8M+NFY0Xzj08ngcD53qFKWp4YvctbAD8dycZ6xpnSyEnQxBwtE3KbViRhQmw4cd7CnJKZrCLg56LD4cdMqPviJjfpnUwW4pUHJhLg7vdUFwvC/+RfeK7+cbxfvjBPHNuUUCyx6RYCVEl6On+Tl+3tHV3EQKmOIqKB95iuS7oE0cyOfa3au7te3Y3B/YloKbjHM2MIS41fCSojMsHYOUDILKfCWSw2F3GSuaF3zYnYljuAzW2sObK00PhwBzLrTd8KxkALV0TO/RHOCMyYxXtRsEyX+MNSkStR9kp647Pp3nyF0SRMXdzxaUu72FstyXBxlh5TMBReAcO46OIk62poSMwoXLjCRrdChFLWrcsKXEgfJ/6ymWfwZyZTCOKwhx0tZV9Pwd592Rjq6LZg1vOCSWXGwN4PDhh82skklQqXtglyLLLrUlxsrsh0GqSlFuNhMrSlPCqMqMlr0Xno90cp1rrG190LGeAdOGQZCMh1nWrRq1tp98zqR1nfJKbmCbAl9tZyK93tNe5nkLjMqdLQ0pd+2kGZaPvjEsK1t7Ngec8mp1B/mbt1hc+KM9aLSWrBrQqe8d5jeUMJwHizX5VDKcUjxxEmeYVZoAVPIMGc+p6DlaKltbIBj0j/FYDkJ5W4p/jNL84IzzM2AXw3aCGDkLxvmfWhsUH3R5OAU2FGLkepjlLzcxmyFeH//ik+3cbZ70owLvhsp9Or4yBuLk+aqOstKfK4GgGBU+jZV/IsbWi3iEDT/Dz9fug2KC343HfChfRdApi/z58lp1exlX3VlODhSIExt1YztOu9vbs7DLuXf9/c5l5t4sxZpmHvZ1NSG4ATkBFZ1h2WRnNTdDnBwXyofDGUoV666nraCyXw2j8NwXxngg2QIrgvtgu6B8D8C068Y6rHyeJHJNNulzLEH4zKPzJltGGHhyGJ6D+8LugS3Gcrqw/B5PAfoXcqI7TlfCe5FhBwZDiPwF9jwsbfNxxaML5KIHzs35ceXSf5f7Kk4NclAtvjYbtgfKfYh4ZZjTI13tXsmHcIjXU9KNTxbY/NLG5pUce8AoCLfbEAqRioBDlgVyZVXAhdQpG4IOCeCjW0OQEO64wbJxVoN2WQT7HvY7PrCtLSiF+AsDxuU6cpZ3zWt/9mvjX0iLFzUq3EORMBplKkOQc2Dv4GZoyrlPDHA8RyPhcF8rRy7xYbUUxmBEjZoCsU+2ZHE0SWsfxk2BdgXOUVpDrnum9TwMCSflOxhmjqXPLPQj4VBLihHO+aNYDO4pznJ7JCyu8OBR4L17Ma7Jj83F6GC/TyIZBmtqXwxWDZtgFLssC0UInz2M9cNnEQMSUnysxrFltKxTZ5Tug4QiIFOjQ3ke6CtTex4oROiHxm6a2vOwBiIk3qrdEhorgSgcMfG4cWU1G8dX+2vas3vEB2WwGptYGypyFzMxqD0K7qBunvBqyMPanrDBECWDbT4Z7tgi27oqsebPQclO5H735ctdnrYyLeg0XqG4Ed4NlJVBfJCfbSRQ6kAvyyKIkVykbEGhP4nL7vQVOwunDuu6w/h/XXBHOlpKlATAA8t4S8BDQN+KswQIlN2QnA77C6wH16WZWbDnYM9DkLByUBSllZKQMCGXPXhpzzlli84p92w+scrv3c4f9HHgDir8YNztJfwCP0mZVoH8Elh3rHnUuUX2z9mA7ZgjZZb5c+WCmg4yM2g3nG+pOihGar8ftvC1K2s/gNSYuVjs3jyn+49CZ+HbnQvbPj3l8ifS4TOhKC0KCJQSJOzmOSKU9oNZ0b3Gob4MwsQWoDdh30KQtPoYQoqiRKjb4+GBV+7K/3bBr4PXVW/co9pfNaTG7+2cY88tDP05KtX+6k1Ou9Nd4/f1RX5bX9Bn99hsMidok8/cG2V3V7nRfXNzdWe5V1yyoyFV7JJrz1ua43DMLnDlLMx15C9dU1W+2VBFkcEfg4Eu+cWr2ue1nz+073YLxh79f0bDi6IoiQGRwhDL28E4oopN8jvCusM6wjhRFRszaxs0a5uH2QVHEcJmcjYLU4x8D2M02oUQI3yFUBRF2UrSwsQKnnzjkbzpv30xcOWW9eeurdl4DttKdoU9nLtKvvUWyaG+NrITlnMduet7FHS6fPi2u7188UmXsk9MUZQsAGKFPlAFME7USHFCY4sKBUkVjMGn6CRXoS0iiqLEQ5MKk7rse92hF270VtzHufcfcFTK5wG3TBeHFIujemC7bQ9/5sp/Tzc/qSiKoihKS6UpvO7DsvjT378efODQNrm+qr0+DLpkhc2OVy+bdM/veNlL1zybjgBfiqIoiqJkGdk0ZlpO2fWI8YXO/B/yJSjOYFCKXUXvvHn9y/eG/qwoiqIoSgsnq4TJX48cW7l9u16THTaHuO1u7+CO/XWKfEVRFEVRmpYR4w//eOT4Ix4LLSqKoiiK0krIqhaTWoZ02O7afsU9bw8tKoqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqixEXWzC6sNC+mzii9GMlgWLip7F2wB8cMn/mtuWiC74xFsgfMa6xIDgYFvBfb/tlcNLY7DMmFsESm1ee0/GWwxbDZsLnY5hakaQVl3R7JFTC/sSLz8J6vgk3G8fL4t4KyHYXkGBjPTSbgdfI0yvGxuWiCcnRGci0sFxbkujBwAtJ/47tfmIvxgW13RcJtu2Hhts11ObCvsO2HjTUJEtrHdTAeX6TyW00AdgvKvMRcNEFZRiE5Dpau35THOB37fcZcTA6UsxDJjTCmDc8Zr9ka2ATsZ72xpgH4/klIDoGFe7awjP/Fd183F+uD756FZDgs0ndfw3dfMxdN8J1uSMbDwgUp5bq1MJY3U/dSi0KFiZIUuDE/RcKbORKn4qacFsob4DtvIOGDMlWOrvuQwXZPRJLKDNR8qP8Bexf2FLb9HVemA5T1QCQfmEtNBgXcABznfHPRBGW7Bck/zKWMcTHKcU8ob4By7IDkV1is59NS2L74/iJzMTbY9gNILjCXonIYtsvrIWGwj0FItgrnDLIbytzwZWASEoqkdDIF+z0zlE8KlLMjEr4k5BkrGkOx0jfSb43vP4jkfHMpLLfiu1eH8vXAd59HQmETiX/iu/XuC3xnCJIfzaWwUPRvg+9VmItKImRlSHqlWcA3mGiEaxGI9Z14oZCoS6qtD7wPtoWx1eVLPHSehvXgH9JAw7I3BWwxCVeORFqcrCLcPlkJsYyx6Al7Fr9VvrkYHXxuTyTnmktReQQVSlKiJATLb9W1Hi+8B5rqN02lBbSWWL85/9awJaUuscoQ7e+xWjXCnUOe62j3cjzXrxIBFSaKUh8n7DQYBcoBxholmymFPWRmI4Pfkq0vN8H4+0ZjBWyimVUUpSlQYaIo4ekOexMV2hHmopLFnI7f6ZpQPhKnw/Y3s1GhX8DKUF5pPkRrTVGaGSpMFCUydL5kVwH7k5Xs5ib8TseH8vXA+nZIbjCXojId9m8zq2Qh0bpO6KSqtBBUmCiZxCpn64bXbTqv42LY/ajcOArECvSeSx+P43faOZSvCx0X+5jZiNDP4Koxw2da8ebN65wje7KBWF1XzQWOomprZsPCFk6lhaAPSSWTxHIyo4Pam7AXYC9FsFdgy2F14RDJ/8LCfb6uvQh7GcYRRctg8cLRR6eY2ZRZBXsVxiGya7giDnjeOAop2nmpNX6Go5+qYVbDURMc/RRuv+GMZeHImUxBETkN4oTDjQ2Q3wkJnZpjcT9EyTehfKpshD0H47UW7rwkarxuec0kM8LjJxivnXDbjcf4e8+DNTUUWBzO3gj8xhy6S1+jaJSHUqUZoMOFlaTAw4BDXjn0NRIn40FfbwgvvsPKvd4Q4jDUGwqcLlAWvn0xpsr/weLxI2G8jH1QtmjNyQmBMnRCwqHOHM65tTKNwN+w77i6GbDdEiQcbtvFWNGYzbBh2N4Cc9EE34s1tDThYaHY5lQkp5pLYbkQ2+QQ3q3gO4z18j0srtE2YXgPNgrb9WFbFLqxft+FsF3x+bAxMrIBHAe7KvibcvRYODgqZ3ccA8+bpWDftyK5ylwKy+PY7zmhfFJgHx2QzIWx2y0SvG5Pwr7eMReN7/E+fgp2tLEiMmPwvWdD+XpgG08jocN7JG7Cd+vdF/gOh4RzuHCkl3u+LHFIvg4XTgJtMVEyCd/k68XOCAOFQtrBA2Mj7D0Y46pcBIslOHaHDTWz1oB9r4Hdj+wIWKzzcm3oIRwPbPZOx0tHMs8Lq7rAEoGBtm7F+aLPSTyi81r8DlkrSkKk6zeNh6b4DcNRBHsNv+ursBtg92KZcVtiiRLe27+ZWaU5oMJEyRh4+DOyKt9OorEfHji7hvIZAeW6D0nY4Et14MN5pJm1Fuyfb4psTao0VoRnG9hfzKwSB5fAnjCzUXkL55/dLkrzgC1HvA8mwPgS0w8WC7YMzjGzSnNAhYmSadi0v8nMhoUC4K9mNqPcCYsV8XW3UGo5qBy571hdNSpMTBil920zGxE+2/iGHQ0KwUxHulUyz4u4v6KJfh1qnGWoMFEyCh4QDCkdy4fk+KmmQ1vGQLkY3THWm3OskR2pQv+baA/JYTgvbUL51gyjqtKnoV749SS4A78750lSmp50dVPRwZzh6qMRqx5UP5EMo8JEaQoeC6WRoCNctLkr0kWsURklEAbJOmTGA/vBGXk0EnSW5QRxrR2O0FgNGw3jKKdkoCPpHWZWyQI48ixaq0ayXArx2XAUX0N4X0VjQyhVMoQKE6UpmAGbaWYjciZEAB3+MgkdIKMNaeYEY+kM5MSWgGjdXIyNQdGmiOSiwqHD8BmwZOaDuQbf5yiPtIBrtxDWAdY+jHF9pMnqWitslYh3+Hw80OH17/iNw47EqQW/A180+ppLEYklbBSLUWGiZBw8LNhdEavVhNFWOboik9C/JVqTMh926eyP5r6j3ZP8e4GZVQiupfeRcFRVIryA79Wbxj4NcAp/CifOMtzQuJ5T7ScCr4sWG90UvwfFZayRaXxpiGfCwM9g+2ObsbpwyI4wOpZHgi8L9YbVh+DvEe1eVeGZAipMlKaCAdE41j8afwulmYIzCkd7+PMNO52zxnI4cLRmZYoijmxS6oAKiJP43WMuxYTN8plweGUsGf6e7HpraFwf6y29IQweR4sEK/bmfm18GUojwdbE42BXwhhokbGF6GfE79FvjXF49oWNwDXxCdJ4YByhaMOh6RPHODcNYRA9BqBjORoaRS8D4iXTkqcAFSZKk4AHB2/sqM2s4JCpZiCjTHFQKI3EWpQ7ncKEAd9YoUWC+15nZpUGXAaLNVKHsHuwl5lNK7Hi4jAibSIw6Fw0YULRHK0bsDnAaMjRKnN2Yw7BPXg7jAJlb9ieTLHMwIzXw2bAYp17AzxbeiOJNQLwc2yvKpTfCtYtgZ0AOy6M/QU2FpbOZ0WLRoWJ0pQwpkk0hzf6VCTa5J0UeEixtYTOlNFId5Cmc0NpJNgHrzPfhgGVACOfMiotnVqjwa4wTswYT/yLdLInytA/lI+HY0JpJHhdNHfRyvD5sUZaXYPzthcz+M2D/N1hcQmRMNwOa29mI8JWESXDqDBRmgw8UFjRx3rLPRkPorQ6fGL7HOXBsOgdjRWRYdNxWkAZzkNyqLkUkVk4Z839rTht4NyUIWGgulhRXDnhG8VJrDgn6aQQxi6JmKCcbDWkk280fsDxx+N/kbWEBMbj5lJE6KzK+ZAGmovJge/fheQEcykis2Afmlklk6gwUZqaWE6wjGfCZtu0gAcU35zZPx12grA6cBIwTv5nOSjD+UgYXjsWaZ9DqLmDyo1v3WfDYr1Fs9vsETPbZPwNv33UKRjwd17/bFmkkIkGnYBbAs/DfjGzEWE8oek4Nyebi/GD7/SEcXLJi801UWGcm1gTjyppoKnmXlCaObi5E57ELxzYDlsr6Ly2i7EiPIwvshe2x+b6RmAb7PKhQ2E8I2bo6MYgZfTGPxzGt6Z45qB5DvuP1dUTFZSTE5TxeHnfcZ88ZlaiB8BiwSGLQ1GGteZiZLAfTgjICcYiTQyY7CR+z+A7p4fycYFtMmhdtAokmUn8OHqD5Y8Y+ArbuBwJm+pjMRHbuSGUtwzsn1F8+dvGwxTY3bA5KIvhl4Dv0wma8/yMh0UbNUIY04W+F1YOt90KysLzyPMZiZQn8asL9sduKzqRxsNHsIdhn6IMPA+NwPb4fNgBxuuQDvXxtMByuwdim+kchadEQFtMlCYFNz6d3Z40lyLCUPDR5qmhQKJvASvjaPZDnTy95vkwjUeUUBCx4kgaPBwpSFhJ15aTZaHzbzyihNyLcxVTlCgmOFcMnharW4BMwG+TkuC0AHbTfA37AWX5BEahzmHFnOsnlighFIxpESVNAY6F92a8rVn7w9gC8jPO26ewJ2B3huw+2Mv4G0UuX244GiseUULH/P9DOVSUNBEqTJRsgA+WWBE8o72RMWYAWyM4zX8041BN+pHwDSoRHsBDihVHqrAFg852THO5Ik7o2xLvcFjlTy6E8c03Fo+gAmPXTlPCYep8q+dwV5YlVjTSWuj0Sn+JlgYnYZxuZuOC9/VwGJ3l+V0af/9jYQNg8caAYRfg2bjfYzlRK2lEhYnS5OAhQKfFWN0+o1B5RBrFkM43m89h15jZlAnbFRUDhqg/C+dIhx4mSOicsespXICsutB/g86wdIptblyG44w2jUGzBMfEIbqcliJWhGgr4f3Je40tNkoTosJEyRbYnRNtVAGHecYamWA1bP49Hg+qpprEaynsCOx/rrmoJArOHX1z2FUTK/w8naCnQpwk2prWlNyE44s18WSzBcfGF5bDYGxRTTfsJj0W+6SjsdLEqDBRsgI8EOh3EWtkwamoODI1uy79Pw5BuZKdJC5VOExxJPZPXxQlBXAO2Q0XK0YMoR/T/WY265mA44rmqNwiwDFugrHl5AJYunys3oGVYj866i1LUGGiZBOxhg5zmODRZjZt0PHwGDykxsCaYlZRxnahP83B2P8fxhrr4aigbBmRl0w5Ev4OziWHoV5vLkWFQ3ivCOXTCbsIGe48UXh9HIXj4Vw8rQYcL6cd4Cg2juCic6oVMJjbSdj24bBY8/QoGUSFiZIs0eaXIMlcW+/BYsUwuAAVR8N9J1vJckQQg3F9B6NzKT3898FDivP4pIOG5aajHec3mQPjkNG/wHbB/jn8MtloloTng6OAIhHpb7F+s1i/eThifSfcbxer/MmUg5Ubh0NPNZeichuusVjBt1LlRRjD0jPIGrsMG4U9rwP/Rl+Lv8N2x3G8wZUZJB3XRcLguBkGng6tnODzUhjnw0kk4CB90TjvDYdyHwxjCIJMdBMpCZLsA11p5eDBzZEDHF0SrgLlg+ob3PQJO+Vhu3zocIhkOEdRXq/0Q/kE2976IMd3ONqGQ4oTqczpN8I3L3bVrMH2knFMjRuUkWXfB8a5cFhOHgf3z9gLq7D/aqSWgH3RT4KjOzjyJ5xjMAUZ5xSp5zuD7zF+CEeGhDsXrJxYMSTUtYRtDkPSExbut+E2f8I267Uc4Dt0RuUIi3AVHs8jxRzjViT8m4W2PQIW7dlHUVSG7bNVIymwn1hxTK7C9m9jBp/leaCPC2PrcP4WjjBj+Xh98NxwhMh8fL5Jhq+ifCzXdrBw55u/0UKUjYHtMg7KxnmPGBmXxucGRzPV+gnxfNG3iL5a9NOaDfsVZdWJMLOcaDenoiiKkgRxCJMrUUHGEwBOUVodsZroFEVRFEVRMoYKE0VRFEVRsgYVJoqiKIqiZA0qTBRFUawn1rNVn72KEgG9ORRFUaynHMYRIZxcr6FxvY4MUZQI6KgcRVEUi5k6ozQfSbTw9lVjLBwiriiKoiiKoiiK5Yj8P1WlKLJDN09tAAAAAElFTkSuQmCC" alt="עיריית כפר סבא">
+    <div class="titles">
+      <b>ספריית דבורה עומר</b>
+      <span>בית הספר היסודי · כפר סבא</span>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <div class="count-pill" id="countPill">—</div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <nav class="nav" id="tabs">
+      <button data-view="shelf" class="nav-item active"><svg viewBox="0 0 24 24"><path d="M4 5a1 1 0 0 1 1-1h5v16H5a1 1 0 0 1-1-1V5Z"/><path d="M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5V4Z"/></svg> ספרים</button>
+      <button data-view="checkout" class="nav-item"><svg viewBox="0 0 24 24"><path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1Z"/></svg> השאלה</button>
+      <button data-view="reminders" class="nav-item"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg> תזכורות</button>
+      <button data-view="catalog" class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/></svg> קטלוג</button>
+      <button data-view="students" class="nav-item"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.5a3 3 0 0 1 0 5.8M16.5 19a5.5 5.5 0 0 0-2-4.2"/></svg> תלמידים</button>
+      <button data-view="barcodes" class="nav-item"><svg viewBox="0 0 24 24"><path d="M4 5v14M7 5v14M10 5v14M13 5v10M16 5v14M19 5v14"/></svg> ברקודים</button>
+      <button data-view="import" class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/></svg> ייבוא וקטלוג</button>
+      <button data-view="map" class="nav-item"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg> מפת התמצאות</button>
+      <button data-view="reports" class="nav-item"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg> דוחות</button>
+      <button data-view="terms" class="nav-item"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg> תקנון</button>
+      <button data-view="settings" class="nav-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H3a2 2 0 0 1 0-4h.1A1.6 1.6 0 0 0 4.2 7.5l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3 1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8 1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg> הגדרות</button>
+    </nav>
+  </aside>
+
+<main>
+  <!-- rollover banner -->
+  <div id="rolloverBanner" class="banner hidden no-print"></div>
+
+  <!-- ===== SHELF ===== -->
+  <section id="view-shelf" class="view">
+    <div class="view-head">
+      <div><h2>הספרים</h2><p>כל הספרים בספרייה · סינון, חיפוש ומיון · לחיצה על ספר פותחת את פרטיו</p></div>
+    </div>
+    <div class="controls no-print">
+      <label class="fld grow" style="margin:0"><span>חיפוש</span>
+        <input class="inp" id="shelfSearch" placeholder="שם ספר, סופר, סדרה, ברקוד…"></label>
+      <label class="fld" style="margin:0"><span>מיון לפי</span>
+        <select class="inp" id="shelfSort">
+          <option value="author">שם משפחה של הסופר (א״ב)</option>
+          <option value="title" selected>שם הספר (א״ב)</option>
+          <option value="series">סדרה</option>
+          <option value="language">שפה</option>
+          <option value="age">גיל מתאים</option>
+          <option value="genre">ז'אנר</option>
+          <option value="publisher">הוצאה</option>
+          <option value="location">מיקום במדף</option>
+          <option value="year">שנת הוצאה</option>
+        </select></label>
+      <label class="fld" style="margin:0"><span>שפה</span><select class="inp" id="shelfLang"><option value="">הכל</option></select></label>
+      <label class="fld" style="margin:0"><span>ז'אנר</span><select class="inp" id="shelfGenre"><option value="">הכל</option></select></label>
+      <label class="fld" style="margin:0"><span>גיל</span><select class="inp" id="shelfAge"><option value="">הכל</option></select></label>
+    </div>
+    <div id="shelfWall"></div>
+  </section>
+
+  <!-- ===== CHECKOUT ===== -->
+  <section id="view-checkout" class="view hidden">
+    <div class="view-head"><div><h2>השאלה / החזרה</h2><p>סרקו ברקוד (או הקלידו מספר) — הספר יופיע אוטומטית</p></div></div>
+    <div class="card" style="margin-bottom:16px">
+      <label class="fld" style="margin:0"><span>סריקת ברקוד</span>
+        <input class="inp" id="scanInput" inputmode="numeric" autocomplete="off"
+          placeholder="מקדו כאן וסרקו — הסורק מקליד את המספר ולוחץ Enter" style="font-size:18px; letter-spacing:2px"></label>
+      <div class="muted" style="margin-top:8px">סורק USB עובד כמו מקלדת — אין צורך בהתקנה. ודאו שהשדה ממוקד לפני הסריקה.</div>
+    </div>
+    <div id="checkoutPanel"></div>
+  </section>
+
+  <!-- ===== CATALOG ===== -->
+  <section id="view-catalog" class="view hidden">
+    <div class="view-head">
+      <div><h2>קטלוג הספרים</h2><p>הוספה ועריכה של ספרים · שליפת כריכה ופרטים לפי ISBN/ברקוד</p></div>
+      <button class="btn" id="newBookBtn">+ ספר חדש</button>
+    </div>
+    <div class="controls no-print">
+      <label class="fld grow" style="margin:0"><span>חיפוש בקטלוג</span><input class="inp" id="catSearch" placeholder="שם, סופר, ברקוד, ISBN…"></label>
+    </div>
+    <div class="list" id="catalogList"></div>
+  </section>
+
+  <!-- ===== STUDENTS ===== -->
+  <section id="view-students" class="view hidden">
+    <div class="view-head">
+      <div><h2>תלמידים</h2><p>רישום תלמיד · שם המורה מתמלא אוטומטית לפי הכיתה</p></div>
+      <button class="btn" id="newStudentBtn">+ תלמיד חדש</button>
+    </div>
+    <div class="controls no-print">
+      <label class="fld grow" style="margin:0"><span>חיפוש</span><input class="inp" id="studSearch" placeholder="שם תלמיד, כיתה, הורה…"></label>
+      <label class="fld" style="margin:0"><span>כיתה</span><select class="inp" id="studClass"><option value="">כל הכיתות</option></select></label>
+      <label class="fld" style="margin:0"><span>הצג</span><select class="inp" id="studFilter">
+        <option value="active">פעילים</option><option value="grad">סיימו (כיתה ו׳)</option><option value="all">הכל</option></select></label>
+    </div>
+    <div id="studentsList"></div>
+  </section>
+
+  <!-- ===== BARCODES ===== -->
+  <section id="view-barcodes" class="view hidden">
+    <div class="view-head"><div><h2>הדפסת ברקודים</h2><p>לספרים ללא ברקוד — מחוללים, מדפיסים על דף מדבקות A4, ומדביקים</p></div></div>
+    <div class="card no-print" style="margin-bottom:16px">
+      <div class="grid three">
+        <label class="fld" style="margin:0"><span>כמה מדבקות</span><input class="inp" id="bcCount" type="number" min="1" max="300" value="30"></label>
+        <label class="fld" style="margin:0"><span>קידומת (אופציונלי)</span><input class="inp" id="bcPrefix" placeholder="לדוגמה DVO"></label>
+        <div style="display:flex; align-items:flex-end; gap:8px">
+          <button class="btn" id="bcGen">חולל מספרים</button>
+          <button class="btn ghost" id="bcPrint">הדפס דף</button>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:8px">כל מדבקה כוללת ברקוד <b>וגם</b> את המספר בכתב — אם הסריקה נכשלת, אפשר להקליד. 30 מדבקות לדף A4.</div>
+      <div class="row" style="margin-top:12px; align-items:flex-end; border-top:1px solid var(--line); padding-top:12px">
+        <label class="fld" style="margin:0; max-width:190px"><span>המספר הבא להקצאה</span><input class="inp" id="bcNext" type="number" min="1"></label>
+        <button class="btn ghost sm" id="bcSetNext">עדכן מספר התחלה</button>
+        <button class="btn ghost sm" id="bcReset">אפס מונה</button>
+        <span class="muted" style="flex:1">המספרים מתקדמים בכל "חולל" כדי שיישארו ייחודיים. אם רק התנסית — אפס או הגדר מספר התחלה.</span>
+      </div>
+    </div>
+    <div class="label-sheet" id="labelSheet"></div>
+  </section>
+
+  <!-- ===== IMPORT / CATALOG ===== -->
+  <section id="view-import" class="view hidden">
+    <div class="view-head"><div><h2>ייבוא וקטלוג ספרים</h2><p>הדרך המהירה להזין את ספרי הספרייה — מורידים תבנית, ממלאים, ומעלים</p></div></div>
+    <div class="card no-print" style="margin-bottom:16px">
+      <h3 style="margin:0 0 8px">📚 הזנת ספרים מתבנית</h3>
+      <p class="muted" style="margin:0 0 10px">הורידו את קובץ ה‑CSV, מלאו שורה לכל ספר (אפשר בגוגל שיטס/אקסל), ושמרו כ‑CSV. אז העלו אותו כאן — המערכת תוסיף את כל הספרים לקטלוג ותדלג על כפילויות.</p>
+      <div class="row"><button class="btn ghost sm" id="dlTemplate">⬇ הורד תבנית CSV</button>
+        <label class="btn sm" style="cursor:pointer">⬆ העלה תבנית מלאה<input type="file" id="catFile" accept=".csv" class="hidden"></label></div>
+      <div id="catImportMsg" class="muted" style="margin-top:8px"></div>
+    </div>
+    <div class="card no-print">
+      <h3 style="margin:0 0 8px">🔶 ניקוי רשימה קיימת (כפילויות וסדרות)</h3>
+      <label class="fld" style="margin:0"><span>בחרו קובץ (.xlsx / .csv) בפורמט הישן (שם ספר + שם תלמיד)</span>
+        <input class="inp" id="xlsFile" type="file" accept=".xlsx,.xls,.csv"></label>
+      <div class="muted" style="margin-top:8px">המערכת מאתרת כפילויות, וריאציות כתיב וסדרות לפני הייבוא.</div>
+    </div>
+    <div id="importPanel"></div>
+  </section>
+
+  <!-- ===== REMINDERS ===== -->
+  <section id="view-reminders" class="view hidden">
+    <div class="view-head"><div><h2>תזכורות להחזרה</h2><p>ספרים שמושאלים מעבר לסף שהוגדר — מוכנים לשליחת תזכורת להורה</p></div></div>
+    <div id="remindersPanel"></div>
+  </section>
+
+  <!-- ===== MAP ===== -->
+  <section id="view-map" class="view hidden">
+    <div class="view-head"><div><h2>מפת התמצאות</h2><p>מבנה הספרייה — היכן נמצא כל נושא. לחיצה על קטגוריה מציגה את הספרים שלה</p></div></div>
+    <div id="mapPanel"></div>
+  </section>
+
+  <!-- ===== REPORTS ===== -->
+  <section id="view-reports" class="view hidden">
+    <div class="view-head"><div><h2>דוחות</h2><p>תמונת מצב של הספרייה · כל דוח ניתן לייצוא לאקסל</p></div>
+      <button class="btn ghost sm no-print" id="exportAllRep">⬇ ייצוא כל הדוחות לאקסל</button></div>
+    <div id="reportsPanel"></div>
+  </section>
+
+  <!-- ===== TERMS ===== -->
+  <section id="view-terms" class="view hidden">
+    <div class="view-head"><div><h2>תקנון הספרייה</h2><p>הנוסח הרשמי וטופס הצהרת ההורה. החתימה המקוונת תופעל בשלב ההורים/Supabase</p></div>
+      <div class="row no-print"><button class="btn ghost sm" id="editTermsBtn">✎ עריכת נוסח</button><button class="btn ghost sm" id="printTerms">🖨 הדפסת טופס</button></div></div>
+    <div class="card" id="termsCard">
+      <div id="termsView" class="terms-doc"></div>
+      <div id="termsEdit" class="hidden no-print">
+        <label class="fld" style="margin:0"><span>עריכת נוסח (טקסט חופשי)</span>
+          <textarea class="inp" id="termsText" style="min-height:320px"></textarea></label>
+        <div class="row" style="margin-top:8px"><button class="btn" id="saveTerms">שמירה</button>
+          <button class="btn ghost" id="cancelTerms">ביטול</button>
+          <button class="btn ghost" id="restoreTerms">שחזור לנוסח ברירת המחדל</button></div>
+      </div>
+    </div>
+    <div class="card" id="declCard">
+      <h3 style="margin:0 0 6px; color:var(--teal-d)">הצהרת הורה והתחייבות</h3>
+      <p style="margin:0 0 14px">קראתי את תקנון הספרייה, הבנתי את תוכנו, ואני מתחייב/ת כי בני/בתי ינהג/תנהג על פיו. ידוע לי כי במקרה של אובדן או נזק בלתי סביר לספר, אדאג להחלפתו או לפיצוי הספרייה כמפורט בסעיף 5.</p>
+      <div class="grid" style="grid-template-columns:1fr 1fr; gap:12px">
+        <label class="fld" style="margin:0"><span>שם התלמיד/ה</span><input class="inp" id="dTalmid"></label>
+        <label class="fld" style="margin:0"><span>כיתה</span><input class="inp" id="dClass"></label>
+        <label class="fld" style="margin:0"><span>שם ההורה/אפוטרופוס</span><input class="inp" id="dParent"></label>
+        <label class="fld" style="margin:0"><span>ת"ז</span><input class="inp" id="dId" inputmode="numeric"></label>
+      </div>
+      <div class="grid" style="grid-template-columns:2fr 1fr; gap:12px; margin-top:12px; align-items:end">
+        <div class="fld" style="margin:0"><span>חתימה</span>
+          <div class="sig-wrap"><canvas id="sigPad" class="sig-pad"></canvas><button type="button" class="btn ghost sm sig-clear no-print" id="sigClear">נקה</button></div></div>
+        <label class="fld" style="margin:0"><span>תאריך</span><input class="inp" id="dDate" type="date"></label>
+      </div>
+      <p class="muted no-print" style="margin-top:12px">בשלב ההורים, ההורה ימלא ויחתום על הטופס דרך קישור שיישלח אליו כשתיק הילד מוכן. בינתיים ניתן להדפיס את הטופס לחתימה ידנית (🖨 הדפסת טופס).</p>
+    </div>
+  </section>
+
+  <!-- ===== SETTINGS ===== -->
+  <section id="view-settings" class="view hidden">
+    <div class="view-head"><div><h2>הגדרות</h2><p>מדיניות השאלה · כיתות ומורים · סורק · גיבוי נתונים</p></div></div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin:0 0 10px; color:var(--teal-d)">מדיניות השאלה</h3>
+      <div class="grid three">
+        <label class="fld" style="margin:0"><span>מקסימום ספרים לתלמיד</span><input class="inp" id="setMaxBooks" type="number" min="1"></label>
+        <label class="fld" style="margin:0"><span>משך השאלה (ימים)</span><input class="inp" id="setLoanDays" type="number" min="1"></label>
+        <label class="fld" style="margin:0"><span>תזכורת ראשונה אחרי (ימים)</span><input class="inp" id="setReminderDays" type="number" min="1"></label>
+        <label class="fld" style="margin:0"><span>תזכורת חוזרת כל (ימים)</span><input class="inp" id="setRepeatDays" type="number" min="1"></label>
+      </div>
+      <button class="btn sm" id="saveSettings">שמירת מדיניות</button>
+      <div class="muted" style="margin-top:8px">המגבלה נאכפת בעת השאלה, משך ההשאלה קובע את תאריך ההחזרה, ותזכורת ראשונה נשלחת לאחר הסף — ואז שוב בכל מספר הימים שהוגדר עד החזרת הספר.</div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin:0 0 10px; color:var(--teal-d)">כיתות ומורים</h3>
+      <div class="grid three" style="align-items:end">
+        <label class="fld" style="margin:0"><span>שכבה</span><select class="inp" id="clGrade">
+          <option value="1">א׳</option><option value="2">ב׳</option><option value="3">ג׳</option>
+          <option value="4">ד׳</option><option value="5">ה׳</option><option value="6">ו׳</option></select></label>
+        <label class="fld" style="margin:0"><span>כיתה (אות)</span><input class="inp" id="clLabel" placeholder="1, 2, 3 או א/ב/ג"></label>
+        <label class="fld" style="margin:0"><span>שם המחנך/ת</span><input class="inp" id="clTeacher" placeholder="שם מלא"></label>
+      </div>
+      <button class="btn sm" id="addClass" style="margin-top:6px">+ הוסף כיתה</button>
+      <div class="list" id="classList" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin:0 0 10px; color:var(--teal-d)">סורק ברקודים</h3>
+      <p class="muted" style="margin:0">סורק USB סטנדרטי מתחבר ופשוט "מקליד" את המספר וסוגר ב־Enter — אין דרייבר להתקין. הגדירו את הסורק לסיומת Enter (ברירת המחדל ברובם). במסך ההשאלה ודאו שהשדה ממוקד.</p>
+      <div class="row" style="margin-top:10px">
+        <label class="fld" style="margin:0"><span>השהיית קצה־הסריקה (ms)</span><input class="inp" id="scanGap" type="number" value="40" style="width:120px"></label>
+        <span class="muted">משמש לזיהוי סריקה אוטומטית גם בלי Enter.</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin:0 0 10px; color:var(--teal-d)">גיבוי ושחזור</h3>
+      <p class="muted" style="margin:0 0 10px">הנתונים נשמרים על המכשיר הזה. ייצאו גיבוי כדי להעביר בין מכשירים. בשלב הבא נחבר ל־Supabase למסד משותף ולמיילים להורים.</p>
+      <div class="row">
+        <button class="btn ghost sm" id="exportData">⬇ ייצוא גיבוי (JSON)</button>
+        <button class="btn ghost sm" id="importDataBtn">⬆ שחזור מגיבוי</button>
+        <input type="file" id="importDataFile" accept=".json" class="hidden">
+        <button class="btn danger sm" id="resetData">טען מחדש נתוני בית הספר</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 10px; color:var(--teal-d)">הרשאות (יחובר בשלב Supabase)</h3>
+      <p class="muted" style="margin:0">אדמין — גישה מלאה · ספרן/מתנדב — קטלוג, השאלה, החזרה · הורה — צפייה בלבד בספרים של ילדם, עם מייל אוטומטי בעת השאלה. הרשאות אמיתיות בין מכשירים מצריכות את שלב ה־Supabase.</p>
+    </div>
+  </section>
+</main>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toasts"></div>
+
+<script>
+"use strict";
+/* ============ constants ============ */
+const GENRES=[
+ {k:'דבורה עומר',c:'#0d8b8d'},{k:'גלילה רון פדר',c:'#9a3b6a'},{k:'נוער',c:'#c46a1e'},
+ {k:'סיפורים',c:'#6a3d7a'},{k:'ראשית קריאה',c:'#c07016'},{k:'קוראים',c:'#5a7a2e'},
+ {k:'פנטזיה',c:'#6a4a9a'},{k:'הרפתקאות',c:'#2f7a5a'},{k:'דיסני ואגדות',c:'#b04a7a'},
+ {k:'קומיקס',c:'#c0561e'},{k:'שירה',c:'#a23b5a'},{k:'בדיחות וחידות',c:'#b07a16'},
+ {k:'סדרות',c:'#7a5230'},{k:'כדור רגל',c:'#2e7d46'},{k:'אנגלית',c:'#3a5fb0'},
+ {k:'מולדת',c:'#2e6e4e'},{k:'גוף האדם',c:'#b6453a'},{k:'חלל',c:'#2b3a67'},
+ {k:'טבע',c:'#3f7a3f'},{k:'תרבות ומדע',c:'#2f6f7a'},{k:'חיות ותחביבים',c:'#8a6a2a'},
+ {k:'סיפורי התנ״ך',c:'#7a5a23'},{k:'תנ״ך',c:'#7a6a2a'},{k:'אנציקלופדיות',c:'#345a6e'},
+ {k:'אטלסים',c:'#4a6a8a'},{k:'מילונים',c:'#5a5a6a'},{k:'צעצועים',c:'#c25a8a'},
+ {k:'אחר',c:'#6b7280'}];
+const GENRE_C=Object.fromEntries(GENRES.map(g=>[g.k,g.c]));
+const LANGS=['עברית','אנגלית','ערבית','רוסית','צרפתית','אמהרית','ספרדית','אחר'];
+const AGES=['4-6','6-8','8-10','10-12','12-14','14+'];
+const GRADES_HEB=['','א׳','ב׳','ג׳','ד׳','ה׳','ו׳'];
+const LANG_MAP={he:'עברית',en:'אנגלית',ar:'ערבית',ru:'רוסית',fr:'צרפתית',es:'ספרדית'};
+const SEED={"classes":[[1,"1",""],[1,"2",""],[2,"1","שני חדיף"],[2,"2",""],[3,"1",""],[3,"2",""],[4,"1",""],[4,"2",""],[5,"1",""],[5,"2",""],[6,"1",""],[6,"2",""]],"students":[["אביגיל","ישראלי",1,"1"],["אגם","הריסן",1,"1"],["אוליביה","פסמניק",1,"1"],["איימי","יוספאן",1,"1"],["איתי","חיו",1,"1"],["איתמר","קצב",1,"1"],["איתמר","שמש",1,"1"],["איתן","צור",1,"1"],["אליה","סוואיד",1,"1"],["נגה","בן אור",1,"1"],["נועם","אסייג",1,"1"],["אלמה","זילברמן",1,"1"],["ים","גל",1,"1"],["ליה","בן פורת",1,"1"],["עומר","בן אור",1,"1"],["עומר","ברעם",1,"1"],["עומר","מנשה",1,"1"],["פלג","אליקים",1,"1"],["פלג","הוברמן",1,"1"],["רונה","לישנר",1,"1"],["רוני","פורת",1,"1"],["תומר","פייגין",1,"1"],["אביב","זקר",1,"2"],["אלון","צדק",1,"2"],["אמי","חי",1,"2"],["ביאנקה","פסמניק",1,"2"],["גאיה","לוי",1,"2"],["יאיר","פייביש",1,"2"],["יובל","הנסב",1,"2"],["לני","אלטר",1,"2"],["מאור","נחמן",1,"2"],["נועה","צרפתי",1,"2"],["נועם","הרכבי",1,"2"],["נועם","מושכל",1,"2"],["נטע","דגה",1,"2"],["ניצן","בן ברוך",1,"2"],["רואי","אלגרבלי",1,"2"],["רוני","לפלר",1,"2"],["ריילי","קצן",1,"2"],["שי-לי","מוגרבי",1,"2"],["שיר","סופיר",1,"2"],["שקד","שנדרוב",1,"2"],["תום","רייטר",1,"2"],["אימרי","מעוז",2,"1"],["איתי","זיו",2,"1"],["אלה","שורץ",2,"1"],["אלונה","לוי",2,"1"],["אליאנה","פינקלשטיין",2,"1"],["אמה","קירשטיין",2,"1"],["אסף","ברא נס",2,"1"],["ארי","שיין",2,"1"],["בארי","גוטפריד",2,"1"],["דותן","אפרים",2,"1"],["הילה","מילשטין",2,"1"],["יובל","סביר",2,"1"],["לביא","גולדשטין",2,"1"],["לוטם","שובל",2,"1"],["ליה","צפריר",2,"1"],["מאיה","לפלר",2,"1"],["מיכאלה","ניר",2,"1"],["מיקה","שובל",2,"1"],["מרטין","טננבאום",2,"1"],["נאוה","מסיס",2,"1"],["נינה","פייביש",2,"1"],["נינה","קרן",2,"1"],["עופרי","גבאי",2,"1"],["עידו","צורף",2,"1"],["עמית","ברקאי גנקין",2,"1"],["רום","בן ארי",2,"1"],["תמר","אקרמן",2,"1"],["אביב","רגולסקי",2,"2"],["אדם","קצובסקי",2,"2"],["איתמר","ברנטל פינטו",2,"2"],["דניאלה","כהן",2,"2"],["הלל שמחה","לנקרי לוי",2,"2"],["זיו","אומיד",2,"2"],["יעל","טרן",2,"2"],["ירדן","לוי",2,"2"],["כפיר","היימס",2,"2"],["מאיה","קרת",2,"2"],["מיה","שאול",2,"2"],["מיקה","אדלר דיבה",2,"2"],["מיקה","פורת",2,"2"],["מנור","ישראל",2,"2"],["נאור","קרסנוסטבסקי",2,"2"],["נאיה","רייכל",2,"2"],["נגה","פייביש",2,"2"],["נועה","בן עמי",2,"2"],["דן","מאירמן",2,"2"],["נועם","ברקאי גנקין",2,"2"],["נועם","ניסן",2,"2"],["עידו","כהן",2,"2"],["עלמה","האוזר",2,"2"],["עמית","דיין",2,"2"],["רומי","אלקין",2,"2"],["רני","נקאש",2,"2"],["תום","גוטרמן",2,"2"],["תמרה","פישקין",2,"2"],["אביתר","טובול",3,"1"],["אדם","כהן",3,"1"],["אדר","נצר",3,"1"],["אור","שאואט",3,"1"],["ארד","אור כהן",3,"1"],["אריאל","דוד",3,"1"],["אריאל","לוי",3,"1"],["אריאל יהושע","זקר",3,"1"],["גלי","שקד שפירא",3,"1"],["דור","בן ארי",3,"1"],["דור","צוקרל",3,"1"],["הראל","חייק",3,"1"],["יהב","אברהמי",3,"1"],["יליזבטה","ליברמן",3,"1"],["ליאן","חביב",3,"1"],["מאיה","דוסטן",3,"1"],["נויה","מנצור",3,"1"],["עדו","דוידוביץ",3,"1"],["עומר","נחום",3,"1"],["עידו","שורץ",3,"1"],["עלמא","קופר",3,"1"],["עמית","דוד",3,"1"],["רוי","רידר",3,"1"],["רום","גל",3,"1"],["שחר","הניג",3,"1"],["שי-לי","גרידי",3,"1"],["תהילה","כהן",3,"1"],["תמר","דוד",3,"1"],["תמר","מנדל",3,"1"],["אביגיל","שמש",3,"2"],["אדם","רייטר",3,"2"],["אדר","בריל",3,"2"],["איילה","לביא",3,"2"],["איתי","אנגולץ",3,"2"],["איתמר","אלמוג",3,"2"],["אלה רוז","נוימן",3,"2"],["אלון","שלו",3,"2"],["אלעד יצחק","חופי",3,"2"],["אמי","בנין",3,"2"],["אמילי","בראון",3,"2"],["אריאל","חייק",3,"2"],["גיל","בר זוהר",3,"2"],["דור","גרינברג",3,"2"],["זואי","קוסטין",3,"2"],["יואב","קפלן",3,"2"],["יעל אסתר","איש שלום",3,"2"],["ליה","גוט",3,"2"],["מנור חיים","צ'יצ'יאן",3,"2"],["נגה","אופק",3,"2"],["נדב","חביב",3,"2"],["נועם","ליכטין",3,"2"],["נור","זרביב",3,"2"],["עומר","קוטלר",3,"2"],["רוני","סוואיד",3,"2"],["שחר","מדזיבובסקי",3,"2"],["שירה","דוד",3,"2"],["אביגיל","קליין",4,"1"],["אופיר","מעוז",4,"1"],["איתי","דרשר",4,"1"],["איתן","גיברט",4,"1"],["איתן משה","אליסזדה",4,"1"],["אלין","כהן",4,"1"],["אמילי","רגולסקי",4,"1"],["אנאל דיאנה","בן",4,"1"],["אריאל","סלוצקר",4,"1"],["בן","אליה",4,"1"],["דור","הלר",4,"1"],["יובל","גולדשטין",4,"1"],["יובל","שוחט",4,"1"],["ירין","נאמן",4,"1"],["ליאור","סווייאד",4,"1"],["מאיה","מעברי",4,"1"],["מתן","מוגרבי",4,"1"],["נבו מיכאל","אוחיון",4,"1"],["נטע","עמית",4,"1"],["נעם","בן אור",4,"1"],["נועם","גיברט",4,"1"],["סוניה","מסיס",4,"1"],["עומר","דיין",4,"1"],["קרני","מרום",4,"1"],["רומי","ווקנין",4,"1"],["רוני","קמחי",4,"1"],["שיר","הוברמן",4,"1"],["תמר","אינטרשטיין",4,"1"],["תמר","איש שלום",4,"1"],["אדם","ישראלי",4,"2"],["אופיר","הנסב",4,"2"],["אלה","מונד",4,"2"],["אלה","שמואלביץ",4,"2"],["אלון","מיכאלי",4,"2"],["אלכס","רייכל",4,"2"],["ארי","דילבה",4,"2"],["בן","עדן",4,"2"],["גיל","ברייטמן",4,"2"],["גל","חיימוביץ",4,"2"],["זואי","שגב",4,"2"],["יובל עדי","הופמן",4,"2"],["יולי","גוטרמן",4,"2"],["יוני נתניהו","איביי",4,"2"],["יעל","שילד",4,"2"],["יקיר חן","אלוני קוצר",4,"2"],["ליאור","שוחט",4,"2"],["מאיה","אלוש",4,"2"],["מאיה","מושכל",4,"2"],["נגה","נאור",4,"2"],["נועם","נאמן",4,"2"],["סער","אינטרשטיין",4,"2"],["עומר","אשכנזי",4,"2"],["עלמה","וולצ'ק",4,"2"],["רומי","יוספאן",4,"2"],["רון","פוקס",4,"2"],["רתם","הראל",4,"2"],["שביט","כהן",4,"2"],["שי","אוליאל",4,"2"],["אגם","חופי",5,"1"],["אדם","אדלר דיבה",5,"1"],["אורי","יפת שטרן",5,"1"],["איתי","אסייג",5,"1"],["איתי","דוד",5,"1"],["אלון","צארום",5,"1"],["אלין","בן דוד",5,"1"],["אלינור","פישקין",5,"1"],["גל","ברקוביץ",5,"1"],["דורון","משה",5,"1"],["דן","ארגמן",5,"1"],["טומי לב","אלטר",5,"1"],["יערה","שובל",5,"1"],["ליאור הניה","קרסנופולר",5,"1"],["נועם","מילשטין",5,"1"],["עומר","כהן",5,"1"],["עידן","יוגב",5,"1"],["פדרו","ברגר ססרה",5,"1"],["רומי","גוט",5,"1"],["רפאל דוד","דוסטן",5,"1"],["תומר","לישנר",5,"1"],["תמר","עדיאל",5,"1"],["אור","סופיר",5,"2"],["אורי","גלאם",5,"2"],["איטן","זבורדייב",5,"2"],["איתי","ברוכין",5,"2"],["איתן","בן שיטרית",5,"2"],["אלה","אקרמן",5,"2"],["אלון","מאנע",5,"2"],["אריאל","אדר",5,"2"],["הילה","בן שטרית",5,"2"],["יאיר אפרים","קרסנופולר",5,"2"],["יובל","טבצ'ניק",5,"2"],["יובל","פליישר",5,"2"],["לביא","מנשה",5,"2"],["ליה","דוידוביץ",5,"2"],["ליה סימה","כהן",5,"2"],["מטר","קציר",5,"2"],["נועם","ון סטי",5,"2"],["עדי","גידלי שהין",5,"2"],["עומר","דוד",5,"2"],["עומר יעקב","צדק",5,"2"],["עידו","אלגרבלי",5,"2"],["עלמה","פלקון",5,"2"],["עמית","הרצוג",5,"2"],["רומי","דבי",5,"2"],["רוני","נוסרי",5,"2"],["שירה","צרפתי",5,"2"],["אורי","בריל",6,"1"],["איילון","סדי",6,"1"],["איתן","וולצ'ק",6,"1"],["אפיק","סלוצקי",6,"1"],["גלי","קלין",6,"1"],["דור","טוקר",6,"1"],["דניאל","עמית",6,"1"],["הילה","שפר",6,"1"],["יאיר","היימס",6,"1"],["יערה","שקולניצקי",6,"1"],["ליאה","בראון",6,"1"],["ליאל","גמטה",6,"1"],["לין","כהן",6,"1"],["מיה","בנין",6,"1"],["נהוראי","שאואט",6,"1"],["נטע","זילברשטיין",6,"1"],["נטע-לי","צ'יצ'יאן",6,"1"],["נעה","צפריר",6,"1"],["עופרי","ברנטל פינטו",6,"1"],["עילאי","כחלון",6,"1"],["רועי","נהב",6,"1"],["רעות","בן חיים",6,"1"],["שקד","בן שלוש",6,"1"],["שרון","סופיר",6,"1"],["אביגיל","אלמוג",6,"2"],["אור שרה","שמואלביץ",6,"2"],["אורי","גרינברג",6,"2"],["אורי","רחמים",6,"2"],["איתי","נחמן",6,"2"],["איתמר","סלוצקר",6,"2"],["איתן","קוסטין",6,"2"],["ררכו","מסילתי",6,"2"],["אלה מילה","ברוך",6,"2"],["אמיתי","שטיינר",6,"2"],["גאיה","דילבה",6,"2"],["גילי","ולס",6,"2"],["דניאל","זילברמן",6,"2"],["יהונתן","דאדי",6,"2"],["מאור","ברון",6,"2"],["מארק","רודניאנסקי",6,"2"],["מיקה","זהר",6,"2"],["נווה","סלוצקי",6,"2"],["נויה","בן חביב",6,"2"],["נטע","אינטרשטיין",6,"2"],["סול","לוריא מן",6,"2"],["עומרי","ניסן",6,"2"],["עילי","פייג",6,"2"],["עמית","אוחיון",6,"2"],["רפאל","גרינשפן",6,"2"],["שי","הניג",6,"2"]],"loans":[["אוליביה","פסמניק",1,"1","מיראבל 1",1775952000000,[]],["ים","גל",1,"1","ביבר החיות",1777593600000,[]],["אליאנה","פינקלשטיין",2,"1","ארנבוני הבלט בואו נרקוד",1777248000000,[]],["אמה","קירשטיין",2,"1","גברת נסיכה",1769558400000,["24.04","01.05"]],["הילה","מילשטין",2,"1","הרעשנים 2",1781222400000,[]],["מיכאלה","ניר",2,"1","ארנבוני הבלט 1",1778371200000,[]],["עידו","צורף",2,"1","הרעשנים 5",1779753600000,[]],["יעל","טרן",2,"2","היומנים של אלה 2",1781740800000,[]],["דן","מאירמן",2,"2","עבר דירה",null,[]],["עידו","כהן",2,"2","אווטאר 3",null,[]],["תמרה","פישקין",2,"2","אווטאר",1781136000000,[]],["דור","בן ארי",3,"1","אוואטאר ההבטחה ספר 1",1779062400000,[]],["שחר","הניג",3,"1","סארפול",1780531200000,[]],["אביגיל","שמש",3,"2","סארפול",1782604800000,[]],["מנור חיים","צ'יצ'יאן",3,"2","סופר גור",1777420800000,[]],["נגה","אופק",3,"2","המדריך לגיבורות על 1",1776988800000,[]],["תמר","עדיאל",5,"1","היומנים של אלה 4",1764028800000,["24.04","01.05"]],["תמר","עדיאל",5,"1","היומנים של אלה 5",1764028800000,["24.04","01.05"]],["אור","סופיר",5,"2","צוללים קדימה",1760659200000,["5.12","6.2","24.04","01.05"]],["גילי","ולס",6,"2","יומני החנונית",1778630400000,[]]],"teacherB":[["ברכה נחמן",2,"1","הדוד אריה 3"]]};
+const LIB_MAP=[
+ {t:'ארון מרכזי',items:['מולדת','גוף האדם','חלל','סיפורי התנ״ך','טבע','תרבות ומדע','סיפורים','חיות ותחביבים','דבורה עומר','נוער','אנגלית','קוראים']},
+ {t:'יחידה',items:['גלילה רון פדר','סדרות']},
+ {t:'עיון',items:['אנציקלופדיות','אטלסים','תנ״ך','מילונים','נוער','סדרות','קוראים']},
+ {t:'דלת',landmark:true},
+ {t:'יחידה',items:['נוער','סדרות','דיסני ואגדות']},
+ {t:'שולחן מחשב',landmark:true},
+ {t:'קיר ימני',items:['נוער','קומיקס','בדיחות וחידות','צעצועים','פנטזיה','שירה','הרפתקאות','כדור רגל','ראשית קריאה','קוראים']}];
+
+/* ============ storage ============ */
+const KEY='dvora_lib_v2';
+let mem=null;
+const Store={
+  read(){ try{const r=localStorage.getItem(KEY); return r?JSON.parse(r):null;}catch(e){return mem;} },
+  write(d){ mem=d; try{localStorage.setItem(KEY,JSON.stringify(d));}catch(e){} }
+};
+let DB=Store.read()||seed();
+function save(){ Store.write(DB); paintCount(); }
+
+/* ---- copies (items) model + migration ---- */
+function ensureItems(b){
+  if(!Array.isArray(b.items)){
+    const n=Math.max(1,parseInt(b.copies,10)||1);
+    const items=[{id:uid(),barcode:b.barcode||'',status:b.status||'in',holder:b.holder||null,dueDate:b.dueDate||null}];
+    for(let i=1;i<n;i++)items.push({id:uid(),barcode:'',status:'in',holder:null,dueDate:null});
+    b.items=items;
+  }
+  if(b.location==null)b.location='';
+  (b.items||[]).forEach(it=>{ if(it.reminders==null)it.reminders=[]; if(it.borrowDate===undefined)it.borrowDate=(it.status==='out'&&it.dueDate)?it.dueDate-(30*864e5):null; });
+  return b;
+}
+function migrate(){ (DB.books||[]).forEach(ensureItems);
+  const s=DB.settings||(DB.settings={}); if(s.maxBooks==null)s.maxBooks=2; if(s.loanDays==null)s.loanDays=30; if(s.reminderDays==null)s.reminderDays=21; if(s.repeatDays==null)s.repeatDays=5; if(s.terms==null)s.terms=''; if(!s.libMap)s.libMap=JSON.parse(JSON.stringify(LIB_MAP));
+}
+const itemsOf=b=>b.items||[];
+const availItems=b=>itemsOf(b).filter(i=>i.status==='in');
+const outItems=b=>itemsOf(b).filter(i=>i.status==='out');
+const lostItems=b=>itemsOf(b).filter(i=>i.status==='lost');
+function aggStatus(b){const a=availItems(b).length,o=outItems(b).length,t=itemsOf(b).length;if(t&&a===0&&o===0)return 'lost';if(a===0&&o>0)return 'out';return o>0?'partial':'in';}
+function findByBarcode(code){for(const b of DB.books){const it=itemsOf(b).find(i=>i.barcode===code);if(it)return {book:b,item:it};}return null;}
+function studentOpenItems(sid){const r=[];DB.books.forEach(b=>itemsOf(b).forEach(it=>{if(it.holder===sid&&it.status==='out')r.push({book:b,item:it});}));return r;}
+function copyLabel(b,it){const n=itemsOf(b).indexOf(it)+1;return itemsOf(b).length>1?('עותק '+n+(it.barcode?' · '+it.barcode:'')):(it.barcode?'ברקוד '+it.barcode:'');}
+
+/* ============ utils ============ */
+const $=s=>document.querySelector(s);
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function hash(s){let h=0;s=String(s);for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return Math.abs(h);}
+function toast(msg,kind){const t=document.createElement('div');t.className='toast '+(kind||'');t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),3200);}
+function gradeHeb(g){return GRADES_HEB[g]||'';}
+const FINALS={'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ'};
+function firstLetter(s){s=(s||'').trim();if(!s)return '–';let c=s[0];return (FINALS[c]||c).toUpperCase();}
+function stripArticle(s){s=(s||'').trim();s=s.replace(/^(the|a|an)\s+/i,'');if(s[0]==='ה'&&s.length>2)s=s.slice(1);return s.trim();}
+function authorSortKey(a){a=(a||'').trim();if(!a)return 'תתת';const p=a.split(/\s+/);return p[p.length-1];}
+function cmp(a,b){return String(a).localeCompare(String(b),'he',{numeric:true});}
+
+/* ============ seed (real school data) ============ */
+function detectSeries(title){
+  let m=title.match(/^(.*?)[\s]*(?:ספר\s*)?(\d+)\s*$/);
+  if(m&&m[1].trim().length>1) return {base:m[1].trim(), idx:m[2]};
+  return {base:'', idx:''};
+}
+function seed(){
+  const DEF={maxBooks:2, loanDays:30, reminderDays:21, repeatDays:5, scanGap:40, terms:''};
+  const day=864e5;
+  const classes=SEED.classes.map(c=>({id:uid(),grade:c[0],label:c[1],teacher:c[2]||''}));
+  const students=SEED.students.map(s=>({id:uid(),firstName:s[0],lastName:s[1],grade:s[2],classLabel:s[3],
+    parentName:'',parentPhone:'',parentEmail:'',active:true,graduated:false,isTeacher:false,createdAt:Date.now()}));
+  const findStud=(fn,ln,g,lab)=>students.find(s=>s.firstName===fn&&s.lastName===ln&&s.grade===g&&s.classLabel===lab);
+  // homeroom teachers can borrow too (recorded within their class)
+  classes.forEach(c=>{ if(c.teacher) students.push({id:uid(),firstName:c.teacher,lastName:'(מורה)',grade:c.grade,classLabel:c.label,parentName:'',parentPhone:'',parentEmail:'',active:true,graduated:false,isTeacher:true,createdAt:Date.now()}); });
+  // teacher-borrowers
+  SEED.teacherB.forEach(t=>{
+    students.push({id:uid(),firstName:t[0],lastName:'(מורה)',grade:t[1],classLabel:t[2],
+      parentName:'',parentPhone:'',parentEmail:'',active:true,graduated:false,isTeacher:true,createdAt:Date.now(),_loan:t[3]});
+  });
+  const books=[],logs=[];
+  const bookByTitle={};
+  const getBook=(title)=>{
+    if(bookByTitle[title]) return bookByTitle[title];
+    const s=detectSeries(title);
+    const b={id:uid(),title,author:'',series:s.base,seriesIndex:s.idx,language:'עברית',ageBand:'',
+      genre:'אחר',publisher:'',year:'',dewey:'',location:'',isbn:'',cover:'',notes:'',items:[]};
+    books.push(b); bookByTitle[title]=b; return b;
+  };
+  const addLoan=(title,studentId,dateMs,reminders)=>{
+    const b=getBook(title);
+    const due=dateMs?dateMs+DEF.loanDays*day:null;
+    const it={id:uid(),barcode:'',status:'out',holder:studentId,borrowDate:dateMs||null,dueDate:due,reminders:reminders||[]};
+    b.items.push(it);
+    logs.push({id:uid(),type:'checkout',bookId:b.id,itemId:it.id,barcode:'',studentId,date:dateMs||Date.now(),dueDate:due});
+  };
+  SEED.loans.forEach(l=>{
+    const st=findStud(l[0],l[1],l[2],l[3]); if(!st)return;
+    addLoan(l[4],st.id,l[5],l[6]||[]);
+  });
+  // teacher-borrower loans
+  students.filter(s=>s._loan).forEach(s=>{ addLoan(s._loan,s.id,null,[]); delete s._loan; });
+  // make sure every book has at least one copy (titles with a loan already do)
+  books.forEach(b=>{ if(!b.items.length) b.items.push({id:uid(),barcode:'',status:'in',holder:null,dueDate:null}); });
+  return {books,students,classes,logs,settings:Object.assign({lastRollover:rolloverYear()},DEF),counters:{barcode:1000}};
+}
+
+/* ============ logo: city PNG is static in the header ============ */
+
+/* ============ navigation ============ */
+let CUR='shelf';
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-view]');if(!b)return;go(b.dataset.view);});
+(function(){const bh=$('#brandHome');if(bh){bh.addEventListener('click',()=>go('shelf'));bh.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go('shelf');}});}})();
+function go(v){
+  CUR=v;
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('active',x.dataset.view===v));
+  document.querySelectorAll('.view').forEach(s=>s.classList.add('hidden'));
+  $('#view-'+v).classList.remove('hidden');
+  window.scrollTo(0,0);
+  if(v==='shelf')renderShelf();
+  if(v==='catalog')renderCatalog();
+  if(v==='students')renderStudents();
+  if(v==='settings'){renderClasses();loadSettings();}
+  if(v==='reminders')renderReminders();
+  if(v==='map')renderMap();
+  if(v==='reports')renderReports();
+  if(v==='barcodes')renderBarcodeMeta();
+  if(v==='terms')renderTerms();
+  if(v==='checkout')setTimeout(()=>$('#scanInput').focus(),60);
+}
+
+/* ============ count + filters fill ============ */
+function paintCount(){const titles=DB.books.length;let copies=0,out=0;DB.books.forEach(b=>{copies+=itemsOf(b).length;out+=outItems(b).length;});const studs=DB.students.filter(s=>s.active&&!s.isTeacher).length;$('#countPill').textContent=`${titles} כותרים · ${copies} עותקים · ${out} מושאלים · ${studs} תלמידים`;}
+function fillSelect(sel,arr,all){sel.innerHTML=(all?'<option value="">הכל</option>':'')+arr.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');}
+fillSelect($('#shelfLang'),LANGS,true);fillSelect($('#shelfGenre'),GENRES.map(g=>g.k),true);fillSelect($('#shelfAge'),AGES,true);
+
+/* ============ SHELF ============ */
+['#shelfSearch','#shelfSort','#shelfLang','#shelfGenre','#shelfAge'].forEach(s=>$(s).addEventListener('input',renderShelf));
+function renderShelf(){
+  const q=$('#shelfSearch').value.trim().toLowerCase();
+  const sort=$('#shelfSort').value, fl=$('#shelfLang').value, fg=$('#shelfGenre').value, fa=$('#shelfAge').value;
+  let list=DB.books.filter(b=>{
+    if(fl&&b.language!==fl)return false; if(fg&&b.genre!==fg)return false; if(fa&&b.ageBand!==fa)return false;
+    if(q){const hay=[b.title,b.author,b.series,b.publisher,b.location,itemsOf(b).map(i=>i.barcode).join(' ')].join(' ').toLowerCase();if(!hay.includes(q))return false;}
+    return true;
+  });
+  const groupOf=b=>({
+    author:b.author?firstLetter(authorSortKey(b.author)):'ללא סופר', title:firstLetter(stripArticle(b.title)),
+    series:b.series||'ללא סדרה', language:b.language||'—', age:b.ageBand||'—',
+    genre:b.genre||'—', publisher:b.publisher||'—', year:b.year||'—', location:b.location||'ללא מיקום'
+  }[sort]);
+  const sortKey=b=>({
+    author:authorSortKey(b.author), title:stripArticle(b.title), series:(b.series||'תתת')+' '+String(b.seriesIndex||0).padStart(3,'0'),
+    language:b.language||'', age:b.ageBand||'', genre:b.genre||'', publisher:b.publisher||'', year:b.year||'', location:b.location||'תתת'
+  }[sort]);
+  list.sort((a,b)=>cmp(sortKey(a),sortKey(b))|| cmp(a.title,b.title));
+  const groups={};list.forEach(b=>{const g=groupOf(b);(groups[g]=groups[g]||[]).push(b);});
+  const keys=Object.keys(groups).sort(cmp);
+  const wall=$('#shelfWall');
+  if(!list.length){wall.innerHTML=`<div class="empty-state"><div class="big">📚</div><p>אין ספרים להצגה. הוסיפו ספרים בלשונית <b>קטלוג</b> או ייבאו מאקסל.</p></div>`;return;}
+  wall.innerHTML=keys.map(k=>{
+    const spines=groups[k].map(spine).join('');
+    return `<div class="section"><div class="section-head"><span class="sh-key">${esc(k)}</span><span class="sh-count">${groups[k].length} ספרים</span><span class="sh-line"></span></div><div class="shelf">${spines}</div></div>`;
+  }).join('');
+  wall.querySelectorAll('.spine').forEach(el=>{el.addEventListener('click',()=>bookDetail(el.dataset.id));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bookDetail(el.dataset.id);}});});
+}
+function spine(b){
+  const h=158+hash(b.id)%58, w=38+hash(b.title)%22, c=GENRE_C[b.genre]||'#0d8b8d';
+  const author=(b.author||'').split(/\s+/).slice(-2).join(' ');
+  const st=aggStatus(b);
+  const dot=st==='partial'?'#f0871e':st==='out'?'#e0533d':st==='lost'?'#9a2d20':'';
+  return `<button class="spine" data-id="${b.id}" style="--h:${h}px;--w:${w}px;--c:${c}" title="${esc(b.title)} · ${itemsOf(b).length} עותקים${b.location?' · '+esc(b.location):''}">
+    <span class="lbl"><span class="t">${esc(b.title)}</span>${w>=46?`<span class="a">${esc(author)}</span>`:''}</span>
+    ${dot?`<span class="dot" style="background:${dot}"></span>`:''}
+  </button>`;
+}
+function cardCover(b){
+  if(b.cover) return `<img src="${esc(b.cover)}" alt="" loading="lazy">`;
+  const c=GENRE_C[b.genre]||'#0d8b8d';
+  const author=(b.author||'').split(/\s+/).slice(0,3).join(' ');
+  return `<div class="fcover" style="--gc:${c}"><div class="ft">${esc(b.title)}</div><div class="frule"></div>${author?`<div class="fa">${esc(author)}</div>`:''}</div>`;
+}
+function bookCard(b){
+  const c=GENRE_C[b.genre]||'#0d8b8d';
+  const a=availItems(b).length,o=outItems(b).length,n=itemsOf(b).length;
+  const av=a>0?`<span class="avail ok">${n>1?a+'/'+n+' ':''}זמין</span>`:(o>0?`<span class="avail out">מושאל</span>`:`<span class="avail lost">לא זמין</span>`);
+  const bar=b.cover?`<span class="genre-bar" style="--gc:${c}"></span>`:'';
+  return `<div class="book-card" data-id="${b.id}" tabindex="0">
+    <div class="cv">${cardCover(b)}${av}${bar}</div>
+    <div class="bd"><b title="${esc(b.title)}">${esc(b.title)}</b><small>${esc(b.author||'—')}</small></div>
+  </div>`;
+}
+
+/* ============ MODAL ============ */
+function modal(html){
+  const root=$('#modalRoot');
+  root.innerHTML=`<div class="modal-bg"><div class="modal">${html}</div></div>`;
+  root.querySelector('.modal-bg').addEventListener('click',e=>{if(e.target.classList.contains('modal-bg'))closeModal();});
+  return root;
+}
+function closeModal(){$('#modalRoot').innerHTML='';}
+
+/* ============ BOOK DETAIL ============ */
+function bookDetail(id){
+  const b=DB.books.find(x=>x.id===id);if(!b)return;ensureItems(b);
+  const cov=`<div class="detail-cover">${cardCover(b)}</div>`;
+  const a=availItems(b).length,o=outItems(b).length,l=lostItems(b).length;
+  const summary=`<span class="tag">${a} זמינים</span> ${o?`<span class="tag out">${o} מושאלים</span>`:''} ${l?`<span class="tag lost">${l} אבודים</span>`:''}`;
+  const kv=(k,v)=>v?`<div class="kv"><b>${k}</b><span>${esc(v)}</span></div>`:'';
+  const copyRow=(it,i)=>{
+    const h=it.holder?DB.students.find(s=>s.id===it.holder):null;
+    const stTag=it.status==='out'?`<span class="tag out">מושאל${h?' · '+esc(h.firstName+' '+h.lastName):''}</span>`:it.status==='lost'?'<span class="tag lost">אבוד</span>':'<span class="tag">זמין</span>';
+    const act=it.status==='in'?`<button class="btn sm" onclick="quickCheckout('${b.id}','${it.id}')">השאלה</button>`
+      :it.status==='out'?`<button class="btn sm" onclick="returnBook('${b.id}','${it.id}');bookDetail('${b.id}')">החזרה</button><button class="btn danger sm" onclick="markLost('${b.id}','${it.id}');bookDetail('${b.id}')">אבוד</button>`
+      :`<button class="btn ghost sm" onclick="returnToStock('${b.id}','${it.id}')">החזר למלאי</button>`;
+    return `<div class="litem"><div class="meta"><b style="font-size:14px">עותק ${i+1}</b><small>${it.barcode?'ברקוד '+esc(it.barcode):'ללא ברקוד'} · ${stTag}${it.dueDate&&it.status==='out'?' · עד '+new Date(it.dueDate).toLocaleDateString('he-IL'):''}</small></div><div class="actions">${act}</div></div>`;
+  };
+  modal(`<div class="mhead"><h3>${esc(b.title)}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mbody">${cov}
+    <div style="margin-bottom:10px">${summary} <span class="tag" style="background:${GENRE_C[b.genre]||'#5a4a32'}33;border-color:${GENRE_C[b.genre]||'#7d6128'}">${esc(b.genre||'—')}</span></div>
+    ${kv('סופר',b.author)}${kv('סדרה',b.series?b.series+(b.seriesIndex?' · '+b.seriesIndex:''):'')}${kv('מיקום במדף',b.location)}${kv('שפה',b.language)}${kv('גיל',b.ageBand)}${kv('הוצאה',b.publisher)}${kv('שנה',b.year)}${kv('ISBN',b.isbn)}${kv('הערות',b.notes)}
+    <div style="clear:both"></div>
+    <h3 style="color:var(--teal-d);font-size:16px;margin:16px 0 6px">עותקים (${itemsOf(b).length})</h3>
+    <div class="list">${itemsOf(b).map(copyRow).join('')}</div>
+    <div class="row" style="margin-top:14px"><button class="btn ghost sm" onclick="editBook('${b.id}')">עריכת ספר ועותקים</button></div>
+  </div>`);
+}
+function returnToStock(bookId,itemId){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;it.status='in';it.holder=null;it.dueDate=null;save();renderShelf();bookDetail(bookId);toast('הוחזר למלאי');}
+function quickCheckout(bookId,itemId){closeModal();go('checkout');const b=DB.books.find(x=>x.id===bookId);if(!b)return;const it=itemId?itemsOf(b).find(i=>i.id===itemId):availItems(b)[0];if(!it){toast('אין עותק זמין','err');return;}if(it.barcode){$('#scanInput').value=it.barcode;handleScan(it.barcode);}else openCheckout(b,it);}
+
+/* ============ CATALOG ============ */
+$('#newBookBtn').addEventListener('click',()=>editBook(null));
+$('#catSearch').addEventListener('input',renderCatalog);
+function renderCatalog(){
+  const q=$('#catSearch').value.trim().toLowerCase();
+  let list=DB.books.slice().sort((a,b)=>cmp(a.title,b.title));
+  if(q)list=list.filter(b=>[b.title,b.author,b.isbn,b.series,b.location,itemsOf(b).map(i=>i.barcode).join(' ')].join(' ').toLowerCase().includes(q));
+  $('#catalogList').innerHTML=list.map(b=>{
+    const cov=b.cover?`<img class="cover" src="${esc(b.cover)}">`:`<div class="cover" style="background:${GENRE_C[b.genre]||'#0d8b8d'};color:#fff">${esc((b.title||'')[0]||'?')}</div>`;
+    const a=availItems(b).length,o=outItems(b).length,l=lostItems(b).length,n=itemsOf(b).length;
+    const st=`<span class="tag">${a}/${n} זמין</span>${o?' <span class="tag out">'+o+' מושאל</span>':''}${l?' <span class="tag lost">'+l+' אבוד</span>':''}`;
+    return `<div class="litem">${cov}<div class="meta"><b>${esc(b.title)}</b><small>${esc(b.author||'—')} · ${esc(b.genre||'—')} · ${esc(b.language||'')}${b.location?' · 📍 '+esc(b.location):''}</small></div><div class="actions">${st}<button class="btn ghost sm" onclick="editBook('${b.id}')">עריכה</button><button class="btn danger sm" onclick="delBook('${b.id}')">מחיקה</button></div></div>`;
+  }).join('')||'<p class="muted">אין ספרים. לחצו על "ספר חדש".</p>';
+}
+function delBook(id){const b=DB.books.find(x=>x.id===id);if(!confirm('למחוק את "'+(b?b.title:'')+'"?'))return;DB.books=DB.books.filter(x=>x.id!==id);save();renderCatalog();toast('נמחק');}
+function editBook(id){
+  const b=id?DB.books.find(x=>x.id===id):{id:uid(),cover:'',location:'',items:[{id:uid(),barcode:'',status:'in',holder:null,dueDate:null}]};
+  ensureItems(b);
+  let formItems=b.items.map(i=>Object.assign({},i)); // working copy
+  let genUsed=0;
+  const opt=(arr,v)=>arr.map(x=>`<option ${x===v?'selected':''}>${esc(x)}</option>`).join('');
+  modal(`<div class="mhead"><h3>${id?'עריכת ספר':'ספר חדש'}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mbody">
+    <div class="card no-print" style="margin-bottom:14px;background:rgba(201,161,74,.08)">
+      <label class="fld" style="margin:0"><span>שליפה אוטומטית לפי ISBN או ברקוד</span>
+        <div class="row"><input class="inp" id="fIsbnLookup" placeholder="הקלידו/הדביקו ISBN" style="flex:1"><button class="btn sm" id="fLookupBtn">שלוף פרטים</button></div></label>
+      <div class="muted" id="fLookupMsg" style="margin-top:6px"></div>
+    </div>
+    <label class="fld"><span>שם הספר *</span><input class="inp" id="fTitle" value="${esc(b.title)}"></label>
+    <div class="grid two">
+      <label class="fld"><span>סופר</span><input class="inp" id="fAuthor" list="dlAuthors" value="${esc(b.author)}"></label>
+      <label class="fld"><span>מיון לפי (שם משפחה — אופציונלי)</span><input class="inp" id="fAuthorSort" value="${esc(b.authorSort)}" placeholder="${b.author?esc(authorSortKey(b.author)):'אוטומטי לפי שם'}"></label>
+    </div>
+    <div class="grid two">
+      <label class="fld"><span>סדרה</span><input class="inp" id="fSeries" list="dlSeries" value="${esc(b.series)}"></label>
+      <label class="fld"><span>מס׳ בסדרה</span><input class="inp" id="fSeriesIdx" type="number" value="${esc(b.seriesIndex)}"></label>
+    </div>
+    <div class="grid three">
+      <label class="fld"><span>שפה</span><select class="inp" id="fLang">${opt(LANGS,b.language||'עברית')}</select></label>
+      <label class="fld"><span>גיל מתאים</span><select class="inp" id="fAge"><option value=""></option>${opt(AGES,b.ageBand)}</select></label>
+      <label class="fld"><span>ז'אנר</span><select class="inp" id="fGenre">${opt(GENRES.map(g=>g.k),b.genre||'אחר')}</select></label>
+    </div>
+    <div class="grid three">
+      <label class="fld"><span>הוצאה</span><input class="inp" id="fPub" list="dlPubs" value="${esc(b.publisher)}"></label>
+      <label class="fld"><span>שנה</span><input class="inp" id="fYear" value="${esc(b.year)}"></label>
+      <label class="fld"><span>סיווג נושאי (דיואי)</span><input class="inp" id="fDewey" value="${esc(b.dewey)}"></label>
+    </div>
+    <div class="grid two">
+      <label class="fld"><span>מיקום במדף 📍</span><input class="inp" id="fLocation" list="dlLoc" value="${esc(b.location)}" placeholder="לדוגמה: ארון ב׳ · מדף 3"></label>
+      <label class="fld"><span>ISBN</span><input class="inp" id="fIsbn" value="${esc(b.isbn)}"></label>
+    </div>
+    <label class="fld"><span>כריכה — קישור או העלאה</span>
+      <div class="row"><input class="inp" id="fCover" value="${esc(b.cover)}" placeholder="https://…" style="flex:1"><input type="file" id="fCoverUp" accept="image/*" class="hidden"><button class="btn ghost sm" onclick="$('#fCoverUp').click()">העלה תמונה</button></div></label>
+
+    <div class="card no-print" style="margin:4px 0 12px;background:rgba(201,161,74,.06)">
+      <div class="row" style="justify-content:space-between"><span style="color:#cbb386;font-weight:600">עותקים פיזיים</span><button class="btn ghost sm" id="cpAdd">+ הוסף עותק</button></div>
+      <div id="cpList" style="margin-top:10px"></div>
+      <div class="muted" style="margin-top:6px">לכל עותק ברקוד נפרד וניתן לסריקה. עותק מושאל/אבוד אי אפשר למחוק עד החזרתו.</div>
+    </div>
+
+    <label class="fld"><span>הערות</span><textarea class="inp" id="fNotes">${esc(b.notes)}</textarea></label>
+    <div class="row" style="margin-top:6px"><button class="btn" id="fSave">שמירה</button><button class="btn ghost" onclick="closeModal()">ביטול</button></div>
+    <datalist id="dlAuthors">${[...new Set(DB.books.map(x=>x.author).filter(Boolean))].map(a=>`<option>${esc(a)}</option>`).join('')}</datalist>
+    <datalist id="dlSeries">${[...new Set(DB.books.map(x=>x.series).filter(Boolean))].map(a=>`<option>${esc(a)}</option>`).join('')}</datalist>
+    <datalist id="dlPubs">${[...new Set(DB.books.map(x=>x.publisher).filter(Boolean))].map(a=>`<option>${esc(a)}</option>`).join('')}</datalist>
+    <datalist id="dlLoc">${[...new Set(DB.books.map(x=>x.location).filter(Boolean))].map(a=>`<option>${esc(a)}</option>`).join('')}</datalist>
+  </div>`);
+
+  function syncInputs(){document.querySelectorAll('#cpList .copyRow').forEach(r=>{const it=formItems.find(i=>i.id===r.dataset.id);if(it)it.barcode=r.querySelector('.copyBc').value.trim();});}
+  function renderCopies(){
+    $('#cpList').innerHTML=formItems.map((it,i)=>{
+      const stTag=it.status==='out'?'<span class="tag out">מושאל</span>':it.status==='lost'?'<span class="tag lost">אבוד</span>':'<span class="tag">זמין</span>';
+      const canDel=it.status==='in';
+      return `<div class="litem copyRow" data-id="${it.id}"><div class="meta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:13px">עותק ${i+1}</b><input class="inp copyBc" value="${esc(it.barcode)}" placeholder="ברקוד" style="max-width:190px;padding:6px 8px">${stTag}</div><div class="actions"><button class="btn ghost sm cpGen" data-id="${it.id}">צור ברקוד</button><button class="btn danger sm cpDel" data-id="${it.id}" ${canDel?'':'disabled style=opacity:.4'}>מחק</button></div></div>`;
+    }).join('');
+    $('#cpList').querySelectorAll('.cpGen').forEach(btn=>btn.addEventListener('click',()=>{syncInputs();const it=formItems.find(i=>i.id===btn.dataset.id);it.barcode=String(DB.counters.barcode+genUsed);genUsed++;renderCopies();}));
+    $('#cpList').querySelectorAll('.cpDel').forEach(btn=>btn.addEventListener('click',()=>{const it=formItems.find(i=>i.id===btn.dataset.id);if(it.status!=='in')return;if(formItems.length<=1){toast('חייב להישאר עותק אחד','err');return;}syncInputs();formItems=formItems.filter(i=>i.id!==btn.dataset.id);renderCopies();}));
+  }
+  renderCopies();
+  $('#cpAdd').addEventListener('click',()=>{syncInputs();formItems.push({id:uid(),barcode:'',status:'in',holder:null,dueDate:null});renderCopies();});
+
+  $('#fCoverUp').addEventListener('change',ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#fCover').value=r.result;toast('כריכה נטענה');};r.readAsDataURL(f);});
+  $('#fLookupBtn').addEventListener('click',()=>lookupBook($('#fIsbnLookup').value.trim()||$('#fTitle').value.trim()));
+  $('#fSave').addEventListener('click',()=>{
+    const t=$('#fTitle').value.trim();if(!t){toast('חסר שם ספר','err');return;}
+    syncInputs();
+    // barcode validation
+    const seen={};
+    for(const it of formItems){ if(!it.barcode)continue;
+      if(seen[it.barcode]){toast('ברקוד כפול בתוך הספר: '+it.barcode,'err');return;} seen[it.barcode]=1;
+      const other=findByBarcode(it.barcode);
+      if(other&&other.book.id!==b.id){toast('ברקוד '+it.barcode+' כבר משויך ל"'+other.book.title+'"','err');return;}
+    }
+    if(!formItems.length){toast('צריך לפחות עותק אחד','err');return;}
+    DB.counters.barcode+=genUsed;
+    b.items=formItems;
+    Object.assign(b,{title:t,author:$('#fAuthor').value.trim(),authorSort:$('#fAuthorSort').value.trim(),series:$('#fSeries').value.trim(),seriesIndex:$('#fSeriesIdx').value.trim(),language:$('#fLang').value,ageBand:$('#fAge').value,genre:$('#fGenre').value,publisher:$('#fPub').value.trim(),year:$('#fYear').value.trim(),dewey:$('#fDewey').value.trim(),location:$('#fLocation').value.trim(),isbn:$('#fIsbn').value.trim(),cover:$('#fCover').value.trim(),notes:$('#fNotes').value.trim()});
+    if(!id)DB.books.push(b);
+    save();closeModal();renderCatalog();renderShelf();toast('נשמר','ok');
+  });
+}
+async function lookupBook(q){
+  if(!q){toast('הקלידו ISBN או שם','err');return;}
+  const msg=$('#fLookupMsg');msg.textContent='מחפש…';
+  try{
+    const isbn=q.replace(/[^0-9Xx]/g,'');
+    const url=isbn.length>=10?`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`:`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}`;
+    const r=await fetch(url);const d=await r.json();
+    const v=d.items&&d.items[0]&&d.items[0].volumeInfo;
+    if(!v){msg.textContent='לא נמצא. אפשר למלא ידנית.';return;}
+    if(v.title&&!$('#fTitle').value)$('#fTitle').value=v.title;
+    if(v.authors)$('#fAuthor').value=v.authors.join(', ');
+    if(v.publisher)$('#fPub').value=v.publisher;
+    if(v.publishedDate)$('#fYear').value=(v.publishedDate.match(/\d{4}/)||[''])[0];
+    if(v.language&&LANG_MAP[v.language])$('#fLang').value=LANG_MAP[v.language];
+    let cov=v.imageLinks&&(v.imageLinks.thumbnail||v.imageLinks.smallThumbnail);
+    if(cov)cov=cov.replace('http://','https://');
+    else if(isbn.length>=10)cov=`https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+    if(cov)$('#fCover').value=cov;
+    if(isbn.length>=10&&!$('#fIsbn').value)$('#fIsbn').value=isbn;
+    msg.textContent='נמצא: '+(v.title||'')+' — בדקו והשלימו ז\'אנר וגיל.';
+  }catch(e){msg.textContent='שגיאת רשת — נסו שוב או מלאו ידנית.';}
+}
+
+/* ============ CHECKOUT ============ */
+let scanBuf='',scanT=0;
+$('#scanInput').addEventListener('keydown',e=>{if(e.key==='Enter'){const v=$('#scanInput').value.trim();if(v)handleScan(v);}});
+function handleScan(code){
+  const hit=findByBarcode(code);
+  $('#scanInput').value='';$('#scanInput').focus();
+  if(!hit){
+    $('#checkoutPanel').innerHTML=`<div class="card"><p>לא נמצא עותק עם ברקוד <b>${esc(code)}</b>.</p><button class="btn sm" onclick="(function(){editBook(null);setTimeout(()=>{var r=document.querySelector('#cpList .copyBc');if(r)r.value='${esc(code)}';},60);})()">הוסף ספר חדש עם ברקוד זה</button></div>`;
+    return;
+  }
+  openCheckout(hit.book,hit.item);
+}
+function openCheckout(b,it){
+  if(!it)it=availItems(b)[0]||itemsOf(b)[0];
+  const panel=$('#checkoutPanel');
+  const cov=`<div class="detail-cover">${cardCover(b)}</div>`;
+  const head=`<h3 style="margin:0;color:var(--teal-d)">${esc(b.title)}</h3><p class="muted">${esc(b.author||'')}${b.location?' · 📍 '+esc(b.location):''} · ${esc(copyLabel(b,it))}</p>`;
+  if(it.status==='out'){
+    const h=DB.students.find(s=>s.id===it.holder);
+    panel.innerHTML=`<div class="card">${cov}${head}<p><span class="tag out">מושאל</span> אצל <b>${h?esc(h.firstName+' '+h.lastName+' · '+gradeHeb(h.grade)+(h.classLabel||'')):'—'}</b>${it.dueDate?' · עד '+new Date(it.dueDate).toLocaleDateString('he-IL'):''}</p><div style="clear:both"></div><div class="row"><button class="btn" onclick="returnBook('${b.id}','${it.id}',true)">החזרה</button><button class="btn danger" onclick="markLost('${b.id}','${it.id}',true)">סמן כאבוד</button></div></div>`;
+    return;
+  }
+  if(it.status==='lost'){
+    panel.innerHTML=`<div class="card">${cov}${head}<p><span class="tag lost">אבוד</span></p><div style="clear:both"></div><button class="btn ghost" onclick="returnToStock('${b.id}','${it.id}');document.getElementById('scanInput').focus()">החזר למלאי</button></div>`;
+    return;
+  }
+  const due=new Date(Date.now()+(DB.settings.loanDays||30)*864e5).toISOString().slice(0,10);
+  panel.innerHTML=`<div class="card">${cov}${head}<p><span class="tag">זמין</span></p><div style="clear:both"></div>
+    <label class="fld"><span>תלמיד</span><input class="inp" id="coStud" list="dlStud" placeholder="חיפוש שם תלמיד…"></label>
+    <datalist id="dlStud">${DB.students.filter(s=>s.active).map(s=>`<option value="${esc(s.firstName+' '+s.lastName+' — '+gradeHeb(s.grade)+s.classLabel)}" data-id="${s.id}">`).join('')}</datalist>
+    <div class="grid two"><label class="fld"><span>להחזרה עד</span><input class="inp" id="coDue" type="date" value="${due}"></label>
+    <div style="display:flex;align-items:flex-end"><button class="btn ghost sm" onclick="newStudent(()=>{var bk=DB.books.find(x=>x.id==='${b.id}');openCheckout(bk,itemsOf(bk).find(i=>i.id==='${it.id}'));})">+ תלמיד חדש</button></div></div>
+    <button class="btn" id="coConfirm">אשר השאלה</button>
+    <p class="muted" style="margin-top:8px">בעת אישור יישלח מייל להורה (יופעל בשלב Supabase).</p></div>`;
+  $('#coConfirm').addEventListener('click',()=>{
+    const txt=$('#coStud').value.trim();
+    let st=DB.students.find(s=>(s.firstName+' '+s.lastName+' — '+gradeHeb(s.grade)+s.classLabel)===txt)||DB.students.find(s=>txt&&(s.firstName+' '+s.lastName)===txt);
+    if(!st){toast('בחרו תלמיד מהרשימה','err');return;}
+    const openCnt=studentOpenItems(st.id).length, max=DB.settings.maxBooks||2;
+    if(openCnt>=max){toast(`${esc(st.firstName)} כבר מחזיק/ה ${openCnt} ספרים (מקסימום ${max})`,'err');return;}
+    const dueTs=new Date($('#coDue').value).getTime();
+    it.status='out';it.holder=st.id;it.dueDate=dueTs;it.borrowDate=Date.now();if(!it.reminders)it.reminders=[];
+    DB.logs.push({id:uid(),type:'checkout',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:st.id,date:Date.now(),dueDate:dueTs});
+    save();renderShelf();
+    panel.innerHTML=`<div class="card"><p>✓ הושאל בהצלחה: <b>${esc(b.title)}</b> (${esc(copyLabel(b,it))}) ל־<b>${esc(st.firstName+' '+st.lastName)}</b>. להחזרה עד ${new Date(dueTs).toLocaleDateString('he-IL')}.</p><p class="muted">מייל להורה (${esc(st.parentEmail||'—')}) יישלח אוטומטית בשלב Supabase.</p></div>`;
+    toast('הושאל','ok');setTimeout(()=>$('#scanInput').focus(),100);
+  });
+}
+function returnBook(bookId,itemId,fromScan){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;it.status='in';DB.logs.push({id:uid(),type:'return',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:it.holder,date:Date.now()});it.holder=null;it.dueDate=null;save();renderShelf();if(fromScan)$('#checkoutPanel').innerHTML=`<div class="card"><p>✓ הוחזר: <b>${esc(b.title)}</b></p></div>`;toast('הוחזר','ok');}
+function markLost(bookId,itemId,fromScan){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;if(!confirm('לסמן עותק של "'+b.title+'" כאבוד?'))return;it.status='lost';DB.logs.push({id:uid(),type:'lost',bookId:b.id,itemId:it.id,barcode:it.barcode,studentId:it.holder,date:Date.now()});it.holder=null;it.dueDate=null;save();renderShelf();if(fromScan)$('#checkoutPanel').innerHTML=`<div class="card"><p>סומן כאבוד: <b>${esc(b.title)}</b></p></div>`;toast('סומן כאבוד');}
+
+/* ============ STUDENTS ============ */
+$('#newStudentBtn').addEventListener('click',()=>newStudent());
+$('#studSearch').addEventListener('input',renderStudents);$('#studFilter').addEventListener('change',renderStudents);
+$('#studClass').addEventListener('change',renderStudents);
+function teacherFor(grade,label){const c=DB.classes.find(c=>c.grade==grade&&c.label==label);return c?c.teacher:'';}
+function fillStudClass(){const sel=$('#studClass');if(!sel||sel.options.length>1)return;const ks=[...new Set(DB.students.map(s=>s.grade+'|'+s.classLabel))].sort();sel.innerHTML='<option value="">כל הכיתות</option>'+ks.map(k=>{const[g,l]=k.split('|');return `<option value="${esc(k)}">${gradeHeb(+g)+l}</option>`;}).join('');}
+function studentRow(s){
+  const open=studentOpenItems(s.id).length;
+  const sib=siblingsOf(s).length;
+  const tag=s.isTeacher?'<span class="tag" style="background:var(--orange-l);border-color:#f6d4b0;color:var(--orange-d)">מורה</span>':s.graduated?'<span class="tag lost">סיים/עבר חט״ב</span>':'';
+  return `<div class="litem"><div class="cover" style="font-size:18px">${esc(s.firstName[0]||'')}</div><div class="meta"><b>${esc(s.firstName+' '+s.lastName)}</b><small>${tag?tag+' · ':''}הורה: ${esc(s.parentName||'—')}${s.parentPhone?' · '+esc(s.parentPhone):''}${sib?' · 👨‍👩‍👧 '+sib+(sib>1?' אחים':' אח/אחות'):''}${open?' · '+open+' ספרים פתוחים':''}</small></div><div class="actions"><button class="btn ghost sm" onclick="studentPage('${s.id}')">תיק</button><button class="btn ghost sm" onclick="newStudent(null,'${s.id}')">עריכה</button></div></div>`;
+}
+function renderStudents(){
+  fillStudClass();
+  const q=$('#studSearch').value.trim().toLowerCase(),f=$('#studFilter').value,fc=$('#studClass').value;
+  let list=DB.students.slice();
+  if(f==='active')list=list.filter(s=>s.active); if(f==='grad')list=list.filter(s=>s.graduated);
+  if(fc)list=list.filter(s=>(s.grade+'|'+s.classLabel)===fc);
+  if(q)list=list.filter(s=>[s.firstName,s.lastName,gradeHeb(s.grade)+s.classLabel,s.parentName].join(' ').toLowerCase().includes(q));
+  list.sort((a,b)=>a.grade-b.grade||cmp(a.classLabel,b.classLabel)||(a.isTeacher-b.isTeacher)||cmp(a.lastName,b.lastName));
+  // group by class
+  const groups={};list.forEach(s=>{const k=s.grade+'|'+s.classLabel;(groups[k]=groups[k]||[]).push(s);});
+  const keys=Object.keys(groups).sort((a,b)=>{const[ga,la]=a.split('|'),[gb,lb]=b.split('|');return (+ga)-(+gb)||cmp(la,lb);});
+  const el=$('#studentsList');
+  if(!list.length){el.innerHTML='<p class="muted">אין תלמידים להצגה.</p>';return;}
+  el.innerHTML=keys.map(k=>{
+    const[g,l]=k.split('|');const t=teacherFor(+g,l);
+    const rows=groups[k].map(studentRow).join('');
+    return `<div class="section"><div class="section-head"><span class="sh-key">כיתה ${gradeHeb(+g)+l}</span><span class="sh-count">${groups[k].length} תלמידים${t?' · מחנכת '+esc(t):''}</span><span class="sh-line"></span></div><div class="list">${rows}</div></div>`;
+  }).join('');
+}
+/* ============ FAMILY / SIBLINGS ============ */
+function familyMembers(fid){return fid?DB.students.filter(x=>x.familyId===fid):[];}
+function siblingsOf(s){return s&&s.familyId?DB.students.filter(x=>x.familyId===s.familyId&&x.id!==s.id):[];}
+function syncParent(fid,srcId){
+  const fam=familyMembers(fid);if(!fam.length)return;
+  let src=srcId&&fam.find(x=>x.id===srcId);
+  if(!src||!(src.parentName||src.parentPhone||src.parentEmail))
+    src=fam.find(x=>x.parentName||x.parentPhone||x.parentEmail)||fam[0];
+  fam.forEach(x=>{x.parentName=src.parentName||'';x.parentPhone=src.parentPhone||'';x.parentEmail=src.parentEmail||'';});
+}
+function linkSibling(aId,bId){
+  const a=DB.students.find(x=>x.id===aId),b=DB.students.find(x=>x.id===bId);
+  if(!a||!b||a.id===b.id)return false;
+  let fid=a.familyId||b.familyId||uid();
+  if(a.familyId&&b.familyId&&a.familyId!==b.familyId){const old=b.familyId;familyMembers(old).forEach(x=>x.familyId=a.familyId);fid=a.familyId;}
+  a.familyId=fid;b.familyId=fid;
+  syncParent(fid,a.parentName||a.parentPhone||a.parentEmail?a.id:b.id);
+  save();return true;
+}
+function unlinkSibling(id){const s=DB.students.find(x=>x.id===id);if(!s)return;const fid=s.familyId;s.familyId=null;
+  const rest=familyMembers(fid);if(rest.length===1)rest[0].familyId=null;save();}
+function refreshParentFields(s){if($('#sPName'))$('#sPName').value=s.parentName||'';if($('#sPPhone'))$('#sPPhone').value=s.parentPhone||'';if($('#sPMail'))$('#sPMail').value=s.parentEmail||'';}
+function renderFamilyBox(s){
+  const box=$('#sFamily');if(!box)return;
+  const sibs=siblingsOf(s);
+  const cand=DB.students.filter(x=>x.id!==s.id&&!x.isTeacher&&!(s.familyId&&x.familyId===s.familyId))
+    .sort((a,b)=>a.grade-b.grade||cmp(a.classLabel,b.classLabel)||cmp(a.firstName,b.firstName));
+  const chips=sibs.length?`<div class="sib-chips">${sibs.map(x=>`<span class="sib-chip">${esc(x.firstName+' '+x.lastName)} · ${gradeHeb(x.grade)+x.classLabel}<button type="button" title="ביטול שיוך" onclick="_sibUnlink('${x.id}','${s.id}')">×</button></span>`).join('')}</div>`:'<div class="muted" style="margin-bottom:6px">לא משויכים אחים.</div>';
+  box.innerHTML=chips+`<div class="row"><select class="inp" id="sibSel" style="flex:1"><option value="">— בחר תלמיד —</option>${cand.map(x=>`<option value="${x.id}">${esc(x.firstName+' '+x.lastName)} · ${gradeHeb(x.grade)+x.classLabel}</option>`).join('')}</select><button type="button" class="btn ghost sm" id="sibAdd">+ שייך</button></div><div class="muted" style="margin-top:6px">פרטי ההורה יסונכרנו אוטומטית בין כל בני המשפחה.</div>`;
+  $('#sibAdd').addEventListener('click',()=>{const v=$('#sibSel').value;if(!v){toast('בחרו תלמיד','err');return;}linkSibling(s.id,v);renderFamilyBox(s);refreshParentFields(s);renderStudents();toast('שויך','ok');});
+}
+window._sibUnlink=function(sibId,selfId){unlinkSibling(sibId);const self=DB.students.find(x=>x.id===selfId);if(self){renderFamilyBox(self);refreshParentFields(self);}renderStudents();toast('בוטל השיוך','ok');};
+
+function studentPage(id){
+  const s=DB.students.find(x=>x.id===id);if(!s)return;
+  const open=studentOpenItems(s.id);
+  const logs=DB.logs.filter(l=>l.studentId===s.id).sort((a,b)=>b.date-a.date);
+  const sibs=siblingsOf(s);
+  const sibHtml=sibs.length?`<div class="kv"><b>אחים/בני משפחה</b><span>${sibs.map(x=>`<button class="btn ghost sm" style="margin:0 0 0 6px" onclick="studentPage('${x.id}')">${esc(x.firstName+' '+x.lastName)} · ${gradeHeb(x.grade)+x.classLabel}</button>`).join('')}</span></div>`:'';
+  const logRow=l=>{const b=DB.books.find(x=>x.id===l.bookId);const t={checkout:'השאלה',return:'החזרה',lost:'אבוד'}[l.type];return `<div class="kv"><b>${new Date(l.date).toLocaleDateString('he-IL')}</b><span>${t} · ${esc(b?b.title:'—')}${l.barcode?' · '+esc(l.barcode):''}${l.type==='checkout'&&l.dueDate?' · עד '+new Date(l.dueDate).toLocaleDateString('he-IL'):''}</span></div>`;};
+  modal(`<div class="mhead"><h3>${esc(s.firstName+' '+s.lastName)}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mbody">
+    <div class="kv"><b>כיתה</b><span>${gradeHeb(s.grade)+s.classLabel} · מחנך/ת ${esc(teacherFor(s.grade,s.classLabel)||'—')}</span></div>
+    <div class="kv"><b>הורה</b><span>${esc(s.parentName||'—')} · ${esc(s.parentPhone||'')} · ${esc(s.parentEmail||'')}</span></div>
+    ${sibHtml}
+    <h3 style="color:var(--teal-d);font-size:17px;margin:16px 0 6px">ספרים פתוחים (${open.length})</h3>
+    ${open.map(o=>`<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b><small>${esc(copyLabel(o.book,o.item))} · עד ${o.item.dueDate?new Date(o.item.dueDate).toLocaleDateString('he-IL'):'—'}</small></div><div class="actions"><button class="btn ghost sm" onclick="returnBook('${o.book.id}','${o.item.id}');studentPage('${s.id}')">החזרה</button><button class="btn danger sm" onclick="markLost('${o.book.id}','${o.item.id}');studentPage('${s.id}')">אבוד</button></div></div>`).join('')||'<p class="muted">אין.</p>'}
+    <h3 style="color:var(--teal-d);font-size:17px;margin:16px 0 6px">יומן פעילות</h3>
+    ${logs.map(logRow).join('')||'<p class="muted">אין רישומים.</p>'}
+  </div>`);
+}
+function newStudent(cb,id){
+  const s=id?DB.students.find(x=>x.id===id):{id:uid(),grade:1,classLabel:'1',active:true,graduated:false,createdAt:Date.now()};
+  const gradeOpt=GRADES_HEB.map((h,i)=>i?`<option value="${i}" ${s.grade==i?'selected':''}>${h}</option>`:'').join('');
+  modal(`<div class="mhead"><h3>${id?'עריכת תלמיד':'תלמיד חדש'}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mbody">
+    <div class="grid two"><label class="fld"><span>שם פרטי *</span><input class="inp" id="sFirst" value="${esc(s.firstName)}"></label><label class="fld"><span>שם משפחה</span><input class="inp" id="sLast" value="${esc(s.lastName)}"></label></div>
+    <div class="grid two"><label class="fld"><span>שכבה</span><select class="inp" id="sGrade">${gradeOpt}</select></label><label class="fld"><span>כיתה</span><input class="inp" id="sClass" value="${esc(s.classLabel)}"></label></div>
+    <div class="muted" id="sTeacher" style="margin:-6px 0 12px"></div>
+    <label class="fld"><span>שם הורה</span><input class="inp" id="sPName" value="${esc(s.parentName)}"></label>
+    <div class="grid two"><label class="fld"><span>טלפון הורה</span><input class="inp" id="sPPhone" value="${esc(s.parentPhone)}"></label><label class="fld"><span>אימייל הורה</span><input class="inp" id="sPMail" type="email" value="${esc(s.parentEmail)}"></label></div>
+    ${id?`<div class="fld"><span>אחים / בני משפחה</span><div id="sFamily"></div></div>`:'<div class="muted" style="margin:-4px 0 10px">שמרו את התלמיד תחילה כדי לשייך אחים/בני משפחה.</div>'}
+    <div class="row"><button class="btn" id="sSave">שמירה</button><button class="btn ghost" onclick="closeModal()">ביטול</button></div>
+  </div>`);
+  const upd=()=>{const t=teacherFor($('#sGrade').value,$('#sClass').value.trim());$('#sTeacher').textContent=t?'מחנך/ת: '+t:'אין מורה מוגדר לכיתה זו — הוסיפו בהגדרות.';};
+  $('#sGrade').addEventListener('change',upd);$('#sClass').addEventListener('input',upd);upd();
+  if(id)renderFamilyBox(s);
+  $('#sSave').addEventListener('click',()=>{
+    const f=$('#sFirst').value.trim();if(!f){toast('חסר שם','err');return;}
+    Object.assign(s,{firstName:f,lastName:$('#sLast').value.trim(),grade:+$('#sGrade').value,classLabel:$('#sClass').value.trim(),parentName:$('#sPName').value.trim(),parentPhone:$('#sPPhone').value.trim(),parentEmail:$('#sPMail').value.trim()});
+    if(s.familyId)syncParent(s.familyId,s.id);
+    if(!id)DB.students.push(s);save();closeModal();renderStudents();toast('נשמר','ok');if(cb)cb();
+  });
+}
+
+/* ============ CLASSES (settings) ============ */
+$('#addClass').addEventListener('click',()=>{
+  const g=+$('#clGrade').value,l=$('#clLabel').value.trim(),t=$('#clTeacher').value.trim();
+  if(!l||!t){toast('מלאו כיתה ומורה','err');return;}
+  const ex=DB.classes.find(c=>c.grade==g&&c.label==l);if(ex)ex.teacher=t;else DB.classes.push({id:uid(),grade:g,label:l,teacher:t});
+  $('#clLabel').value='';$('#clTeacher').value='';save();renderClasses();toast('נשמר','ok');
+});
+function renderClasses(){
+  const list=DB.classes.slice().sort((a,b)=>a.grade-b.grade||cmp(a.label,b.label));
+  $('#classList').innerHTML=list.map(c=>`<div class="litem"><div class="meta"><b>${gradeHeb(c.grade)+c.label}</b><small>מחנך/ת: ${esc(c.teacher)}</small></div><div class="actions"><button class="btn danger sm" onclick="(function(){DB.classes=DB.classes.filter(x=>x.id!=='${c.id}');save();renderClasses();})()">מחק</button></div></div>`).join('')||'<p class="muted">לא הוגדרו כיתות.</p>';
+}
+
+/* ============ BARCODES ============ */
+let bcNums=[];
+$('#bcGen').addEventListener('click',()=>{
+  const n=Math.min(300,Math.max(1,+$('#bcCount').value||30)),pre=$('#bcPrefix').value.trim();
+  bcNums=[];for(let i=0;i<n;i++){const num=DB.counters.barcode++;bcNums.push({code:String(num),label:pre?pre+'-'+num:String(num)});}
+  save();drawLabels();renderBarcodeMeta();toast(n+' ברקודים נוצרו');
+});
+$('#bcPrint').addEventListener('click',()=>{if(!bcNums.length){toast('חוללו ברקודים קודם','err');return;}window.print();});
+function renderBarcodeMeta(){if($('#bcNext'))$('#bcNext').value=DB.counters.barcode;}
+$('#bcSetNext').addEventListener('click',()=>{const v=Math.max(1,parseInt($('#bcNext').value,10)||1);DB.counters.barcode=v;save();renderBarcodeMeta();toast('מספר ההתחלה עודכן ל‑'+v,'ok');});
+$('#bcReset').addEventListener('click',()=>{if(!confirm('לאפס את מונה הברקודים חזרה ל‑1000?'))return;DB.counters.barcode=1000;bcNums=[];drawLabels();save();renderBarcodeMeta();toast('המונה אופס ל‑1000','ok');});
+function drawLabels(){
+  const sheet=$('#labelSheet');
+  sheet.innerHTML=bcNums.map(b=>`<div class="bclabel"><div class="nm-top">ספריית ביה״ס דבורה עומר · כפר סבא</div><svg class="bc" data-code="${b.code}"></svg><div class="num">${esc(b.code)}</div></div>`).join('');
+  sheet.querySelectorAll('svg.bc').forEach(svg=>{try{JsBarcode(svg,svg.dataset.code,{format:'CODE128',displayValue:false,height:34,margin:2,width:1.4});}catch(e){}});
+}
+
+/* ============ IMPORT ============ */
+$('#xlsFile').addEventListener('change',ev=>{
+  const f=ev.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const wb=XLSX.read(r.result,{type:'binary'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false});importSetup(rows);}catch(e){toast('שגיאה בקריאת הקובץ','err');}};
+  r.readAsBinaryString(f);
+});
+let impRows=[];
+function importSetup(rows){
+  impRows=rows;const head=rows[0]||[];
+  const colOpts=head.map((h,i)=>`<option value="${i}">${esc(h||('עמודה '+(i+1)))}</option>`).join('');
+  $('#importPanel').innerHTML=`<div class="card" style="margin-top:16px"><p class="muted">${rows.length-1} שורות נטענו.</p>
+    <div class="grid two"><label class="fld"><span>עמודת שם הספר</span><select class="inp" id="impTitleCol">${colOpts}</select></label>
+    <div style="display:flex;align-items:flex-end"><button class="btn" id="impAnalyze">נתח כפילויות וסדרות</button></div></div></div>
+    <div id="impResult"></div>`;
+  $('#impAnalyze').addEventListener('click',analyzeImport);
+}
+function norm(s){return String(s||'').replace(/["'`׳״.,()\-]/g,'').replace(/\s+/g,' ').trim();}
+function lev(a,b){a=norm(a);b=norm(b);const m=a.length,n=b.length;if(!m)return n;if(!n)return m;const d=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]);for(let j=0;j<=n;j++)d[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[m][n];}
+function sim(a,b){const L=Math.max(norm(a).length,norm(b).length)||1;return 1-lev(a,b)/L;}
+function analyzeImport(){
+  const col=+$('#impTitleCol').value;
+  const titles=impRows.slice(1).map(r=>String(r[col]||'').trim()).filter(Boolean);
+  const clusters=[];
+  titles.forEach(t=>{
+    let best=null;for(const c of clusters){if(sim(c.canon,t)>=0.82){best=c;break;}}
+    if(best){best.count++;best.variants[t]=(best.variants[t]||0)+1;}
+    else clusters.push({canon:t,count:1,variants:{[t]:1}});
+  });
+  clusters.forEach(c=>{c.canon=Object.entries(c.variants).sort((a,b)=>b[1]-a[1])[0][0];c.anomaly=Object.keys(c.variants).length>1;c.series=/[0-9０-９]|חלק|כרך|ספר\s|#|part|vol/i.test(c.canon);});
+  clusters.sort((a,b)=>b.count-a.count);
+  $('#impResult').innerHTML=`<div class="card" style="margin-top:16px">
+    <div class="row" style="justify-content:space-between"><b style="color:var(--teal-d)">${clusters.length} כותרים ייחודיים (מתוך ${titles.length} שורות)</b><button class="btn" id="impDoImport">ייבא כותרים נבחרים</button></div>
+    <p class="muted">🔶 = וריאציות כתיב לאיחוד · 📚 = ייתכן חלק מסדרה. ערכו את השם הנכון ובטלו סימון לכותרים שלא לייבא.</p>
+    <div class="list" style="margin-top:10px">${clusters.map((c,i)=>`<div class="litem"><input type="checkbox" class="impChk" data-i="${i}" checked style="width:18px;height:18px"><div class="meta"><input class="inp impName" data-i="${i}" value="${esc(c.canon)}"><small>${c.count} עותקים ${c.anomaly?'· 🔶 '+esc(Object.keys(c.variants).join(' / ')):''} ${c.series?'· 📚 סדרה?':''}</small></div></div>`).join('')}</div></div>`;
+  $('#impDoImport').addEventListener('click',()=>{
+    let added=0;
+    document.querySelectorAll('.impChk').forEach(chk=>{
+      if(!chk.checked)return;const i=chk.dataset.i;const name=document.querySelector('.impName[data-i="'+i+'"]').value.trim();if(!name)return;
+      if(DB.books.some(b=>norm(b.title)===norm(name)))return;
+      const c=clusters[i];
+      const items=Array.from({length:Math.max(1,c.count)},()=>({id:uid(),barcode:'',status:'in',holder:null,dueDate:null}));
+      DB.books.push({id:uid(),title:name,author:'',language:'עברית',genre:'אחר',series:'',location:'',items,cover:'',imported:true});
+      added++;
+    });
+    save();toast(added+' ספרים יובאו','ok');go('catalog');
+  });
+}
+
+/* ============ ROLLOVER (grade bump) ============ */
+function rolloverYear(){const d=new Date();return d.getMonth()>=8?d.getFullYear():d.getFullYear()-1;}
+function checkRollover(){
+  const y=rolloverYear();const banner=$('#rolloverBanner');
+  if((DB.settings.lastRollover||0)>=y){banner.classList.add('hidden');return;}
+  const n=DB.students.filter(s=>s.active&&!s.graduated).length;
+  banner.classList.remove('hidden');
+  banner.innerHTML=`<b>📅 תחילת שנת לימודים ${y+1}.</b> יש לקדם ${n} תלמידים שכבה. תלמידי כיתה ו׳ יסומנו כ"עברו חט״ב". <button class="btn sm" id="doRoll">בצע קידום שכבה</button> <button class="btn ghost sm" id="skipRoll">דחה</button>`;
+  $('#doRoll').addEventListener('click',()=>{
+    let bumped=0,grad=0;
+    DB.students.forEach(s=>{if(!s.active||s.graduated||s.isTeacher)return;if(s.grade>=6){s.graduated=true;s.active=false;grad++;}else{s.grade++;bumped++;}});
+    DB.settings.lastRollover=y;save();banner.classList.add('hidden');renderStudents();
+    toast(`קודמו ${bumped} תלמידים · ${grad} סיימו ו׳`,'ok');
+  });
+  $('#skipRoll').addEventListener('click',()=>banner.classList.add('hidden'));
+}
+
+/* ============ data export/import ============ */
+$('#exportData').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='dvora_library_backup.json';a.click();});
+$('#importDataBtn').addEventListener('click',()=>$('#importDataFile').click());
+$('#importDataFile').addEventListener('change',ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{DB=JSON.parse(r.result);migrate();save();toast('שוחזר','ok');go('shelf');}catch(e){toast('קובץ לא תקין','err');}};r.readAsText(f);});
+$('#resetData').addEventListener('click',()=>{if(!confirm('לטעון מחדש את נתוני בית הספר? כל שינוי מקומי יימחק.'))return;DB=seed();save();toast('נטענו נתוני בית הספר','ok');go('shelf');});
+
+/* ============ SETTINGS (policy) ============ */
+function loadSettings(){
+  $('#setMaxBooks').value=DB.settings.maxBooks||2;
+  $('#setLoanDays').value=DB.settings.loanDays||30;
+  $('#setReminderDays').value=DB.settings.reminderDays||21;
+  $('#setRepeatDays').value=DB.settings.repeatDays||5;
+  if($('#scanGap'))$('#scanGap').value=DB.settings.scanGap||40;
+}
+$('#saveSettings').addEventListener('click',()=>{
+  DB.settings.maxBooks=Math.max(1,+$('#setMaxBooks').value||2);
+  DB.settings.loanDays=Math.max(1,+$('#setLoanDays').value||30);
+  DB.settings.reminderDays=Math.max(1,+$('#setReminderDays').value||21);
+  DB.settings.repeatDays=Math.max(1,+$('#setRepeatDays').value||5);
+  if($('#scanGap'))DB.settings.scanGap=+$('#scanGap').value||40;
+  save();toast('המדיניות נשמרה','ok');paintCount();
+});
+
+/* ============ REMINDERS ============ */
+function daysOut(it){const b=it.borrowDate||it.dueDate&&(it.dueDate-(DB.settings.loanDays||30)*864e5);if(!b)return null;return Math.floor((Date.now()-b)/864e5);}
+function reminderDue(it,d){
+  if(it.status!=='out'||d==null)return false;
+  const th=DB.settings.reminderDays||21, rep=DB.settings.repeatDays||5;
+  if(d<th)return false;
+  const sent=(it.reminders||[]).length;
+  if(sent===0)return true;                 // first reminder is due
+  if(!it.lastReminderTs)return true;        // history without timestamp — surface it
+  return (Date.now()-it.lastReminderTs)>=rep*864e5;  // next one due 5 days after the last
+}
+function remindersDue(){
+  const res=[];
+  DB.books.forEach(b=>itemsOf(b).forEach(it=>{
+    const d=daysOut(it);
+    if(reminderDue(it,d)) res.push({book:b,item:it,days:d,sent:(it.reminders||[]).length});
+  }));
+  return res.sort((a,b)=>b.days-a.days);
+}
+function renderReminders(){
+  const due=remindersDue();
+  const p=$('#remindersPanel');
+  const rep=DB.settings.repeatDays||5, th=DB.settings.reminderDays||21;
+  const head=`<div class="banner"><b>${due.length}</b> ספרים ממתינים לתזכורת (ראשונה אחרי ${th} ימים, ואז כל ${rep} ימים עד החזרה). שליחת מייל אוטומטית תופעל בשלב ההורים/Supabase.</div>`;
+  if(!due.length){p.innerHTML=`<div class="empty-state"><div class="big">✅</div><p>אין כרגע ספרים שדורשים תזכורת.</p></div>`;return;}
+  p.innerHTML=head+`<div class="list">`+due.map(o=>{
+    const s=DB.students.find(x=>x.id===o.item.holder);
+    const contact=s?[s.parentName,s.parentPhone,s.parentEmail].filter(Boolean).join(' · '):'';
+    const hist=o.sent?`<br><span class="muted">נשלחו ${o.sent} תזכורות: ${esc((o.item.reminders||[]).join(', '))}</span>`:'<br><span class="muted">טרם נשלחה תזכורת</span>';
+    const bd=o.item.borrowDate?new Date(o.item.borrowDate).toLocaleDateString('he-IL'):'—';
+    const first=o.sent===0;
+    const which=first?'תזכורת ראשונה':`תזכורת מס׳ ${o.sent+1}`;
+    const status=first?'<span class="tag" style="background:#fff3e0;border-color:#ffe0b2;color:#b5651d">להחזרה בימים הקרובים</span>':'<span class="tag lost">הספר באיחור — נא להחזיר בהקדם</span>';
+    const msg=first?'נא להחזיר את הספר בימים הקרובים.':'הספר טרם הוחזר ונמצא באיחור — נא להחזירו בהקדם.';
+    return `<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b> ${status}<small>${s?esc(s.firstName+' '+s.lastName+' · '+gradeHeb(s.grade)+s.classLabel):'—'} · הושאל ${bd} · <b>${o.days} ימים</b> · ${which}${contact?' · '+esc(contact):' · אין פרטי קשר'}<br><span style="color:${first?'#b5651d':'#b3261e'}">${msg}</span>${hist}</small></div><div class="actions"><button class="btn ghost sm" onclick="markReminded('${o.book.id}','${o.item.id}')">סמן: תזכורת נשלחה</button><button class="btn ghost sm" onclick="returnBook('${o.book.id}','${o.item.id}');renderReminders()">החזרה</button></div></div>`;
+  }).join('')+`</div>`;
+}
+function markReminded(bookId,itemId){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;if(!it.reminders)it.reminders=[];it.reminders.push(new Date().toLocaleDateString('he-IL'));it.lastReminderTs=Date.now();save();renderReminders();toast('סומן כתזכורת שנשלחה','ok');}
+
+/* ============ REPORTS ============ */
+function clsLabel(s){return s?gradeHeb(s.grade)+s.classLabel:'';}
+function openLoanRows(){
+  const r=[];
+  DB.books.forEach(b=>itemsOf(b).forEach(it=>{ if(it.status!=='out')return;
+    const s=DB.students.find(x=>x.id===it.holder); const d=daysOut(it);
+    r.push({title:b.title, barcode:it.barcode||'', student:s?(s.firstName+' '+s.lastName):'—', cls:clsLabel(s),
+      contact:s?[s.parentPhone,s.parentEmail].filter(Boolean).join(' / '):'',
+      borrow:it.borrowDate?new Date(it.borrowDate).toLocaleDateString('he-IL'):'',
+      due:it.dueDate?new Date(it.dueDate).toLocaleDateString('he-IL'):'',
+      days:(d==null?'':d), overdue:!!(it.dueDate&&Date.now()>it.dueDate)});
+  }));
+  return r;
+}
+function reportDefs(){
+  const open=openLoanRows();
+  const LH=['ספר','ברקוד','תלמיד','כיתה','פרטי קשר','תאריך השאלה','תאריך החזרה','ימים בחוץ'];
+  const lrow=x=>[x.title,x.barcode,x.student,x.cls,x.contact,x.borrow,x.due,x.days];
+  // popularity & per-class from checkout logs
+  const checkouts=(DB.logs||[]).filter(l=>l.type==='checkout');
+  const popMap={}; checkouts.forEach(l=>{const b=DB.books.find(x=>x.id===l.bookId);const t=b?b.title:'(נמחק)';popMap[t]=(popMap[t]||0)+1;});
+  const pop=Object.entries(popMap).sort((a,b)=>b[1]-a[1]).map(([t,n])=>[t,n]);
+  const clsMap={}; checkouts.forEach(l=>{const s=DB.students.find(x=>x.id===l.studentId);const k=s?clsLabel(s):'—';clsMap[k]=(clsMap[k]||0)+1;});
+  const byCls=Object.entries(clsMap).sort((a,b)=>cmp(a[0],b[0])).map(([k,n])=>[k,n]);
+  // students with open books
+  const stuMap={}; open.forEach(x=>{const key=x.student+'|'+x.cls;stuMap[key]=stuMap[key]||{s:x.student,c:x.cls,n:0,books:[]};stuMap[key].n++;stuMap[key].books.push(x.title);});
+  const stuOpen=Object.values(stuMap).sort((a,b)=>b.n-a.n).map(o=>[o.s,o.c,o.n,o.books.join(', ')]);
+  // inventory by genre
+  const gMap={}; DB.books.forEach(b=>{const g=b.genre||'אחר';gMap[g]=gMap[g]||{t:0,c:0};gMap[g].t++;gMap[g].c+=itemsOf(b).length;});
+  const byGenre=Object.entries(gMap).sort((a,b)=>b[1].c-a[1].c).map(([g,o])=>[g,o.t,o.c]);
+  // lost
+  const lost=[]; DB.books.forEach(b=>itemsOf(b).forEach(it=>{if(it.status==='lost'){const s=DB.students.find(x=>x.id===it.holder);lost.push([b.title,it.barcode||'',s?(s.firstName+' '+s.lastName):'',clsLabel(s)]);}}));
+  return [
+    {key:'over60', title:'מושאלים מעל חודשיים (60+ ימים)', icon:'📕', headers:LH,
+      rows:open.filter(x=>x.days!==''&&x.days>=60).sort((a,b)=>b.days-a.days).map(lrow)},
+    {key:'overdue', title:'באיחור (עברו את תאריך ההחזרה)', icon:'⏰', headers:LH,
+      rows:open.filter(x=>x.overdue).sort((a,b)=>(b.days||0)-(a.days||0)).map(lrow)},
+    {key:'allopen', title:'כל ההשאלות הפתוחות', icon:'📖', headers:LH,
+      rows:open.sort((a,b)=>(b.days||0)-(a.days||0)).map(lrow)},
+    {key:'students', title:'תלמידים עם ספרים פתוחים', icon:'🎒', headers:['תלמיד','כיתה','מס׳ ספרים','הספרים'],
+      rows:stuOpen},
+    {key:'byclass', title:'השאלות לפי כיתה', icon:'🏫', headers:['כיתה','סה״כ השאלות'], rows:byCls},
+    {key:'popular', title:'הספרים המושאלים ביותר', icon:'⭐', headers:['ספר','מס׳ השאלות'], rows:pop},
+    {key:'genre', title:'מלאי לפי קטגוריה', icon:'🗂', headers:['קטגוריה','כותרים','עותקים'], rows:byGenre},
+    {key:'lost', title:'ספרים שאבדו', icon:'❌', headers:['ספר','ברקוד','תלמיד אחרון','כיתה'], rows:lost},
+  ];
+}
+function renderReports(){
+  const defs=reportDefs();
+  let copies=0,out=0,lost=0; DB.books.forEach(b=>itemsOf(b).forEach(it=>{copies++;if(it.status==='out')out++;if(it.status==='lost')lost++;}));
+  const over60=defs[0].rows.length, overdue=defs[1].rows.length;
+  const studs=DB.students.filter(s=>s.active&&!s.isTeacher).length;
+  const stats=[
+    {v:DB.books.length,l:'כותרים'},{v:copies,l:'עותקים'},{v:out,l:'מושאלים כעת'},
+    {v:overdue,l:'באיחור',warn:overdue>0},{v:over60,l:'מעל חודשיים',warn:over60>0},
+    {v:lost,l:'אבודים',warn:lost>0},{v:studs,l:'תלמידים'}
+  ];
+  const p=$('#reportsPanel');
+  let html=`<div class="stat-grid">`+stats.map(s=>`<div class="stat${s.warn?' warn':''}"><div class="v">${s.v}</div><div class="l">${s.l}</div></div>`).join('')+`</div>`;
+  html+=defs.map((d,i)=>{
+    const N=d.rows.length, prev=d.rows.slice(0,8);
+    const body = N? `<table class="rep-table"><thead><tr>${d.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${prev.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>${N>8?`<div class="rep-more">מוצגות 8 מתוך ${N} שורות — ייצאו לאקסל לרשימה המלאה.</div>`:''}` : `<div class="rep-empty">אין נתונים בקטגוריה זו 👍</div>`;
+    return `<div class="card rep-card"><div class="rep-head"><div><h3>${d.icon} ${esc(d.title)}</h3></div><div class="row"><span class="cnt">${N} שורות</span>${N?`<button class="btn ghost sm no-print" onclick="exportReport(${i})">⬇ אקסל</button>`:''}</div></div>${body}</div>`;
+  }).join('');
+  p.innerHTML=html;
+}
+function exportReport(i){
+  const d=reportDefs()[i]; if(!d.rows.length){toast('אין נתונים לייצוא','err');return;}
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet([d.headers,...d.rows]);
+  XLSX.utils.book_append_sheet(wb,ws,d.title.slice(0,28).replace(/[\\\/\?\*\[\]]/g,' '));
+  XLSX.writeFile(wb,`דוח_${d.key}_${new Date().toLocaleDateString('he-IL').replace(/\./g,'-')}.xlsx`);
+  toast('הדוח יוצא לאקסל','ok');
+}
+$('#exportAllRep').addEventListener('click',()=>{
+  const defs=reportDefs(); const wb=XLSX.utils.book_new(); let any=false;
+  defs.forEach(d=>{ const ws=XLSX.utils.aoa_to_sheet([d.headers,...d.rows]); XLSX.utils.book_append_sheet(wb,ws,d.title.slice(0,28).replace(/[\\\/\?\*\[\]]/g,' ')); any=true; });
+  if(!any){toast('אין נתונים','err');return;}
+  XLSX.writeFile(wb,`דוחות_ספריה_${new Date().toLocaleDateString('he-IL').replace(/\./g,'-')}.xlsx`);
+  toast('כל הדוחות יוצאו לאקסל','ok');
+});
+
+/* ============ MAP ============ */
+let mapEdit=false;
+function mapData(){ if(!DB.settings.libMap||!DB.settings.libMap.length) DB.settings.libMap=JSON.parse(JSON.stringify(LIB_MAP)); return DB.settings.libMap; }
+function mapFilter(name){go('shelf');setTimeout(()=>{const g=document.getElementById('shelfGenre');if(g&&[...g.options].some(o=>o.value===name)){g.value=name;g.dispatchEvent(new Event('input'));}},80);}
+function renderMap(){
+  const p=$('#mapPanel'); const M=mapData();
+  const toolbar=`<div class="row no-print" style="margin-bottom:12px">
+    <button class="btn ${mapEdit?'':'ghost'} sm" id="mapEditToggle">${mapEdit?'✓ סיום עריכה':'✎ עריכת מפה'}</button>
+    ${mapEdit?`<button class="btn ghost sm" id="mapAddUnit">+ ארון/יחידה</button><button class="btn ghost sm" id="mapAddLand">+ ציון דרך</button><button class="btn ghost sm" id="mapRestore">שחזור ברירת מחדל</button>`:''}</div>`;
+  if(!mapEdit){
+    p.innerHTML=toolbar+`<div class="card"><div class="map-grid">`+M.map(u=>{
+      if(u.landmark) return `<div class="map-landmark">${esc(u.t)}</div>`;
+      const secs=(u.items||[]).map(name=>{const c=GENRE_C[name]||'#6b7280';return `<button class="map-sec" style="--c:${c}" onclick="mapFilter('${esc(name)}')">${esc(name)}</button>`;}).join('');
+      return `<div class="map-unit"><div class="map-unit-t">${esc(u.t)}</div>${secs}</div>`;
+    }).join('')+`</div><p class="muted" style="margin-top:12px">לחיצה על נושא מסננת את הספרים. לעריכה ושינוי סידור — "✎ עריכת מפה".</p></div>`;
+  } else {
+    const genreOpts=GENRES.map(g=>`<option value="${esc(g.k)}">${esc(g.k)}</option>`).join('');
+    p.innerHTML=toolbar+`<div class="card"><div class="map-grid">`+M.map((u,ui)=>{
+      if(u.landmark) return `<div class="map-landmark edit" style="position:relative"><input class="inp map-unit-inp" value="${esc(u.t)}" onchange="_mapRename(${ui},this.value)"><button class="map-del" title="הסר" onclick="_mapDelUnit(${ui})">×</button></div>`;
+      const secs=(u.items||[]).map((name,ci)=>{const c=GENRE_C[name]||'#6b7280';return `<div class="map-sec edit" style="--c:${c}" draggable="true" ondragstart="_mapDragStart(event,${ui},${ci})" ondragover="event.preventDefault()" ondrop="_mapDropChip(event,${ui},${ci})">${esc(name)}<button class="chip-x" title="הסר" onclick="_mapDelCat(${ui},${ci})">×</button></div>`;}).join('');
+      return `<div class="map-unit edit" ondragover="event.preventDefault()" ondrop="_mapDropUnit(event,${ui})"><input class="inp map-unit-inp" value="${esc(u.t)}" onchange="_mapRename(${ui},this.value)"><div class="map-secs">${secs}</div><select class="inp" id="mapAdd${ui}" style="margin-top:8px; font-size:12px; padding:5px"><option value="">+ קטגוריה…</option>${genreOpts}</select><button class="map-del" title="הסר ארון" onclick="_mapDelUnit(${ui})">×</button></div>`;
+    }).join('')+`</div><p class="muted" style="margin-top:12px">גררו קטגוריות בין הארונות או בתוך ארון לשינוי הסדר. הוסיפו קטגוריה מהרשימה בכל ארון, או ✕ להסרה. שם הארון ניתן לעריכה.</p></div>`;
+    M.forEach((u,ui)=>{ if(u.landmark)return; const sel=$('#mapAdd'+ui); if(sel)sel.addEventListener('change',()=>{ if(sel.value)_mapAddCat(ui,sel.value); }); });
+  }
+  $('#mapEditToggle').addEventListener('click',()=>{mapEdit=!mapEdit;renderMap();});
+  if(mapEdit){
+    $('#mapAddUnit').addEventListener('click',()=>{mapData().push({t:'ארון חדש',items:[]});save();renderMap();});
+    $('#mapAddLand').addEventListener('click',()=>{mapData().push({t:'ציון דרך',landmark:true});save();renderMap();});
+    $('#mapRestore').addEventListener('click',()=>{if(!confirm('לשחזר את מפת ברירת המחדל? שינויים שביצעת יימחקו.'))return;DB.settings.libMap=JSON.parse(JSON.stringify(LIB_MAP));save();renderMap();toast('שוחזרה מפת ברירת המחדל','ok');});
+  }
+}
+let _mapDrag=null;
+window._mapDragStart=function(e,u,c){_mapDrag={u,c};e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text','x');}catch(_){}};
+window._mapDropChip=function(e,u,c){e.preventDefault();e.stopPropagation();if(_mapDrag)_mapMove(_mapDrag.u,_mapDrag.c,u,c);_mapDrag=null;};
+window._mapDropUnit=function(e,u){e.preventDefault();if(_mapDrag)_mapMove(_mapDrag.u,_mapDrag.c,u,-1);_mapDrag=null;};
+function _mapMove(fu,fc,tu,tc){const M=mapData();if(!M[fu]||!M[tu]||M[tu].landmark)return;if(!M[fu].items)return;const name=M[fu].items[fc];if(name==null)return;M[fu].items.splice(fc,1);if(fu===tu&&tc>fc)tc--;if(!M[tu].items)M[tu].items=[];if(tc<0||tc>M[tu].items.length)M[tu].items.push(name);else M[tu].items.splice(tc,0,name);save();renderMap();}
+window._mapAddCat=function(u,name){const M=mapData();if(!M[u].items)M[u].items=[];M[u].items.push(name);save();renderMap();};
+window._mapDelCat=function(u,c){const M=mapData();if(M[u]&&M[u].items)M[u].items.splice(c,1);save();renderMap();};
+window._mapDelUnit=function(u){if(!confirm('להסיר את היחידה מהמפה?'))return;mapData().splice(u,1);save();renderMap();};
+window._mapRename=function(u,v){const M=mapData();if(M[u])M[u].t=v;save();};
+
+/* ============ TERMS ============ */
+const TERMS_HTML=`
+<h3>בית הספר היסודי ע"ש דבורה עומר — כפר סבא</h3>
+<p class="t-sub">תקנון ספריית בית הספר — שנת הלימודים התשפ"ו</p>
+<div class="t-intro"><b>מטרת הספרייה.</b> ספריית בית הספר היא בית לספרים ולקוראים, ובה מגוון רחב של ספרים — סיפורת, עיון, שירה ועוד. מטרתה לטפח אהבת קריאה, סקרנות ואחריות אישית כלפי רכוש משותף. התקנון נועד לשמור על הספרים לרווחת כלל התלמידים.</div>
+<div class="t-sec"><b>1. שעות פעילות.</b> הספרייה פתוחה במהלך שעות הפעילות הרגילות של בית הספר, בימים ובשעות הייעודיים שיפורסמו בלוח הספרייה ובאתר/אפליקציית בית הספר.</div>
+<div class="t-sec"><b>2. השאלה.</b>
+  <div class="t-sub-item">א. כל תלמיד/ה רשאי/ת להשאיל ספר באמצעות כרטיס קורא אישי.</div>
+  <div class="t-sub-item">ב. ניתן להשאיל ספר אחד בכל פעם, עד להחזרתו.</div>
+  <div class="t-sub-item">ג. תקופת ההשאלה היא 30 ימים, וניתן להאריך פעם אחת אם הספר אינו מוזמן על ידי תלמיד אחר.</div></div>
+<div class="t-sec"><b>3. החזרה.</b>
+  <div class="t-sub-item">א. יש להחזיר את הספר במועד או להאריך אותו לפני תום התקופה.</div>
+  <div class="t-sub-item">ב. תלמיד/ה שלא החזיר/ה ספר במועד לא יוכל/תוכל להשאיל ספר חדש עד להחזרת הספר שברשותו/ה. אין קנסות כספיים על איחור.</div>
+  <div class="t-sub-item">ג. בסוף שנת הלימודים יש להחזיר את כל הספרים שהושאלו.</div></div>
+<div class="t-sec"><b>4. שמירה על הספרים.</b>
+  <div class="t-sub-item">א. אין לכתוב, לסמן, לקפל, לגזור או להרטיב את הספרים.</div>
+  <div class="t-sub-item">ב. יש להחזיק את הספר בתיק/עטיפה מגינה ולשמור עליו נקי ושלם.</div></div>
+<div class="t-sec"><b>5. ספר שאבד או ניזוק.</b> ספר שאבד או ניזוק באופן בלתי סביר יוחלף בספר זהה. אם לא ניתן להשיגו, ההורים מתבקשים לפצות את הספרייה בעלות הספר או ברכישת ספר חלופי בתיאום עם צוות הספרייה.</div>
+<div class="t-sec"><b>6. התנהגות בספרייה.</b> שמירה על שקט, יחס מכבד לצוות ולחברים, והחזרת הספרים והכיסאות למקומם.</div>`;
+const TERMS_PLAIN=`בית הספר היסודי ע"ש דבורה עומר — כפר סבא
+תקנון ספריית בית הספר — שנת הלימודים התשפ"ו
+
+מטרת הספרייה
+ספריית בית הספר היא בית לספרים ולקוראים, ובה מגוון רחב של ספרים — סיפורת, עיון, שירה ועוד. מטרתה לטפח אהבת קריאה, סקרנות ואחריות אישית כלפי רכוש משותף. התקנון נועד לשמור על הספרים לרווחת כלל התלמידים.
+
+1. שעות פעילות
+הספרייה פתוחה במהלך שעות הפעילות הרגילות של בית הספר, בימים ובשעות הייעודיים שיפורסמו בלוח הספרייה ובאתר/אפליקציית בית הספר.
+
+2. השאלה
+א. כל תלמיד/ה רשאי/ת להשאיל ספר באמצעות כרטיס קורא אישי.
+ב. ניתן להשאיל ספר אחד בכל פעם, עד להחזרתו.
+ג. תקופת ההשאלה היא 30 ימים, וניתן להאריך פעם אחת אם הספר אינו מוזמן על ידי תלמיד אחר.
+
+3. החזרה
+א. יש להחזיר את הספר במועד או להאריך אותו לפני תום התקופה.
+ב. תלמיד/ה שלא החזיר/ה ספר במועד לא יוכל/תוכל להשאיל ספר חדש עד להחזרת הספר שברשותו/ה. אין קנסות כספיים על איחור.
+ג. בסוף שנת הלימודים יש להחזיר את כל הספרים שהושאלו.
+
+4. שמירה על הספרים
+א. אין לכתוב, לסמן, לקפל, לגזור או להרטיב את הספרים.
+ב. יש להחזיק את הספר בתיק/עטיפה מגינה ולשמור עליו נקי ושלם.
+
+5. ספר שאבד או ניזוק
+ספר שאבד או ניזוק באופן בלתי סביר יוחלף בספר זהה. אם לא ניתן להשיגו, ההורים מתבקשים לפצות את הספרייה בעלות הספר או ברכישת ספר חלופי בתיאום עם צוות הספרייה.
+
+6. התנהגות בספרייה
+שמירה על שקט, יחס מכבד לצוות ולחברים, והחזרת הספרים והכיסאות למקומם.`;
+function renderTerms(){
+  $('#termsView').innerHTML = DB.settings.terms ? `<pre>${esc(DB.settings.terms)}</pre>` : TERMS_HTML;
+  $('#termsView').classList.remove('hidden'); $('#termsEdit').classList.add('hidden');
+  if(!$('#dDate').value) $('#dDate').value=new Date().toISOString().slice(0,10);
+  setupSig();
+}
+$('#editTermsBtn').addEventListener('click',()=>{$('#termsText').value=DB.settings.terms||TERMS_PLAIN;$('#termsView').classList.add('hidden');$('#termsEdit').classList.remove('hidden');});
+$('#cancelTerms').addEventListener('click',renderTerms);
+$('#saveTerms').addEventListener('click',()=>{DB.settings.terms=$('#termsText').value.trim();save();toast('התקנון נשמר','ok');renderTerms();});
+$('#restoreTerms').addEventListener('click',()=>{DB.settings.terms='';save();toast('שוחזר נוסח ברירת המחדל','ok');renderTerms();});
+
+/* signature pad */
+let sigCtx=null,sigDrawing=false,sigInit=false;
+function setupSig(){
+  const c=$('#sigPad'); if(!c)return;
+  const w=c.clientWidth||500, h=c.clientHeight||90, dpr=window.devicePixelRatio||1;
+  c.width=w*dpr; c.height=h*dpr; sigCtx=c.getContext('2d'); sigCtx.scale(dpr,dpr);
+  sigCtx.lineWidth=2; sigCtx.lineCap='round'; sigCtx.strokeStyle='#143'; 
+  if(sigInit)return; sigInit=true;
+  const pos=e=>{const r=c.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return {x:t.clientX-r.left,y:t.clientY-r.top};};
+  const start=e=>{sigDrawing=true;const p=pos(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);e.preventDefault();};
+  const move=e=>{if(!sigDrawing)return;const p=pos(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();e.preventDefault();};
+  const end=()=>{sigDrawing=false;};
+  c.addEventListener('mousedown',start);c.addEventListener('mousemove',move);window.addEventListener('mouseup',end);
+  c.addEventListener('touchstart',start,{passive:false});c.addEventListener('touchmove',move,{passive:false});c.addEventListener('touchend',end);
+}
+$('#sigClear').addEventListener('click',()=>{const c=$('#sigPad');if(sigCtx)sigCtx.clearRect(0,0,c.width,c.height);});
+
+/* print the declaration form */
+$('#printTerms').addEventListener('click',()=>{
+  const body=DB.settings.terms?`<pre style="white-space:pre-wrap;font:inherit">${esc(DB.settings.terms)}</pre>`:TERMS_HTML;
+  const v=id=>esc(($('#'+id)&&$('#'+id).value)||'');
+  let sig=''; const c=$('#sigPad'); try{sig=c.toDataURL('image/png');}catch(e){}
+  const w=window.open('','_blank'); if(!w){toast('חלון ההדפסה נחסם','err');return;}
+  w.document.write(`<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>תקנון ספריית דבורה עומר</title>
+  <style>body{font-family:'Rubik',Arial,sans-serif;color:#1b2733;line-height:1.7;max-width:720px;margin:24px auto;padding:0 20px}
+  h3{text-align:center;color:#0a6e70;margin:0 0 2px}.t-sub{text-align:center;color:#667;margin:0 0 18px}
+  .t-intro{background:#eef6f6;border-inline-start:4px solid #0d8b8d;padding:12px 14px;border-radius:10px;margin:0 0 14px}
+  .t-sec{margin:0 0 10px}.t-sub-item{margin-inline-start:16px;color:#3f4b53}
+  .decl{margin-top:22px;border-top:2px solid #0d8b8d;padding-top:14px}
+  .f{display:flex;gap:10px;margin:10px 0;align-items:flex-end}.f .lbl{color:#445;min-width:150px}
+  .f .val{flex:1;border-bottom:1px solid #888;min-height:22px;padding:0 6px}
+  .sig img{max-height:70px}h4{color:#0a6e70;margin:0 0 8px}</style></head><body>
+  ${body}
+  <div class="decl"><h4>הצהרת הורה והתחייבות</h4>
+  <p>קראתי את תקנון הספרייה, הבנתי את תוכנו, ואני מתחייב/ת כי בני/בתי ינהג/תנהג על פיו. ידוע לי כי במקרה של אובדן או נזק בלתי סביר לספר, אדאג להחלפתו או לפיצוי הספרייה כמפורט בסעיף 5.</p>
+  <div class="f"><span class="lbl">שם התלמיד/ה</span><span class="val">${v('dTalmid')}</span><span class="lbl">כיתה</span><span class="val">${v('dClass')}</span></div>
+  <div class="f"><span class="lbl">שם ההורה/אפוטרופוס</span><span class="val">${v('dParent')}</span><span class="lbl">ת"ז</span><span class="val">${v('dId')}</span></div>
+  <div class="f sig"><span class="lbl">חתימה</span><span class="val">${sig?`<img src="${sig}">`:''}</span><span class="lbl">תאריך</span><span class="val">${v('dDate')}</span></div>
+  </div>
+  <script>window.onload=function(){window.print();}<\/script></body></html>`);
+  w.document.close();
+});
+
+/* ============ BULK CATALOG TEMPLATE ============ */
+const TPL_COLS=['שם הספר','סופר','ז\'אנר','מיקום במדף','שפה','גיל','סדרה','מספר בסדרה','ברקוד','עותקים','הוצאה','שנה','ISBN','הערות'];
+$('#dlTemplate').addEventListener('click',()=>{
+  const ex1=['הקוסם מארץ עוץ','ל. פרנק באום','סיפורים','ארון מרכזי','עברית','8-10','','','','1','','','',''];
+  const ex2=['מכתבים מהיער 3','גלילה רון פדר','גלילה רון פדר','יחידה','עברית','8-10','מכתבים מהיער','3','','2','','','',''];
+  const csv='\ufeff'+[TPL_COLS,ex1,ex2].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='תבנית_ספרים.csv';a.click();
+});
+$('#catFile').addEventListener('change',ev=>{
+  const f=ev.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{
+    const wb=XLSX.read(r.result,{type:'binary'});const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false});
+    if(!rows.length){toast('הקובץ ריק','err');return;}
+    const head=rows[0].map(h=>String(h||'').trim());
+    const idx=n=>head.findIndex(h=>h.replace(/['"]/g,'')===n.replace(/['"]/g,''));
+    const ci={title:idx('שם הספר'),author:idx('סופר'),genre:idx('ז\'אנר'),loc:idx('מיקום במדף'),lang:idx('שפה'),age:idx('גיל'),series:idx('סדרה'),sidx:idx('מספר בסדרה'),bc:idx('ברקוד'),copies:idx('עותקים'),pub:idx('הוצאה'),year:idx('שנה'),isbn:idx('ISBN'),notes:idx('הערות')};
+    if(ci.title<0){toast('לא נמצאה עמודת "שם הספר" — השתמשו בתבנית','err');return;}
+    let added=0,skip=0;
+    rows.slice(1).forEach(row=>{
+      const g=i=>i>=0&&row[i]!=null?String(row[i]).trim():'';
+      const title=g(ci.title);if(!title)return;
+      if(DB.books.some(b=>norm(b.title)===norm(title))){skip++;return;}
+      const n=Math.max(1,parseInt(g(ci.copies),10)||1);
+      const bc=g(ci.bc);
+      const items=Array.from({length:n},(_,k)=>({id:uid(),barcode:k===0?bc:'',status:'in',holder:null,dueDate:null}));
+      DB.books.push({id:uid(),title,author:g(ci.author),genre:g(ci.genre)||'אחר',location:g(ci.loc),language:g(ci.lang)||'עברית',ageBand:g(ci.age),series:g(ci.series),seriesIndex:g(ci.sidx),publisher:g(ci.pub),year:g(ci.year),isbn:g(ci.isbn),notes:g(ci.notes),dewey:'',cover:'',items});
+      added++;
+    });
+    save();
+    $('#catImportMsg').textContent=`נוספו ${added} ספרים${skip?` · דולגו ${skip} כפילויות`:''}.`;
+    toast(`נוספו ${added} ספרים`,'ok');
+  }catch(e){toast('שגיאה בקריאת הקובץ','err');}};
+  r.readAsBinaryString(f);
+});
+
+/* ============ init ============ */
+migrate();
+paintCount();checkRollover();renderShelf();
+</script>
+</body>
+</html>
