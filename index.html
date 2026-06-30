@@ -152,6 +152,23 @@ textarea.inp{resize:vertical; min-height:64px}
 .map-unit-inp{width:100%; font-size:12px; font-weight:700; text-align:center; padding:5px; color:var(--teal-d)}
 .map-del{position:absolute; top:5px; inset-inline-end:5px; border:none; background:#fdecec; color:#b3261e; border-radius:6px; width:21px; height:21px; line-height:1; cursor:pointer; padding:0; font-size:14px}
 .map-landmark{flex:0 0 64px; align-self:stretch; display:flex; align-items:center; justify-content:center; text-align:center; background:#eef3f4; border:1px dashed #c2d2d6; border-radius:12px; color:var(--muted); font-size:12px; font-weight:600; padding:8px}
+/* ---- floor-plan map (spatial, draggable/resizable) ---- */
+.map-floor{position:relative; width:100%; max-width:1000px; margin:0 auto; aspect-ratio:16/10; background:linear-gradient(var(--line) 1px,transparent 1px) 0 0/5% 5%,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/5% 5%,var(--teal-xl); border:2px solid var(--teal-d); border-radius:14px; overflow:hidden; touch-action:none; user-select:none}
+.mfl-item{position:absolute; box-sizing:border-box; border-radius:10px; overflow:hidden}
+.mfl-unit{background:#fff; border:2px solid var(--teal); box-shadow:var(--shadow); display:flex; flex-direction:column}
+.mfl-t{font-size:12px; font-weight:800; color:var(--teal-d); text-align:center; padding:4px; background:var(--teal-xl); border-bottom:1px solid var(--line); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:0 0 auto}
+.mfl-cats{flex:1 1 auto; display:flex; flex-wrap:wrap; gap:3px; padding:5px; align-content:flex-start; overflow:auto}
+.mfl-cat{border:none; border-inline-start:4px solid var(--c); background:#f6f7f8; color:var(--ink); padding:2px 6px; border-radius:5px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap}
+.mfl-cat:hover{background:var(--teal-xl)}
+.mfl-land{background:repeating-linear-gradient(45deg,#f3d9b0,#f3d9b0 8px,#eecb98 8px,#eecb98 16px); border:2px dashed #b88a4a; display:flex; align-items:center; justify-content:center; color:#7a5a2a; font-weight:800; font-size:12px; text-align:center; padding:2px}
+.map-floor.edit .mfl-item{cursor:grab}
+.map-floor.edit .mfl-item:active{cursor:grabbing}
+.map-floor.edit .mfl-cat{pointer-events:none}
+.mfl-edit{position:absolute; top:2px; left:2px; z-index:3; border:none; background:#143a4a; color:#fff; width:20px; height:20px; border-radius:50%; font-size:11px; line-height:18px; cursor:pointer; padding:0; box-shadow:0 1px 3px #0003}
+.mfl-rz{position:absolute; bottom:0; right:0; width:18px; height:18px; cursor:nwse-resize; z-index:3; background:linear-gradient(135deg,transparent 45%,var(--teal) 45%,var(--teal) 70%,transparent 70%); border-bottom-right-radius:9px}
+.mue-cats{display:flex; flex-wrap:wrap; gap:6px; padding:6px; background:var(--teal-xl); border-radius:8px; min-height:34px}
+.mue-cat{display:flex; align-items:center; gap:4px; background:#fff; border-inline-start:4px solid var(--c); border-radius:6px; padding:3px 6px; font-size:12px; font-weight:600}
+.mue-cat .chip-x{border:none; background:#0000000d; color:#b3261e; border-radius:50%; width:16px; height:16px; line-height:14px; font-size:12px; cursor:pointer; padding:0}
 .terms-doc{line-height:1.7; color:var(--ink)}
 .terms-doc h3{font-size:20px; color:var(--teal-d); margin:0 0 2px; text-align:center}
 .terms-doc .t-sub{text-align:center; color:var(--muted); margin:0 0 18px}
@@ -2425,44 +2442,113 @@ $('#exportAllRep').addEventListener('click',()=>{
 let mapEdit=false;
 function mapData(){ if(!DB.settings.libMap||!DB.settings.libMap.length) DB.settings.libMap=JSON.parse(JSON.stringify(LIB_MAP)); return DB.settings.libMap; }
 function mapFilter(name){go('catalog');setTimeout(()=>{const g=document.getElementById('catGenre');if(g&&[...g.options].some(o=>o.value===name)){g.value=name;g.dispatchEvent(new Event('input'));}},80);}
+function mapEnsureGeom(M){
+  const cols=3, gx=4, gyTop=4, cw=(100-gx*(cols+1))/cols, rh=22, gy=4;
+  let i=0;
+  M.forEach(u=>{
+    if(typeof u.x==='number'&&typeof u.y==='number'&&typeof u.w==='number'&&typeof u.h==='number')return;
+    const col=i%cols, row=Math.floor(i/cols);
+    u.w = u.landmark? 16 : cw;
+    u.h = u.landmark? 9 : rh;
+    u.x = +(gx + col*(cw+gx)).toFixed(2);
+    u.y = +(gyTop + row*(rh+gy)).toFixed(2);
+    i++;
+  });
+}
+function mapEmoji(t){ if(/דלת/.test(t))return '🚪 '; if(/מחשב/.test(t))return '💻 '; if(/שולחן/.test(t))return '🪑 '; if(/חלון/.test(t))return '🪟 '; if(/כניס|יציא/.test(t))return '🚪 '; return ''; }
 function renderMap(){
-  const p=$('#mapPanel'); const M=mapData();
-  const toolbar=`<div class="row no-print" style="margin-bottom:12px">
+  const p=$('#mapPanel'); const M=mapData(); mapEnsureGeom(M);
+  const toolbar=`<div class="row no-print" style="margin-bottom:12px; gap:8px; flex-wrap:wrap">
     <button class="btn ${mapEdit?'':'ghost'} sm" id="mapEditToggle">${mapEdit?'✓ סיום עריכה':'✎ עריכת מפה'}</button>
-    ${mapEdit?`<button class="btn ghost sm" id="mapAddUnit">+ ארון/יחידה</button><button class="btn ghost sm" id="mapAddLand">+ ציון דרך</button><button class="btn ghost sm" id="mapRestore">שחזור ברירת מחדל</button>`:''}</div>`;
-  if(!mapEdit){
-    p.innerHTML=toolbar+`<div class="card"><div class="map-grid">`+M.map(u=>{
-      if(u.landmark) return `<div class="map-landmark">${esc(u.t)}</div>`;
-      const secs=(u.items||[]).map(name=>{const c=GENRE_C[name]||'#6b7280';return `<button class="map-sec" style="--c:${c}" onclick="mapFilter('${esc(name)}')">${esc(name)}</button>`;}).join('');
-      return `<div class="map-unit"><div class="map-unit-t">${esc(u.t)}</div>${secs}</div>`;
-    }).join('')+`</div><p class="muted" style="margin-top:12px">לחיצה על נושא מסננת את הספרים. לעריכה ושינוי סידור — "✎ עריכת מפה".</p></div>`;
-  } else {
-    const genreOpts=GENRES.map(g=>`<option value="${esc(g.k)}">${esc(g.k)}</option>`).join('');
-    p.innerHTML=toolbar+`<div class="card"><div class="map-grid">`+M.map((u,ui)=>{
-      if(u.landmark) return `<div class="map-landmark edit" style="position:relative"><input class="inp map-unit-inp" value="${esc(u.t)}" onchange="_mapRename(${ui},this.value)"><button class="map-del" title="הסר" onclick="_mapDelUnit(${ui})">×</button></div>`;
-      const secs=(u.items||[]).map((name,ci)=>{const c=GENRE_C[name]||'#6b7280';return `<div class="map-sec edit" style="--c:${c}" draggable="true" ondragstart="_mapDragStart(event,${ui},${ci})" ondragover="event.preventDefault()" ondrop="_mapDropChip(event,${ui},${ci})">${esc(name)}<button class="chip-x" title="הסר" onclick="_mapDelCat(${ui},${ci})">×</button></div>`;}).join('');
-      return `<div class="map-unit edit" ondragover="event.preventDefault()" ondrop="_mapDropUnit(event,${ui})"><input class="inp map-unit-inp" value="${esc(u.t)}" onchange="_mapRename(${ui},this.value)"><div class="map-secs">${secs}</div><select class="inp" id="mapAdd${ui}" style="margin-top:8px; font-size:12px; padding:5px"><option value="">+ קטגוריה…</option>${genreOpts}</select><button class="map-del" title="הסר ארון" onclick="_mapDelUnit(${ui})">×</button></div>`;
-    }).join('')+`</div><p class="muted" style="margin-top:12px">גררו קטגוריות בין הארונות או בתוך ארון לשינוי הסדר. הוסיפו קטגוריה מהרשימה בכל ארון, או ✕ להסרה. שם הארון ניתן לעריכה.</p></div>`;
-    M.forEach((u,ui)=>{ if(u.landmark)return; const sel=$('#mapAdd'+ui); if(sel)sel.addEventListener('change',()=>{ if(sel.value)_mapAddCat(ui,sel.value); }); });
-  }
+    ${mapEdit?`<button class="btn ghost sm" id="mapAddUnit">+ מדף/ארון</button><button class="btn ghost sm" id="mapAddLand">+ דלת/ציון דרך</button><button class="btn ghost sm" id="mapRestore">שחזור ברירת מחדל</button>`:''}</div>`;
+  const items=M.map((u,ui)=>{
+    const st=`left:${u.x}%;top:${u.y}%;width:${u.w}%;height:${u.h}%`;
+    const tools=mapEdit?`<button class="mfl-edit" onpointerdown="event.stopPropagation()" onclick="_mapUnitEdit(${ui})">✎</button><div class="mfl-rz" onpointerdown="_mapPD(event,${ui},'resize')"></div>`:'';
+    const pd=mapEdit?` onpointerdown="_mapPD(event,${ui},'move')"`:'';
+    if(u.landmark){
+      return `<div class="mfl-item mfl-land" style="${st}"${pd}><span>${mapEmoji(u.t)}${esc(u.t)}</span>${tools}</div>`;
+    }
+    const cats=(u.items||[]).map(name=>{const c=GENRE_C[name]||'#6b7280'; return mapEdit
+      ? `<span class="mfl-cat" style="--c:${c}">${esc(name)}</span>`
+      : `<button class="mfl-cat" style="--c:${c}" onclick="mapFilter('${esc(name)}')">${esc(name)}</button>`;}).join('');
+    return `<div class="mfl-item mfl-unit" style="${st}"${pd}><div class="mfl-t">${esc(u.t)}</div><div class="mfl-cats">${cats}</div>${tools}</div>`;
+  }).join('');
+  const help=mapEdit
+    ? 'גררו כל פריט כדי להזיז אותו, ומשכו את הפינה התחתונה כדי לשנות גודל — כך אפשר להקטין את הדלת או להעביר מדפים מצד לצד. ✎ לעריכת שם וקטגוריות.'
+    : 'לחיצה על נושא מסננת את הספרים שלו. "✎ עריכת מפה" כדי לסדר מחדש את חלל הספרייה.';
+  p.innerHTML=toolbar+`<div class="card"><div class="map-floor ${mapEdit?'edit':''}" id="mapFloor">${items}</div><p class="muted" style="margin-top:12px">${help}</p></div>`;
   $('#mapEditToggle').addEventListener('click',()=>{
-    if(!mapEdit){confirmAction({title:'עריכת מפה',message:'כניסה למצב עריכת המפה (הזזה/הסרה של קטגוריות) — למנהל/ת בלבד.',admin:true,okLabel:'כניסה לעריכה'},()=>{mapEdit=true;renderMap();});}
+    if(!mapEdit){confirmAction({title:'עריכת מפה',message:'כניסה למצב עריכת המפה (הזזה, שינוי גודל, עריכת תוכן) — למנהל/ת בלבד.',admin:true,okLabel:'כניסה לעריכה'},()=>{mapEdit=true;renderMap();});}
     else{mapEdit=false;renderMap();}
   });
   if(mapEdit){
-    $('#mapAddUnit').addEventListener('click',()=>{mapData().push({t:'ארון חדש',items:[]});save();renderMap();});
-    $('#mapAddLand').addEventListener('click',()=>{mapData().push({t:'ציון דרך',landmark:true});save();renderMap();});
-    $('#mapRestore').addEventListener('click',()=>{if(!confirm('לשחזר את מפת ברירת המחדל? שינויים שביצעת יימחקו.'))return;DB.settings.libMap=JSON.parse(JSON.stringify(LIB_MAP));save();renderMap();toast('שוחזרה מפת ברירת המחדל','ok');});
+    $('#mapAddUnit').addEventListener('click',()=>{mapData().push({t:'מדף חדש',items:[],x:36,y:40,w:28,h:22});save();renderMap();});
+    $('#mapAddLand').addEventListener('click',()=>{mapData().push({t:'דלת',landmark:true,x:42,y:46,w:16,h:9});save();renderMap();});
+    $('#mapRestore').addEventListener('click',()=>{if(!confirm('לשחזר את מפת ברירת המחדל? שינויים שביצעת יימחקו.'))return;DB.settings.libMap=JSON.parse(JSON.stringify(LIB_MAP));mapEnsureGeom(DB.settings.libMap);save();renderMap();toast('שוחזרה מפת ברירת המחדל','ok');});
   }
 }
-let _mapDrag=null;
-window._mapDragStart=function(e,u,c){_mapDrag={u,c};e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text','x');}catch(_){}};
-window._mapDropChip=function(e,u,c){e.preventDefault();e.stopPropagation();if(_mapDrag)_mapMove(_mapDrag.u,_mapDrag.c,u,c);_mapDrag=null;};
-window._mapDropUnit=function(e,u){e.preventDefault();if(_mapDrag)_mapMove(_mapDrag.u,_mapDrag.c,u,-1);_mapDrag=null;};
-function _mapMove(fu,fc,tu,tc){const M=mapData();if(!M[fu]||!M[tu]||M[tu].landmark)return;if(!M[fu].items)return;const name=M[fu].items[fc];if(name==null)return;M[fu].items.splice(fc,1);if(fu===tu&&tc>fc)tc--;if(!M[tu].items)M[tu].items=[];if(tc<0||tc>M[tu].items.length)M[tu].items.push(name);else M[tu].items.splice(tc,0,name);save();renderMap();}
-window._mapAddCat=function(u,name){const M=mapData();if(!M[u].items)M[u].items=[];M[u].items.push(name);save();renderMap();};
-window._mapDelCat=function(u,c){const M=mapData();if(M[u]&&M[u].items)M[u].items.splice(c,1);save();renderMap();};
-window._mapDelUnit=function(u){if(!confirm('להסיר את היחידה מהמפה?'))return;mapData().splice(u,1);save();renderMap();};
+let _mapG=null;
+window._mapPD=function(e,ui,mode){
+  if(!mapEdit)return;
+  e.preventDefault(); e.stopPropagation();
+  const floor=document.getElementById('mapFloor'); if(!floor)return;
+  const M=mapData(); const u=M[ui]; if(!u)return;
+  const el=e.currentTarget.closest('.mfl-item');
+  _mapG={ui,mode,rect:floor.getBoundingClientRect(),el,sx:e.clientX,sy:e.clientY,x:u.x,y:u.y,w:u.w,h:u.h,nx:null,ny:null,nw:null,nh:null};
+  window.addEventListener('pointermove',_mapPM);
+  window.addEventListener('pointerup',_mapPU);
+};
+function _mapPM(e){
+  if(!_mapG)return;
+  const g=_mapG, dx=(e.clientX-g.sx)/g.rect.width*100, dy=(e.clientY-g.sy)/g.rect.height*100, minW=8, minH=6;
+  if(g.mode==='move'){
+    g.nx=Math.max(0,Math.min(100-g.w, g.x+dx));
+    g.ny=Math.max(0,Math.min(100-g.h, g.y+dy));
+    if(g.el){g.el.style.left=g.nx+'%'; g.el.style.top=g.ny+'%';}
+  }else{
+    g.nw=Math.max(minW,Math.min(100-g.x, g.w+dx));
+    g.nh=Math.max(minH,Math.min(100-g.y, g.h+dy));
+    if(g.el){g.el.style.width=g.nw+'%'; g.el.style.height=g.nh+'%';}
+  }
+}
+function _mapPU(){
+  window.removeEventListener('pointermove',_mapPM);
+  window.removeEventListener('pointerup',_mapPU);
+  if(_mapG){
+    const g=_mapG, u=mapData()[g.ui];
+    if(u){ if(g.mode==='move'){ if(g.nx!=null)u.x=+g.nx.toFixed(2); if(g.ny!=null)u.y=+g.ny.toFixed(2); } else { if(g.nw!=null)u.w=+g.nw.toFixed(2); if(g.nh!=null)u.h=+g.nh.toFixed(2); } save(); }
+  }
+  _mapG=null;
+}
+window._mapUnitEdit=function(ui){
+  const M=mapData(); const u=M[ui]; if(!u)return;
+  if(u.landmark){
+    modal(`<h3 style="margin-top:0">עריכת פריט</h3>
+      <label class="fld"><span>שם הפריט</span><input class="inp" id="muName" value="${esc(u.t)}"></label>
+      <div class="row" style="justify-content:space-between; margin-top:14px">
+        <button class="btn ghost sm" id="muDel" style="color:#b3261e">🗑 הסר</button>
+        <span><button class="btn ghost" id="muCancel">סגור</button> <button class="btn" id="muSave">שמירה</button></span>
+      </div>`);
+  } else {
+    const cats=(u.items||[]).map((name,ci)=>{const c=GENRE_C[name]||'#6b7280';return `<div class="mue-cat" style="--c:${c}"><span>${esc(name)}</span><button class="chip-x" onclick="_mapDelCat(${ui},${ci})">×</button></div>`;}).join('')||'<span class="muted">אין קטגוריות עדיין</span>';
+    const opts=GENRES.map(g=>`<option value="${esc(g.k)}">${esc(g.k)}</option>`).join('');
+    modal(`<h3 style="margin-top:0">עריכת מדף</h3>
+      <label class="fld"><span>שם המדף/ארון</span><input class="inp" id="muName" value="${esc(u.t)}"></label>
+      <div class="fld"><span>קטגוריות במדף</span><div class="mue-cats">${cats}</div></div>
+      <label class="fld"><span>הוספת קטגוריה</span><select class="inp" id="muAdd"><option value="">בחר/י…</option>${opts}</select></label>
+      <div class="row" style="justify-content:space-between; margin-top:14px">
+        <button class="btn ghost sm" id="muDel" style="color:#b3261e">🗑 הסר מדף</button>
+        <span><button class="btn ghost" id="muCancel">סגור</button> <button class="btn" id="muSave">שמירה</button></span>
+      </div>`);
+    const add=$('#muAdd'); if(add)add.addEventListener('change',()=>{ if(add.value)_mapAddCat(ui,add.value); });
+  }
+  $('#muCancel').addEventListener('click',closeModal);
+  $('#muSave').addEventListener('click',()=>{ const v=$('#muName').value.trim(); if(v){u.t=v;save();} closeModal(); renderMap(); });
+  $('#muDel').addEventListener('click',()=>{ closeModal(); _mapDelUnit(ui); });
+};
+window._mapAddCat=function(u,name){const M=mapData();if(!M[u].items)M[u].items=[];M[u].items.push(name);save();renderMap();if(document.getElementById('muName'))_mapUnitEdit(u);};
+window._mapDelCat=function(u,c){const M=mapData();if(M[u]&&M[u].items)M[u].items.splice(c,1);save();renderMap();if(document.getElementById('muName'))_mapUnitEdit(u);};
+window._mapDelUnit=function(u){if(!confirm('להסיר את הפריט מהמפה?'))return;mapData().splice(u,1);save();renderMap();};
 window._mapRename=function(u,v){const M=mapData();if(M[u])M[u].t=v;save();};
 
 /* ============ TERMS ============ */
@@ -2630,7 +2716,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 89';
+const APP_VERSION='גרסה 29.6.2026 · 90';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sch=document.getElementById('schoolLogoLogin');if(sch)sch.src=SCHOOL_LOGO;const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
