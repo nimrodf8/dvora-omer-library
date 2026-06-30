@@ -46,6 +46,7 @@ header.topbar{position:sticky; top:0; z-index:40; display:flex; align-items:cent
 .side-logo{display:flex; justify-content:center; padding:20px 8px 8px}
 .side-logo-img{width:132px; height:132px; border-radius:50%; object-fit:cover; cursor:pointer; box-shadow:0 5px 16px rgba(40,60,65,.22); transition:transform .12s}
 .side-logo-img:hover{transform:scale(1.04)}
+.coMode.on{background:var(--teal); color:#fff; border-color:var(--teal)}
 .nav{display:flex; flex-direction:column; gap:3px}
 .nav-item{display:flex; align-items:center; gap:11px; width:100%; text-align:start; background:transparent; color:#41525a; border:none; border-radius:10px; padding:11px 13px; font-size:14.5px; font-weight:500; border-inline-start:3px solid transparent}
 .nav-item svg{width:20px; height:20px; flex:0 0 auto; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round}
@@ -292,13 +293,21 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 
   <!-- ===== CHECKOUT ===== -->
   <section id="view-checkout" class="view hidden">
-    <div class="view-head"><div><h2>השאלה / החזרה</h2><p>סרקו ברקוד (או הקלידו מספר) — הספר יופיע אוטומטית</p></div></div>
+    <div class="view-head"><div><h2>השאלה / החזרה</h2><p>סרקו ברקוד (או הקלידו מספר) — או חפשו ידנית לפי שם ספר/תלמיד, ללא סורק</p></div></div>
     <div class="card" style="margin-bottom:16px">
       <label class="fld" style="margin:0"><span>סריקת ברקוד</span>
         <input class="inp" id="scanInput" inputmode="numeric" autocomplete="off"
           placeholder="מקדו כאן וסרקו — הסורק מקליד את המספר ולוחץ Enter" style="font-size:18px; letter-spacing:2px"></label>
       <div class="muted" style="margin-top:8px">סורק USB עובד כמו מקלדת — אין צורך בהתקנה. ודאו שהשדה ממוקד לפני הסריקה.</div>
       <div class="row" style="margin-top:10px"><button class="btn ghost sm" id="coCancel">✕ ביטול וסגירת העמוד</button></div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="row" style="justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap">
+        <b>🔍 חיפוש ידני (ללא סורק)</b>
+        <div class="row" style="gap:6px"><button class="btn ghost sm coMode on" data-mode="book" id="coModeBook">לפי שם ספר</button><button class="btn ghost sm coMode" data-mode="student" id="coModeStudent">לפי שם תלמיד</button></div>
+      </div>
+      <label class="fld" style="margin:10px 0 0"><input class="inp" id="coSearch" placeholder="הקלידו שם ספר…" autocomplete="off"></label>
+      <div id="coSearchResults" style="margin-top:8px"></div>
     </div>
     <div id="checkoutPanel"></div>
   </section>
@@ -1040,6 +1049,44 @@ function handleScan(code){
   }
   openCheckout(hit.book,hit.item);
 }
+let coSearchMode='book';
+function setCoMode(m){
+  coSearchMode=m;
+  document.querySelectorAll('.coMode').forEach(btn=>btn.classList.toggle('on',btn.dataset.mode===m));
+  const s=$('#coSearch'); if(s){ s.placeholder = m==='book'?'הקלידו שם ספר…':'הקלידו שם תלמיד…'; s.value=''; s.focus(); }
+  const box=$('#coSearchResults'); if(box)box.innerHTML='';
+}
+function coSearchRender(){
+  const box=$('#coSearchResults'); if(!box)return;
+  const q=($('#coSearch').value||'').trim().toLowerCase();
+  if(q.length<2){ box.innerHTML='<p class="muted">הקלידו לפחות 2 תווים…</p>'; return; }
+  if(coSearchMode==='book'){
+    const list=DB.books.filter(b=>(b.title||'').toLowerCase().includes(q)||(b.author||'').toLowerCase().includes(q)||String(b.danaCode||'').toLowerCase().includes(q)).slice(0,15);
+    if(!list.length){ box.innerHTML='<p class="muted">לא נמצא ספר תואם.</p>'; return; }
+    box.innerHTML=list.map(b=>{const a=availItems(b).length,o=outItems(b).length;const tag=a>0?'<span class="tag">זמין</span>':(o>0?'<span class="tag out">מושאל</span>':'<span class="tag lost">לא זמין</span>');return `<div class="litem" style="cursor:pointer" onclick="coPickBook('${b.id}')"><div class="meta"><b>${esc(b.title)}</b><small>${esc(b.author||'')}${b.location?' · 📍 '+esc(b.location):''} · ${a} זמינים · ${o} מושאלים</small></div><div class="actions">${tag}</div></div>`;}).join('');
+  } else {
+    const list=DB.students.filter(s=>s.active).filter(s=>(s.firstName+' '+s.lastName).toLowerCase().includes(q)).slice(0,15);
+    if(!list.length){ box.innerHTML='<p class="muted">לא נמצא תלמיד תואם.</p>'; return; }
+    box.innerHTML=list.map(s=>{const open=studentOpenItems(s.id).length;return `<div class="litem" style="cursor:pointer" onclick="coPickStudent('${s.id}')"><div class="meta"><b>${esc(s.firstName+' '+s.lastName)}</b><small>${gradeHeb(s.grade)+(s.classLabel||'')}${s.isTeacher?' · מורה':''} · ${open} ספרים מושאלים</small></div><div class="actions">${open>0?'<span class="tag out">'+open+'</span>':''}</div></div>`;}).join('');
+  }
+}
+window.coPickBook=function(id){
+  const b=DB.books.find(x=>x.id===id); if(!b)return;
+  const it=availItems(b)[0]||outItems(b)[0]||itemsOf(b)[0];
+  if(!it){ toast('לספר אין עותקים','err'); return; }
+  openCheckout(b,it);
+  const p=$('#checkoutPanel'); if(p)p.scrollIntoView({behavior:'smooth',block:'nearest'});
+};
+window.coPickStudent=function(id){
+  const s=DB.students.find(x=>x.id===id); if(!s)return;
+  const open=studentOpenItems(id); const panel=$('#checkoutPanel'); if(!panel)return;
+  if(!open.length){ panel.innerHTML=`<div class="card"><p><b>${esc(s.firstName+' '+s.lastName)}</b> — אין ספרים מושאלים כרגע.</p><p class="muted">להשאלה: עברו ל"לפי שם ספר", חפשו את הספר ובחרו את ${esc(s.firstName)} ברשימת התלמידים.</p></div>`; panel.scrollIntoView({behavior:'smooth',block:'nearest'}); return; }
+  panel.innerHTML=`<div class="card"><h3 style="margin:0;color:var(--teal-d)">${esc(s.firstName+' '+s.lastName)}</h3><p class="muted">${gradeHeb(s.grade)+(s.classLabel||'')}${s.isTeacher?' · מורה':''} · ${open.length} ספרים מושאלים — בחרו ספר להחזרה:</p>`+open.map(o=>`<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b><small>${esc(copyLabel(o.book,o.item))}${o.item.dueDate?' · עד '+new Date(o.item.dueDate).toLocaleDateString('he-IL'):''}</small></div><div class="actions"><button class="btn sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','scan')">החזרה</button><button class="btn danger sm" onclick="confirmLost('${o.book.id}','${o.item.id}','scan')">אבוד</button></div></div>`).join('')+`</div>`;
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+};
+$('#coModeBook')&&$('#coModeBook').addEventListener('click',()=>setCoMode('book'));
+$('#coModeStudent')&&$('#coModeStudent').addEventListener('click',()=>setCoMode('student'));
+$('#coSearch')&&$('#coSearch').addEventListener('input',coSearchRender);
 function openCheckout(b,it){
   if(!it)it=availItems(b)[0]||itemsOf(b)[0];
   const panel=$('#checkoutPanel');
@@ -2337,7 +2384,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 69';
+const APP_VERSION='גרסה 29.6.2026 · 70';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
