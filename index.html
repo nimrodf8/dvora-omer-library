@@ -113,13 +113,6 @@ textarea.inp{resize:vertical; min-height:64px}
 .book-card .bd small{color:var(--muted); font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .shelf{position:relative; display:flex; flex-wrap:wrap; align-items:flex-end; gap:6px; padding:18px 20px 0; min-height:175px}
 .shelf::after{content:""; position:absolute; left:0; right:0; bottom:0; height:15px; border-radius:5px; background:linear-gradient(180deg,#ecd2a6,#dcb87f 45%,#c79a63); box-shadow:0 7px 16px rgba(150,110,55,.22), inset 0 2px 0 rgba(255,247,229,.7)}
-.bookcase{position:relative; margin:6px 0 10px; border-radius:14px; overflow:hidden;
-  background:linear-gradient(180deg,#f1deba,#e4cba1);
-  border:13px solid #b07f49; border-top-width:15px; border-bottom-width:20px;
-  box-shadow:0 12px 30px rgba(120,85,40,.28), inset 0 0 22px rgba(120,85,40,.16);}
-.bookcase::before,.bookcase::after{content:""; position:absolute; top:0; bottom:0; width:5px; z-index:2; pointer-events:none}
-.bookcase::before{right:0; background:linear-gradient(90deg,rgba(120,85,40,.22),transparent)}
-.bookcase::after{left:0; background:linear-gradient(270deg,rgba(120,85,40,.22),transparent)}
 .book-wall{--pitch:212px; --board:24px; position:relative; display:flex; flex-wrap:wrap; align-items:flex-end; column-gap:3px; row-gap:0; padding:0 12px;
   background:repeating-linear-gradient(to bottom,
     transparent 0,
@@ -833,7 +826,7 @@ function renderShelf(){
     if(L!==cur){ cur=L; html+=`<span class="letter-tab" aria-hidden="true"><b>${esc(L)}</b></span>`; }
     html+=`<span class="bcell">${spine(b)}</span>`;
   });
-  wall.innerHTML=`<div class="bookcase"><div class="book-wall">${html}</div></div>`;
+  wall.innerHTML=`<div class="book-wall">${html}</div>`;
   wall.querySelectorAll('.spine').forEach(el=>{el.addEventListener('click',()=>bookDetail(el.dataset.id));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bookDetail(el.dataset.id);}});});
   if(typeof requestAnimationFrame==='function') requestAnimationFrame(fillShelfFillers); else fillShelfFillers();
 }
@@ -853,18 +846,20 @@ function fillShelfFillers(){
   const wall=document.querySelector('#shelfWall .book-wall'); if(!wall)return;
   wall.querySelectorAll('.bcell.filler').forEach(e=>e.remove());
   if(!wall.clientWidth) return;
-  const pitch=212, margin=30;   // margin מותיר מקום למסגרת התחתונה של הארון כדי שלא תיווצר גלילה
+  const pitch=212, margin=12;
   const top=wall.getBoundingClientRect().top;
   const avail=(window.innerHeight||0) - top - margin;
   const rowsFit=Math.floor(avail/pitch);
   if(rowsFit<1) return;
-  const rowsNow=()=>Math.round(wall.getBoundingClientRect().height/pitch);
-  if(rowsNow()>=rowsFit) return;                 // הספרים האמיתיים כבר ממלאים את המסך — אפשר לגלול
+  const wallH=()=>wall.getBoundingClientRect().height;
+  const realRows=Math.round(wallH()/pitch);
+  if(realRows>rowsFit) return;                 // הספרים האמיתיים כבר חורגים מהמסך — אפשר לגלול, ללא פיקטיביים
+  const targetH=rowsFit*pitch;                 // גובה היעד: כל השורות הנראות, מלאות
   let i=0, guard=0;
-  while(guard++<4000){ if(rowsNow()>=rowsFit) break; const frag=document.createDocumentFragment(); for(let k=0;k<8;k++)frag.appendChild(makeFiller(i++)); wall.appendChild(frag); }
-  // הסרת שדרות שחרגו מעבר למסך (כדי שלא תיווצר גלילה)
+  while(guard++<6000){ if(wallH()>targetH) break; const frag=document.createDocumentFragment(); for(let k=0;k<6;k++)frag.appendChild(makeFiller(i++)); wall.appendChild(frag); }
+  // קיצוץ שדרות שחרגו אל שורה מעבר למסך (כדי שלא תיווצר גלילה), משאיר את כל השורות הנראות מלאות
   const fillers=[...wall.querySelectorAll('.bcell.filler')];
-  for(let j=fillers.length-1;j>=0;j--){ if(rowsNow()<=rowsFit)break; fillers[j].remove(); }
+  for(let j=fillers.length-1;j>=0;j--){ if(wallH()<=targetH)break; fillers[j].remove(); }
 }
 let _shelfFillT;
 if(typeof window!=='undefined') window.addEventListener('resize',()=>{ clearTimeout(_shelfFillT); _shelfFillT=setTimeout(()=>{ if(typeof CUR!=='undefined'&&CUR==='shelf') fillShelfFillers(); },200); });
@@ -2595,7 +2590,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 83';
+const APP_VERSION='גרסה 29.6.2026 · 84';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
