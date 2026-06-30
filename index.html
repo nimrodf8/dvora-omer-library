@@ -306,7 +306,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
         <b>🔍 חיפוש ידני (ללא סורק)</b>
         <div class="row" style="gap:6px"><button class="btn ghost sm coMode on" data-mode="book" id="coModeBook">לפי שם ספר</button><button class="btn ghost sm coMode" data-mode="student" id="coModeStudent">לפי שם תלמיד</button></div>
       </div>
-      <label class="fld" style="margin:10px 0 0"><input class="inp" id="coSearch" placeholder="הקלידו שם ספר…" autocomplete="off"></label>
+      <div class="row" style="margin:10px 0 0; gap:6px"><input class="inp" id="coSearch" placeholder="הקלידו שם ספר…" autocomplete="off" style="flex:1"><button class="btn ghost sm" id="coSearchClear" type="button" title="ניקוי החיפוש">✕</button></div>
       <div id="coSearchResults" style="margin-top:8px"></div>
     </div>
     <div id="checkoutPanel"></div>
@@ -799,7 +799,7 @@ function go(v){
   if(v==='map')renderMap();
   if(v==='reports')renderReports();
   if(v==='terms')renderTerms();
-  if(v==='checkout')setTimeout(()=>$('#scanInput').focus(),60);
+  if(v==='checkout'){ if(typeof resetCheckoutSearch==='function')resetCheckoutSearch(); const p=$('#checkoutPanel'); if(p)p.innerHTML=''; const si=$('#scanInput'); if(si)si.value=''; setTimeout(()=>$('#scanInput').focus(),60); }
 }
 
 /* ============ count + filters fill ============ */
@@ -956,9 +956,9 @@ function editBook(id){
       <div class="row"><input class="inp" id="fCover" value="${esc(b.cover)}" placeholder="https://…" style="flex:1"><input type="file" id="fCoverUp" accept="image/*" class="hidden"><button class="btn ghost sm" onclick="$('#fCoverUp').click()">העלה תמונה</button></div></label>
 
     <div class="card no-print" style="margin:4px 0 12px;background:rgba(201,161,74,.06)">
-      <div class="row" style="justify-content:space-between"><span style="color:#cbb386;font-weight:600">עותקים פיזיים</span><button class="btn ghost sm" id="cpAdd">+ הוסף עותק</button></div>
+      <div class="row" style="justify-content:space-between"><span style="color:#cbb386;font-weight:600">📷 עותקים וברקודים</span><button class="btn ghost sm" id="cpAdd">+ הוסף עותק</button></div>
       <div id="cpList" style="margin-top:10px"></div>
-      <div class="muted" style="margin-top:6px">לכל עותק ברקוד נפרד וניתן לסריקה. עותק מושאל/אבוד אי אפשר למחוק עד החזרתו.</div>
+      <div class="muted" style="margin-top:6px">לכל עותק ברקוד נפרד. מקדו את שדה הברקוד ו<b>סרקו</b> (הסורק יקליד את המספר), או הקלידו ידנית, או לחצו "צור ברקוד" למספר אוטומטי. עותק מושאל/אבוד אי אפשר למחוק עד החזרתו.</div>
     </div>
 
     <label class="fld"><span>הערות</span><textarea class="inp" id="fNotes">${esc(b.notes)}</textarea></label>
@@ -974,8 +974,9 @@ function editBook(id){
     $('#cpList').innerHTML=formItems.map((it,i)=>{
       const stTag=it.status==='out'?'<span class="tag out">מושאל</span>':it.status==='lost'?'<span class="tag lost">אבוד</span>':'<span class="tag">זמין</span>';
       const canDel=it.status==='in';
-      return `<div class="litem copyRow" data-id="${it.id}"><div class="meta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:13px">עותק ${i+1}</b><input class="inp copyBc" value="${esc(it.barcode)}" placeholder="ברקוד" style="max-width:190px;padding:6px 8px">${stTag}</div><div class="actions"><button class="btn ghost sm cpGen" data-id="${it.id}">צור ברקוד</button><button class="btn danger sm cpDel" data-id="${it.id}" ${canDel?'':'disabled style=opacity:.4'}>מחק</button></div></div>`;
+      return `<div class="litem copyRow" data-id="${it.id}"><div class="meta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:13px">עותק ${i+1}</b><input class="inp copyBc" value="${esc(it.barcode)}" placeholder="סרקו או הקלידו ברקוד" inputmode="numeric" autocomplete="off" style="max-width:240px;padding:7px 9px;letter-spacing:1px">${stTag}</div><div class="actions"><button class="btn ghost sm cpGen" data-id="${it.id}" type="button">צור ברקוד</button><button class="btn danger sm cpDel" data-id="${it.id}" type="button" ${canDel?'':'disabled style=opacity:.4'}>מחק</button></div></div>`;
     }).join('');
+    $('#cpList').querySelectorAll('.copyBc').forEach(inp=>inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); syncInputs(); inp.blur(); toast('הברקוד נקלט — לחצו "שמירה" לסיום','ok'); } }));
     $('#cpList').querySelectorAll('.cpGen').forEach(btn=>btn.addEventListener('click',()=>{syncInputs();const it=formItems.find(i=>i.id===btn.dataset.id);it.barcode=String(DB.counters.barcode+genUsed);genUsed++;renderCopies();}));
     $('#cpList').querySelectorAll('.cpDel').forEach(btn=>btn.addEventListener('click',()=>{const it=formItems.find(i=>i.id===btn.dataset.id);if(it.status!=='in')return;if(formItems.length<=1){toast('חייב להישאר עותק אחד','err');return;}if(!confirm('להסיר עותק זה? יחול בעת שמירת הספר.'))return;syncInputs();formItems=formItems.filter(i=>i.id!==btn.dataset.id);renderCopies();}));
   }
@@ -1059,6 +1060,7 @@ function setCoMode(m){
 function coSearchRender(){
   const box=$('#coSearchResults'); if(!box)return;
   const q=($('#coSearch').value||'').trim().toLowerCase();
+  if(q.length===0){ box.innerHTML=''; const p=$('#checkoutPanel'); if(p)p.innerHTML=''; return; }   // ריקון — גם הספר/תלמיד שנבחר נעלם
   if(q.length<2){ box.innerHTML='<p class="muted">הקלידו לפחות 2 תווים…</p>'; return; }
   if(coSearchMode==='book'){
     const list=DB.books.filter(b=>(b.title||'').toLowerCase().includes(q)||(b.author||'').toLowerCase().includes(q)||String(b.danaCode||'').toLowerCase().includes(q)).slice(0,15);
@@ -1069,6 +1071,12 @@ function coSearchRender(){
     if(!list.length){ box.innerHTML='<p class="muted">לא נמצא תלמיד תואם.</p>'; return; }
     box.innerHTML=list.map(s=>{const open=studentOpenItems(s.id).length;return `<div class="litem" style="cursor:pointer" onclick="coPickStudent('${s.id}')"><div class="meta"><b>${esc(s.firstName+' '+s.lastName)}</b><small>${gradeHeb(s.grade)+(s.classLabel||'')}${s.isTeacher?' · מורה':''} · ${open} ספרים מושאלים</small></div><div class="actions">${open>0?'<span class="tag out">'+open+'</span>':''}</div></div>`;}).join('');
   }
+}
+function resetCheckoutSearch(){
+  coSearchMode='book';
+  document.querySelectorAll('.coMode').forEach(b=>b.classList.toggle('on',b.dataset.mode==='book'));
+  const s=$('#coSearch'); if(s){ s.value=''; s.placeholder='הקלידו שם ספר…'; }
+  const r=$('#coSearchResults'); if(r)r.innerHTML='';
 }
 window.coPickBook=function(id){
   const b=DB.books.find(x=>x.id===id); if(!b)return;
@@ -1087,6 +1095,7 @@ window.coPickStudent=function(id){
 $('#coModeBook')&&$('#coModeBook').addEventListener('click',()=>setCoMode('book'));
 $('#coModeStudent')&&$('#coModeStudent').addEventListener('click',()=>setCoMode('student'));
 $('#coSearch')&&$('#coSearch').addEventListener('input',coSearchRender);
+$('#coSearchClear')&&$('#coSearchClear').addEventListener('click',()=>{ const s=$('#coSearch'); if(s)s.value=''; coSearchRender(); if(s)s.focus(); });
 function openCheckout(b,it){
   if(!it)it=availItems(b)[0]||itemsOf(b)[0];
   const panel=$('#checkoutPanel');
@@ -2384,7 +2393,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 70';
+const APP_VERSION='גרסה 29.6.2026 · 72';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
