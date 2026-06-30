@@ -647,14 +647,16 @@ const LIB_MAP=[
  {t:'קיר ימני',items:['נוער','קומיקס','בדיחות וחידות','צעצועים','פנטזיה','שירה','הרפתקאות','כדור רגל','ראשית קריאה','קוראים']}];
 
 /* ============ storage ============ */
-const KEY='dvora_lib_v2';
+const KEY='dvora_lib_v2', TSKEY='dvora_lib_ts';
 let mem=null;
 const Store={
   read(){ try{const r=localStorage.getItem(KEY); return r?JSON.parse(r):null;}catch(e){return mem;} },
   write(d){ mem=d; try{localStorage.setItem(KEY,JSON.stringify(d));}catch(e){} }
 };
+function localTs(){ try{return +(localStorage.getItem(TSKEY)||0);}catch(e){return 0;} }
+function setLocalTs(ms){ try{localStorage.setItem(TSKEY,String(ms||Date.now()));}catch(e){} }
 let DB=Store.read()||seed();
-function save(){ Store.write(DB); paintCount(); if(typeof cloudPushDebounced==='function')cloudPushDebounced(); }
+function save(){ Store.write(DB); setLocalTs(Date.now()); paintCount(); if(typeof cloudPushDebounced==='function')cloudPushDebounced(); }
 
 /* ---- copies (items) model + migration ---- */
 function ensureItems(b){
@@ -2335,7 +2337,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 68';
+const APP_VERSION='גרסה 29.6.2026 · 69';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
@@ -2381,6 +2383,13 @@ async function cloudLoad(){
   if(error)throw error;
   return data&&data.data&&Object.keys(data.data).length?data.data:null;
 }
+async function cloudLoadMeta(){
+  const {data,error}=await supa.from('library_state').select('data,updated_at').eq('id',1).maybeSingle();
+  if(error)throw error;
+  const d = data&&data.data&&Object.keys(data.data).length?data.data:null;
+  const ts = data&&data.updated_at?Date.parse(data.updated_at):0;
+  return {data:d, ts};
+}
 let cloudPushPending=false, cloudForceNextSave=false, cloudGuardBusy=false;
 async function cloudSaveNow(force){
   if(!cloudOn||!supa)return;
@@ -2399,8 +2408,10 @@ async function cloudSaveNow(force){
     }catch(e){ /* אם הבדיקה נכשלה — ממשיכים לשמירה רגילה */ }
   }
   cloudIgnoreUntil=Date.now()+2500;
-  const {error}=await supa.from('library_state').upsert({id:1,data:DB,updated_at:new Date().toISOString()});
+  const stamp=new Date().toISOString();
+  const {error}=await supa.from('library_state').upsert({id:1,data:DB,updated_at:stamp});
   if(error){console.error('cloud save',error);toast('שמירה לענן נכשלה — נשמר מקומית','err');}
+  else{ setLocalTs(Date.parse(stamp)); }
 }
 function cloudOverwriteGuard(remote, rStud, lStud){
   modal(`<div class="mhead"><h3>⚠ אזהרת דריסת נתונים</h3></div>
@@ -2412,7 +2423,7 @@ function cloudOverwriteGuard(remote, rStud, lStud){
     <div class="row" style="margin-top:12px"><button class="btn" id="ogLoad">⬇ טען מהענן (שמור על הנתונים המלאים)</button></div>
     <div class="row" style="margin-top:8px"><button class="btn danger" id="ogOver">⬆ שמור בכל זאת (דרוס את הענן)</button></div>
   </div>`);
-  $('#ogLoad').addEventListener('click',()=>{ cloudGuardBusy=false; closeModal(); DB=remote; migrate(); Store.write(DB); cloudReRender(); toast('נטען מהענן — הנתונים המלאים נשמרו','ok'); });
+  $('#ogLoad').addEventListener('click',()=>{ cloudGuardBusy=false; closeModal(); DB=remote; migrate(); Store.write(DB); setLocalTs(Date.now()); cloudReRender(); toast('נטען מהענן — הנתונים המלאים נשמרו','ok'); });
   $('#ogOver').addEventListener('click',()=>{ cloudGuardBusy=false; closeModal(); cloudSaveNow(true); toast('הענן עודכן מהמכשיר','ok'); });
 }
 function cloudPushDebounced(){
@@ -2503,18 +2514,28 @@ function cloudSyncConflict(remote){
     <div class="row" style="margin-top:8px"><button class="btn ghost" id="syDown">⬇ טען מהענן (דורס את המכשיר)</button></div>
   </div>`);
   $('#syUp').addEventListener('click',()=>{ closeModal(); cloudSaveNow(true).then(()=>{toast("הנתונים מהמכשיר הועלו לענן","ok"); cloudFinishLogin();}); });
-  $('#syDown').addEventListener('click',()=>{ closeModal(); DB=remote; migrate(); toast('נטען מהענן','ok'); cloudFinishLogin(); });
+  $('#syDown').addEventListener('click',()=>{ closeModal(); DB=remote; migrate(); Store.write(DB); setLocalTs(Date.now()); toast('נטען מהענן','ok'); cloudFinishLogin(); });
 }
 async function cloudAfterLogin(silent){
   cloudHideLogin();   // המשתמש מאומת — פתיחת האפליקציה
   try{
     await cloudFetchRole();
-    const remote=await cloudLoad();
+    const {data:remote, ts:remoteTs}=await cloudLoadMeta();
     localBackup('pre-cloud-login');                 // snapshot local before any change
-    if(!remote){ await cloudSaveNow(); if(!silent)toast('הנתונים המקומיים הועלו לענן','ok'); cloudFinishLogin(); return; }
-    const rs=dbScore(remote), ls=dbScore(DB);
-    if(rs < ls){ cloudSyncConflict(remote); return; }   // cloud has less → ask, don't overwrite silently
-    DB=remote; migrate(); if(!silent)toast('הנתונים נטענו מהענן','ok');
+    if(!remote){ await cloudSaveNow(true); if(!silent)toast('הנתונים המקומיים הועלו לענן','ok'); cloudFinishLogin(); return; }
+    const lts=localTs();
+    const rStud=(remote.students||[]).length, lStud=(DB.students||[]).length;
+    const cloudNewer = remoteTs>=lts;   // הענן עודכן אחרי השינוי המקומי האחרון
+    if(cloudNewer){
+      // משיכה אוטומטית מהענן — אלא אם הטעינה תמחק חלק גדול מהנתונים המקומיים (הגנת שעון/דריסה)
+      if((lStud - rStud >= 3) || (dbScore(DB) - dbScore(remote) >= 25)){ cloudSyncConflict(remote); return; }
+      DB=remote; migrate(); Store.write(DB); setLocalTs(remoteTs);
+      if(!silent)toast('הנתונים עודכנו מהענן','ok');
+      cloudFinishLogin(); return;
+    }
+    // המכשיר המקומי חדש יותר (הזנות שטרם עלו) — מעלים לענן, אלא אם הענן גדול בהרבה (אז שואלים)
+    if((rStud - lStud >= 3) || (dbScore(remote) - dbScore(DB) >= 25)){ cloudSyncConflict(remote); return; }
+    await cloudSaveNow(true); if(!silent)toast('הנתונים שלך סונכרנו לענן','ok');
     cloudFinishLogin();
   }catch(e){ console.error(e); toast('טעינת הנתונים מהענן נכשלה — נסו לרענן','err'); }
 }
@@ -2528,7 +2549,7 @@ function cloudSubscribe(){
     const inStud=(nd.students||[]).length, curStud=(DB.students||[]).length;
     if((curStud - inStud >= 3) || (curScore - inScore >= 25)){   // עדכון מוחק חלק גדול — לא להחיל בשקט
       cloudIncomingGuard(nd, inStud, curStud);
-    } else { DB=nd; migrate(); cloudReRender(); toast('עודכן ממכשיר אחר','ok'); }
+    } else { DB=nd; migrate(); Store.write(DB); setLocalTs(Date.now()); cloudReRender(); toast('עודכן ממכשיר אחר','ok'); }
   }).subscribe();
   try{ supa.channel('sig-reqs').on('postgres_changes',{event:'INSERT',schema:'public',table:'signature_requests'},()=>cloudApplySignatures()).subscribe(); }catch(e){}
 }
@@ -2542,7 +2563,7 @@ function cloudIncomingGuard(nd, inStud, curStud){
     <div class="row" style="margin-top:8px"><button class="btn danger" id="igApply">⬇ החל את העדכון (פחות נתונים)</button></div>
   </div>`);
   $('#igKeep').addEventListener('click',()=>{ closeModal(); cloudSaveNow(true); toast('הנתונים שלך נשמרו חזרה לענן','ok'); });
-  $('#igApply').addEventListener('click',()=>{ closeModal(); DB=nd; migrate(); Store.write(DB); cloudReRender(); toast('העדכון הוחל','ok'); });
+  $('#igApply').addEventListener('click',()=>{ closeModal(); DB=nd; migrate(); Store.write(DB); setLocalTs(Date.now()); cloudReRender(); toast('העדכון הוחל','ok'); });
 }
 async function cloudApplySignatures(){
   if(!cloudOn||!supa)return;
