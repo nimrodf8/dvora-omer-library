@@ -1313,7 +1313,7 @@ function syncParent(fid,srcId){
   let src=srcId&&fam.find(x=>x.id===srcId);
   if(!src||!(src.parentName||src.parentPhone||src.parentEmail))
     src=fam.find(x=>x.parentName||x.parentPhone||x.parentEmail)||fam[0];
-  fam.forEach(x=>{x.parentName=src.parentName||'';x.parentPhone=src.parentPhone||'';x.parentEmail=src.parentEmail||'';});
+  fam.forEach(x=>{x.parentName=src.parentName||'';x.parentPhone=src.parentPhone||'';x.parentEmail=src.parentEmail||'';x.parentEmail2=src.parentEmail2||'';});
   // propagate terms-signed status: if any sibling's parent has signed, the whole family is covered
   const signed=fam.find(x=>x.termsSigned);
   if(signed)fam.forEach(x=>{x.termsSigned=true;x.termsSignedAt=x.termsSignedAt||signed.termsSignedAt;x.termsSignedBy=x.termsSignedBy||signed.termsSignedBy;});
@@ -1354,7 +1354,7 @@ function promptSiblingsInactive(s, sibs, cb){
 }
 function unlinkSibling(id){const s=DB.students.find(x=>x.id===id);if(!s)return;const fid=s.familyId;s.familyId=null;
   const rest=familyMembers(fid);if(rest.length===1)rest[0].familyId=null;save();}
-function refreshParentFields(s){if($('#sPName'))$('#sPName').value=s.parentName||'';if($('#sPPhone'))$('#sPPhone').value=s.parentPhone||'';if($('#sPMail'))$('#sPMail').value=s.parentEmail||'';}
+function refreshParentFields(s){if($('#sPName'))$('#sPName').value=s.parentName||'';if($('#sPPhone'))$('#sPPhone').value=s.parentPhone||'';if($('#sPMail'))$('#sPMail').value=s.parentEmail||'';if($('#sPMail2'))$('#sPMail2').value=s.parentEmail2||'';}
 function renderFamilyBox(s){
   const box=$('#sFamily');if(!box)return;
   const sibs=siblingsOf(s);
@@ -1380,13 +1380,37 @@ window._toggleSigned=function(id,on){
   studentPage(id); renderStudents();
 };
 function signLink(id){ return location.origin+location.pathname+'?sign='+encodeURIComponent(id); }
+async function sendTermsEmailAuto(s){
+  const link=signLink(s.id);
+  const msg=`שלום, לפתיחת תיק הספרייה של ${s.firstName} ${s.lastName} בביה״ס דבורה עומר נדרשת חתימת הורה על תקנון הספרייה.\nלמילוי וחתימה דיגיטלית (כדקה):\n${link}`;
+  const subject='חתימת הורה על תקנון — ספריית דבורה עומר';
+  const tos=[s.parentEmail, s.parentEmail2].map(x=>(x||'').trim()).filter(Boolean);
+  if(!tos.length) return {error:'אין כתובת מייל בכרטיס ההורה'};
+  if(!cloudOn||!supa) return {offline:true, to:tos[0], subject, msg};
+  let ok=0, err=0;
+  for(const to of tos){
+    try{ const r=await cloudSendNotification({to, subject, message:msg, channel:'email', student_id:s.id, type:'terms', ref:'terms:'+s.id}); if(r&&r.ok)ok++; else err++; }
+    catch(e){ err++; }
+  }
+  return {ok, err, count:tos.length};
+}
 window._sendSign=function(id,how){  const s=DB.students.find(x=>x.id===id);if(!s)return;
   const link=signLink(id);
   const msg=`שלום, לפתיחת תיק הספרייה של ${s.firstName} ${s.lastName} בביה״ס דבורה עומר נדרשת חתימת הורה על תקנון הספרייה. למילוי וחתימה דיגיטלית (כדקה): ${link}`;
-  if(how==='mail'){ const to=s.parentEmail||''; window.open(`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent('חתימת הורה — ספריית דבורה עומר')}&body=${encodeURIComponent(msg)}`); }
+  if(how==='mail'){
+    if(!s.parentEmail && !s.parentEmail2){ toast('אין כתובת מייל בכרטיס ההורה','err'); return; }
+    toast('שולח תקנון במייל…');
+    sendTermsEmailAuto(s).then(r=>{
+      if(r.offline){ window.open(`mailto:${encodeURIComponent(r.to)}?subject=${encodeURIComponent('חתימת הורה — ספריית דבורה עומר')}&body=${encodeURIComponent(r.msg)}`); toast('אין חיבור לענן — נפתח דואר לשליחה ידנית','err'); }
+      else if(r.error){ toast(r.error,'err'); }
+      else if(r.ok){ toast(`התקנון נשלח אוטומטית${r.count>1?` ל-${r.count} כתובות`:''} ✓`,'ok'); logAct('sign_sent',`שליחת תקנון אוטומטית במייל: ${s.firstName} ${s.lastName}`); save(); }
+      else { toast('שליחת המייל נכשלה — נסו שוב או שלחו בוואטסאפ','err'); }
+    });
+    return;
+  }
   else if(how==='wa'){ let p=(s.parentPhone||'').replace(/\D/g,''); if(p.indexOf('0')===0)p='972'+p.slice(1); if(!p){toast('אין מספר טלפון להורה בכרטיס','err');return;} window.open(`https://wa.me/${p}?text=${encodeURIComponent(msg)}`,'_blank'); }
   else { if(navigator.clipboard){navigator.clipboard.writeText(link).then(()=>toast('הקישור הועתק','ok'),()=>toast('העתקה נכשלה','err'));} else toast(link); }
-  logAct('sign_sent',`שליחת תקנון לחתימה: ${s.firstName} ${s.lastName} (${how==='mail'?'מייל':how==='wa'?'וואטסאפ':'קישור'})`);
+  logAct('sign_sent',`שליחת תקנון לחתימה: ${s.firstName} ${s.lastName} (${how==='wa'?'וואטסאפ':'קישור'})`);
   save();
 };
 window._sendSignMenu=function(id){
@@ -1396,8 +1420,8 @@ window._sendSignMenu=function(id){
     <p style="margin:0 0 10px">תלמיד/ה: <b>${esc(s.firstName+' '+s.lastName)}</b> · ${gradeHeb(s.grade)+s.classLabel}</p>
     <div class="kv"><b>מייל הורה</b><span>${esc(s.parentEmail||'— לא הוזן —')}</span></div>
     <div class="kv"><b>טלפון הורה</b><span>${esc(s.parentPhone||'— לא הוזן —')}</span></div>
-    <p class="muted" style="margin:12px 0">בחר/י כיצד לשלוח את הקישור. ההורה ימלא ויחתום דיגיטלית — והתיק ייפתח אוטומטית בכל המכשירים המחוברים.</p>
-    <div class="row"><button class="btn" onclick="_sendSign('${s.id}','mail');closeModal()">📧 שליחה במייל</button><button class="btn" onclick="_sendSign('${s.id}','wa');closeModal()">💬 שליחה בוואטסאפ</button></div>
+    <p class="muted" style="margin:12px 0">המייל יישלח <b>אוטומטית ממערכת הספרייה</b> (לכל כתובות המייל בכרטיס). ההורה ימלא ויחתום דיגיטלית — והתיק ייפתח אוטומטית בכל המכשירים המחוברים.</p>
+    <div class="row"><button class="btn" onclick="_sendSign('${s.id}','mail');closeModal()">📧 שליחה אוטומטית במייל</button><button class="btn" onclick="_sendSign('${s.id}','wa');closeModal()">💬 שליחה בוואטסאפ</button></div>
     <div class="row" style="margin-top:8px"><button class="btn ghost" onclick="_sendSign('${s.id}','copy')">🔗 העתקת הקישור</button></div>
   </div>`);
 };
@@ -1492,7 +1516,7 @@ function studentPage(id){
   <div class="mbody">
     ${s.active===false?`<div style="background:#fff4e5;border:1px solid #f0c98a;border-radius:10px;padding:8px 12px;margin-bottom:12px;color:#8a5a16">🚪 התיק סגור${s.closedReason?' · '+esc(s.closedReason):(s.graduated?' · בוגר/ת':'')}${s.closedAt?' · '+new Date(s.closedAt).toLocaleDateString('he-IL'):''}</div>`:''}
     <div class="kv"><b>כיתה</b><span>${gradeHeb(s.grade)+s.classLabel} · מחנך/ת ${esc(teacherFor(s.grade,s.classLabel)||'—')}</span></div>
-    <div class="kv"><b>הורה</b><span>${esc(s.parentName||'—')} · ${esc(s.parentPhone||'')} · ${esc(s.parentEmail||'')}</span></div>
+    <div class="kv"><b>הורה</b><span>${esc(s.parentName||'—')} · ${esc(s.parentPhone||'')} · ${esc(s.parentEmail||'')}${s.parentEmail2?' · '+esc(s.parentEmail2):''}</span></div>
     ${s.isTeacher?'':`<div class="kv"><b>תקנון</b><span>${s.termsSigned?`<span style="color:#2e9a4f">✓ נחתם${s.termsSignedAt?' · '+new Date(s.termsSignedAt).toLocaleDateString('he-IL'):''}${s.termsSignedBy?' · '+esc(s.termsSignedBy):''}</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',false)">בטל פתיחת תיק</button>`:`<span style="color:#b5651d">טרם נחתם — התיק סגור להשאלה</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',true)">סמן כחתום ידנית</button>`}</span></div>
     <div class="kv"><b>חתימת הורה</b><span><button class="btn sm" onclick="_sendSignMenu('${s.id}')">✍ שליחת תקנון לחתימה</button>${s.termsSigned?' <span class="muted">כבר נחתם — אפשר לשלוח שוב</span>':''}</span></div>`}
     ${s.notifyConsent?'<div class="kv"><b>הודעות</b><span style="color:#2e9a4f">✓ ההורה אישר קבלת הודעות על השאלה ותזכורות החזרה</span></div>':''}
@@ -1565,6 +1589,7 @@ function newStudent(cb,id){
     <div class="muted" id="sTeacher" style="margin:-6px 0 12px"></div>
     <label class="fld"><span>שם הורה</span><input class="inp" id="sPName" value="${esc(s.parentName)}"></label>
     <div class="grid two"><label class="fld"><span>טלפון הורה *</span><input class="inp" id="sPPhone" value="${esc(s.parentPhone)}" inputmode="tel" placeholder="050-0000000"></label><label class="fld"><span>אימייל הורה *</span><input class="inp" id="sPMail" type="email" value="${esc(s.parentEmail)}" placeholder="name@example.com"></label></div>
+    <label class="fld"><span>אימייל הורה נוסף (לא חובה)</span><input class="inp" id="sPMail2" type="email" value="${esc(s.parentEmail2||'')}" placeholder="הורה שני — name@example.com"></label>
     ${s.isTeacher?'':'<div class="muted" style="margin:-6px 0 12px">טלפון ומייל הורה הם שדות חובה (נדרשים לשליחת התראות).</div>'}
     <div class="row" style="gap:20px; margin:2px 0 12px">
       <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="sActive" ${s.active!==false?'checked':''}> פעיל/ה</label>
@@ -1592,7 +1617,9 @@ function newStudent(cb,id){
     } else if(em && !emailValid(em)){
       toast('כתובת מייל הורה אינה תקינה','err');$('#sPMail').focus();return;
     }
-    Object.assign(s,{firstName:f,lastName:$('#sLast').value.trim(),grade:+$('#sGrade').value,classLabel:$('#sClass').value.trim(),parentName:$('#sPName').value.trim(),parentPhone:ph,parentEmail:em});
+    const em2=($('#sPMail2')?$('#sPMail2').value.trim():'');
+    if(em2 && !emailValid(em2)){toast('כתובת המייל הנוסף אינה תקינה','err');$('#sPMail2').focus();return;}
+    Object.assign(s,{firstName:f,lastName:$('#sLast').value.trim(),grade:+$('#sGrade').value,classLabel:$('#sClass').value.trim(),parentName:$('#sPName').value.trim(),parentPhone:ph,parentEmail:em,parentEmail2:em2});
     const wasInactive = id ? ((s.active===false)||s.graduated) : false;
     const wasActiveBefore = id ? (s.active!==false && !s.graduated) : true;
     if($('#sActive'))s.active=$('#sActive').checked;
@@ -1961,8 +1988,13 @@ async function autoEmailParent(student, subject, message, type, ref){
     if(!cloudOn||!supa) return {skipped:'offline'};
     const ft=((DB.settings&&DB.settings.emailFooter)||'').trim();
     const fullMsg=ft?(message+'\n\n'+ft):message;
-    const out=await cloudSendNotification({to:student.parentEmail, subject, message:fullMsg, channel:'email', student_id:student.id, type:type||'manual', ref:ref||''});
-    return out;
+    const tos=[student.parentEmail, student.parentEmail2].map(x=>(x||'').trim()).filter(Boolean);
+    let out=null;
+    for(const to of tos){
+      const r=await cloudSendNotification({to, subject, message:fullMsg, channel:'email', student_id:student.id, type:type||'manual', ref:ref||''});
+      if(!out) out=r;   // התוצאה הראשונה לתצוגה
+    }
+    return out||{skipped:'no-email'};
   }catch(e){ return {error:e.message||String(e)}; }
 }
 function notifyResultText(r){
@@ -2543,7 +2575,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 80';
+const APP_VERSION='גרסה 29.6.2026 · 81';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
