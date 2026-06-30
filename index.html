@@ -1038,7 +1038,32 @@ function editBook(id){
   renderCopies();
   $('#cpAdd').addEventListener('click',()=>{syncInputs();formItems.push({id:uid(),barcode:'',status:'in',holder:null,dueDate:null});renderCopies();});
 
-  $('#fCoverUp').addEventListener('change',ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#fCover').value=r.result;toast('כריכה נטענה');};r.readAsDataURL(f);});
+  $('#fCoverUp').addEventListener('change',ev=>{
+    const f=ev.target.files[0]; if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{
+      const orig=r.result;
+      const img=new Image();
+      img.onload=()=>{
+        try{
+          const maxW=500;
+          let w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+          if(!w||!h){ $('#fCover').value=orig; toast('כריכה נטענה'); return; }
+          if(w>maxW){ h=Math.round(h*maxW/w); w=maxW; }
+          const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+          const cx=cv.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,w,h); cx.drawImage(img,0,0,w,h);
+          let out=cv.toDataURL('image/jpeg',0.8);
+          if(!out||out.length<50) out=orig;                 // נפילה לאחור אם הכיווץ נכשל
+          if(orig && orig.length < out.length) out=orig;     // שמור את הקטן מבין השניים
+          $('#fCover').value=out;
+          toast('כריכה נטענה וכווצה');
+        }catch(e){ $('#fCover').value=orig; toast('כריכה נטענה'); }
+      };
+      img.onerror=()=>{ $('#fCover').value=orig; toast('כריכה נטענה'); };
+      img.src=orig;
+    };
+    r.readAsDataURL(f);
+  });
   $('#fDanaLookup')&&$('#fDanaLookup').addEventListener('click',()=>lookupBook($('#fDana').value.trim()||$('#fTitle').value.trim()));
   $('#fSave').addEventListener('click',()=>{
     const t=$('#fTitle').value.trim();if(!t){toast('חסר שם ספר','err');return;}
@@ -2605,7 +2630,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 88';
+const APP_VERSION='גרסה 29.6.2026 · 89';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sch=document.getElementById('schoolLogoLogin');if(sch)sch.src=SCHOOL_LOGO;const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
