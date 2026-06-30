@@ -113,14 +113,26 @@ textarea.inp{resize:vertical; min-height:64px}
 .book-card .bd small{color:var(--muted); font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .shelf{position:relative; display:flex; flex-wrap:wrap; align-items:flex-end; gap:6px; padding:18px 20px 0; min-height:175px}
 .shelf::after{content:""; position:absolute; left:0; right:0; bottom:0; height:15px; border-radius:5px; background:linear-gradient(180deg,#ecd2a6,#dcb87f 45%,#c79a63); box-shadow:0 7px 16px rgba(150,110,55,.22), inset 0 2px 0 rgba(255,247,229,.7)}
-.book-wall{--pitch:212px; position:relative; display:flex; flex-wrap:wrap; align-items:flex-end; column-gap:3px; row-gap:0; padding:6px 16px 0;
+.bookcase{position:relative; margin:6px 0 10px; border-radius:14px; overflow:hidden;
+  background:linear-gradient(180deg,#f1deba,#e4cba1);
+  border:13px solid #b07f49; border-top-width:15px; border-bottom-width:20px;
+  box-shadow:0 12px 30px rgba(120,85,40,.28), inset 0 0 22px rgba(120,85,40,.16);}
+.bookcase::before,.bookcase::after{content:""; position:absolute; top:0; bottom:0; width:5px; z-index:2; pointer-events:none}
+.bookcase::before{right:0; background:linear-gradient(90deg,rgba(120,85,40,.22),transparent)}
+.bookcase::after{left:0; background:linear-gradient(270deg,rgba(120,85,40,.22),transparent)}
+.book-wall{--pitch:212px; --board:24px; position:relative; display:flex; flex-wrap:wrap; align-items:flex-end; column-gap:3px; row-gap:0; padding:0 12px;
   background:repeating-linear-gradient(to bottom,
-    transparent 0, transparent calc(var(--pitch) - 15px),
-    #f4ddb4 calc(var(--pitch) - 15px), #e2bd83 45%, #c89a5f calc(var(--pitch) - 2px), #b07f49 var(--pitch));}
-.bcell{height:var(--pitch); box-sizing:border-box; padding-bottom:15px; display:flex; align-items:flex-end; flex:0 0 auto}
+    transparent 0,
+    transparent calc(var(--pitch) - var(--board)),
+    #f4ddb4 calc(var(--pitch) - var(--board)),
+    #e7c188 calc(var(--pitch) - 11px),
+    #cda063 calc(var(--pitch) - 4px),
+    #ab7942 var(--pitch));
+  background-position:0 0;}
+.bcell{height:var(--pitch); box-sizing:border-box; padding-bottom:var(--board); display:flex; align-items:flex-end; flex:0 0 auto}
 .spine.filler{cursor:default; pointer-events:none}
 .spine.filler::after{content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.05))}
-.letter-tab{height:var(--pitch); box-sizing:border-box; padding-bottom:15px; display:flex; align-items:flex-end; flex:0 0 auto; margin-inline:5px}
+.letter-tab{height:var(--pitch); box-sizing:border-box; padding-bottom:var(--board); display:flex; align-items:flex-end; flex:0 0 auto; margin-inline:5px}
 .letter-tab:first-child{margin-inline-start:0}
 .letter-tab b{display:flex; align-items:flex-start; justify-content:center; width:23px; height:134px; padding-top:9px; background:linear-gradient(180deg,#eef6dd,#dbe9bf); border:1px solid #cad89f; color:var(--lime-d); border-radius:6px 6px 3px 3px; font-weight:800; font-size:15px; box-shadow:2px 3px 8px rgba(40,60,65,.18); writing-mode:horizontal-tb}
 .spine{position:relative; flex:0 0 auto; border:none; border-radius:4px 4px 1px 1px; padding:0; width:var(--w); height:var(--h); cursor:pointer; background:linear-gradient(90deg, rgba(0,0,0,.24), rgba(255,255,255,.12) 14%, rgba(255,255,255,.16) 50%, rgba(0,0,0,.18)); background-color:var(--c); box-shadow:2px 3px 7px rgba(40,60,65,.22); overflow:hidden; transition:transform .14s, box-shadow .14s}
@@ -821,7 +833,7 @@ function renderShelf(){
     if(L!==cur){ cur=L; html+=`<span class="letter-tab" aria-hidden="true"><b>${esc(L)}</b></span>`; }
     html+=`<span class="bcell">${spine(b)}</span>`;
   });
-  wall.innerHTML=`<div class="book-wall">${html}</div>`;
+  wall.innerHTML=`<div class="bookcase"><div class="book-wall">${html}</div></div>`;
   wall.querySelectorAll('.spine').forEach(el=>{el.addEventListener('click',()=>bookDetail(el.dataset.id));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bookDetail(el.dataset.id);}});});
   if(typeof requestAnimationFrame==='function') requestAnimationFrame(fillShelfFillers); else fillShelfFillers();
 }
@@ -841,7 +853,7 @@ function fillShelfFillers(){
   const wall=document.querySelector('#shelfWall .book-wall'); if(!wall)return;
   wall.querySelectorAll('.bcell.filler').forEach(e=>e.remove());
   if(!wall.clientWidth) return;
-  const pitch=212, margin=6;
+  const pitch=212, margin=30;   // margin מותיר מקום למסגרת התחתונה של הארון כדי שלא תיווצר גלילה
   const top=wall.getBoundingClientRect().top;
   const avail=(window.innerHeight||0) - top - margin;
   const rowsFit=Math.floor(avail/pitch);
@@ -2575,7 +2587,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 81';
+const APP_VERSION='גרסה 29.6.2026 · 82';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
