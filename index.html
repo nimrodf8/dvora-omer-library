@@ -298,7 +298,8 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <label class="fld" style="margin:0"><span>סריקת ברקוד</span>
         <input class="inp" id="scanInput" inputmode="numeric" autocomplete="off"
           placeholder="מקדו כאן וסרקו — הסורק מקליד את המספר ולוחץ Enter" style="font-size:18px; letter-spacing:2px"></label>
-      <div class="muted" style="margin-top:8px">סורק USB עובד כמו מקלדת — אין צורך בהתקנה. ודאו שהשדה ממוקד לפני הסריקה.</div>
+      <div class="muted" style="margin-top:8px">סורק USB עובד כמו מקלדת — אין צורך בהתקנה. ודאו שהשדה ממוקד לפני הסריקה. בהקלדה ידנית — יוצגו התאמות חלקיות תוך כדי הקלדה.</div>
+      <div id="scanSuggest"></div>
       <div class="row" style="margin-top:10px"><button class="btn ghost sm" id="coCancel">✕ ביטול וסגירת העמוד</button></div>
     </div>
     <div class="card" style="margin-bottom:16px">
@@ -799,7 +800,7 @@ function go(v){
   if(v==='map')renderMap();
   if(v==='reports')renderReports();
   if(v==='terms')renderTerms();
-  if(v==='checkout'){ if(typeof resetCheckoutSearch==='function')resetCheckoutSearch(); const p=$('#checkoutPanel'); if(p)p.innerHTML=''; const si=$('#scanInput'); if(si)si.value=''; setTimeout(()=>$('#scanInput').focus(),60); }
+  if(v==='checkout'){ if(typeof resetCheckoutSearch==='function')resetCheckoutSearch(); const p=$('#checkoutPanel'); if(p)p.innerHTML=''; const si=$('#scanInput'); if(si)si.value=''; const ss=$('#scanSuggest'); if(ss)ss.innerHTML=''; setTimeout(()=>$('#scanInput').focus(),60); }
 }
 
 /* ============ count + filters fill ============ */
@@ -867,9 +868,9 @@ function bookDetail(id){
   const copyRow=(it,i)=>{
     const h=it.holder?DB.students.find(s=>s.id===it.holder):null;
     const stTag=it.status==='out'?`<span class="tag out">מושאל${h?' · '+esc(h.firstName+' '+h.lastName):''}</span>`:it.status==='lost'?'<span class="tag lost">אבוד</span>':'<span class="tag">זמין</span>';
-    const act=it.status==='in'?`<button class="btn sm" onclick="quickCheckout('${b.id}','${it.id}')">השאלה</button>`
+    const act=it.status==='in'?`<button class="btn sm" onclick="quickCheckout('${b.id}','${it.id}')">השאלה</button><button class="btn ghost sm" onclick="confirmLost('${b.id}','${it.id}','detail:${b.id}')">סמן כחסר</button>`
       :it.status==='out'?`<button class="btn sm" onclick="confirmReturn('${b.id}','${it.id}','detail:${b.id}')">החזרה</button><button class="btn danger sm" onclick="confirmLost('${b.id}','${it.id}','detail:${b.id}')">אבוד</button>`
-      :`<button class="btn ghost sm" onclick="returnToStock('${b.id}','${it.id}')">החזר למלאי</button>`;
+      :`<button class="btn sm" onclick="returnToStock('${b.id}','${it.id}')">✓ נמצא — החזר למלאי</button><button class="btn danger sm" onclick="deleteCopy('${b.id}','${it.id}')">🗑 מחק עותק</button>`;
     return `<div class="litem"><div class="meta"><b style="font-size:14px">עותק ${i+1}</b><small>${it.barcode?'ברקוד '+esc(it.barcode):'ללא ברקוד'} · ${stTag}${it.dueDate&&it.status==='out'?' · עד '+new Date(it.dueDate).toLocaleDateString('he-IL'):''}</small></div><div class="actions">${act}</div></div>`;
   };
   modal(`<div class="mhead"><h3>${esc(b.title)}</h3><button class="x" onclick="closeModal()">×</button></div>
@@ -883,6 +884,16 @@ function bookDetail(id){
   </div>`);
 }
 function returnToStock(bookId,itemId){const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;it.status='in';it.holder=null;it.dueDate=null;save();renderShelf();bookDetail(bookId);toast('הוחזר למלאי');}
+function deleteCopy(bookId,itemId){
+  const b=DB.books.find(x=>x.id===bookId); if(!b)return; const it=itemsOf(b).find(i=>i.id===itemId); if(!it)return;
+  if(it.status==='out'){ toast('לא ניתן למחוק עותק מושאל — יש להחזירו תחילה','err'); return; }
+  if(itemsOf(b).length<=1){ closeModal(); delBook(bookId); return; }   // העותק האחרון — מחיקת הספר כולו (ניתן לשחזר מההגדרות)
+  confirmAction({title:'מחיקת עותק לצמיתות',message:`למחוק עותק זה של "${b.title}"${it.barcode?' (ברקוד '+it.barcode+')':''}? לספר יישארו ${itemsOf(b).length-1} עותקים. הפעולה אינה ניתנת לשחזור.`,danger:true,admin:true,okLabel:'מחק עותק'},()=>{
+    b.items=b.items.filter(i=>i.id!==itemId);
+    logAct('book',`מחיקת עותק: ${b.title}${it.barcode?' · '+it.barcode:''}`);
+    save(); renderShelf(); bookDetail(bookId); toast('העותק נמחק');
+  });
+}
 function quickCheckout(bookId,itemId){closeModal();go('checkout');const b=DB.books.find(x=>x.id===bookId);if(!b)return;const it=itemId?itemsOf(b).find(i=>i.id===itemId):availItems(b)[0];if(!it){toast('אין עותק זמין','err');return;}if(it.barcode){$('#scanInput').value=it.barcode;handleScan(it.barcode);}else openCheckout(b,it);}
 
 /* ============ CATALOG ============ */
@@ -977,7 +988,7 @@ function editBook(id){
       return `<div class="litem copyRow" data-id="${it.id}"><div class="meta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:13px">עותק ${i+1}</b><input class="inp copyBc" value="${esc(it.barcode)}" placeholder="סרקו או הקלידו ברקוד" inputmode="numeric" autocomplete="off" style="max-width:240px;padding:7px 9px;letter-spacing:1px">${stTag}</div><div class="actions"><button class="btn ghost sm cpGen" data-id="${it.id}" type="button">צור ברקוד</button><button class="btn danger sm cpDel" data-id="${it.id}" type="button" ${canDel?'':'disabled style=opacity:.4'}>מחק</button></div></div>`;
     }).join('');
     $('#cpList').querySelectorAll('.copyBc').forEach(inp=>inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); syncInputs(); inp.blur(); toast('הברקוד נקלט — לחצו "שמירה" לסיום','ok'); } }));
-    $('#cpList').querySelectorAll('.cpGen').forEach(btn=>btn.addEventListener('click',()=>{syncInputs();const it=formItems.find(i=>i.id===btn.dataset.id);it.barcode=String(DB.counters.barcode+genUsed);genUsed++;renderCopies();}));
+    $('#cpList').querySelectorAll('.cpGen').forEach(btn=>btn.addEventListener('click',()=>{syncInputs();const it=formItems.find(i=>i.id===btn.dataset.id);if(it.barcode&&it.barcode.trim()){if(!confirm(`לעותק זה כבר יש ברקוד (${it.barcode}). יצירת ברקוד חדש תדרוס אותו. להמשיך?`))return;}it.barcode=String(DB.counters.barcode+genUsed);genUsed++;renderCopies();}));
     $('#cpList').querySelectorAll('.cpDel').forEach(btn=>btn.addEventListener('click',()=>{const it=formItems.find(i=>i.id===btn.dataset.id);if(it.status!=='in')return;if(formItems.length<=1){toast('חייב להישאר עותק אחד','err');return;}if(!confirm('להסיר עותק זה? יחול בעת שמירת הספר.'))return;syncInputs();formItems=formItems.filter(i=>i.id!==btn.dataset.id);renderCopies();}));
   }
   renderCopies();
@@ -1041,9 +1052,31 @@ function fillLookup(d){
 /* ============ CHECKOUT ============ */
 let scanBuf='',scanT=0;
 $('#scanInput').addEventListener('keydown',e=>{if(e.key==='Enter'){const v=$('#scanInput').value.trim();if(v)handleScan(v);}});
+$('#scanInput').addEventListener('input',scanSuggestRender);
+function scanSuggestRender(){
+  const box=$('#scanSuggest'); if(!box)return;
+  const q=($('#scanInput').value||'').trim();
+  if(q.length<2){ box.innerHTML=''; return; }
+  const res=[];
+  for(const b of DB.books){ for(const it of itemsOf(b)){ if(it.barcode && String(it.barcode).includes(q)){ res.push({b,it}); } if(res.length>=15)break; } if(res.length>=15)break; }
+  if(!res.length){ box.innerHTML='<p class="muted" style="margin:8px 0 0">אין ברקוד תואם. אפשר ללחוץ Enter לחיפוש מדויק, או לחפש לפי שם למטה.</p>'; return; }
+  box.innerHTML='<div class="list" style="margin-top:8px">'+res.map(({b,it})=>{
+    const stTag=it.status==='out'?'<span class="tag out">מושאל</span>':it.status==='lost'?'<span class="tag lost">אבוד</span>':'<span class="tag">זמין</span>';
+    return `<div class="litem" style="cursor:pointer" onclick="scanPick('${b.id}','${it.id}')"><div class="meta"><b>${esc(b.title)}</b><small>ברקוד ${esc(it.barcode)}${esc(b.author?' · '+b.author:'')} · ${esc(copyLabel(b,it))}</small></div><div class="actions">${stTag}</div></div>`;
+  }).join('')+'</div>';
+}
+window.scanPick=function(bookId,itemId){
+  const b=DB.books.find(x=>x.id===bookId); if(!b)return;
+  const it=itemsOf(b).find(i=>i.id===itemId); if(!it)return;
+  const si=$('#scanInput'); if(si)si.value='';
+  const ss=$('#scanSuggest'); if(ss)ss.innerHTML='';
+  openCheckout(b,it);
+  const p=$('#checkoutPanel'); if(p)p.scrollIntoView({behavior:'smooth',block:'nearest'});
+};
 function handleScan(code){
   const hit=findByBarcode(code);
   $('#scanInput').value='';$('#scanInput').focus();
+  const ss=$('#scanSuggest'); if(ss)ss.innerHTML='';
   if(!hit){
     $('#checkoutPanel').innerHTML=`<div class="card"><p>לא נמצא עותק עם ברקוד <b>${esc(code)}</b>.</p><button class="btn sm" onclick="(function(){editBook(null);setTimeout(()=>{var r=document.querySelector('#cpList .copyBc');if(r)r.value='${esc(code)}';},60);})()">הוסף ספר חדש עם ברקוד זה</button></div>`;
     return;
@@ -1482,10 +1515,18 @@ function newStudent(cb,id){
   $('#sSave').addEventListener('click',()=>{
     const f=$('#sFirst').value.trim();if(!f){toast('חסר שם','err');return;}
     const ph=$('#sPPhone').value.trim(), em=$('#sPMail').value.trim();
-    if(!s.isTeacher){
+    const emailValid=x=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x);
+    const willActive = $('#sActive') ? $('#sActive').checked : (s.active!==false);
+    const willGrad   = $('#sGrad')   ? $('#sGrad').checked   : !!s.graduated;
+    const openCnt    = id ? studentOpenItems(s.id).length : 0;
+    const inactiveLike = (!willActive) || willGrad;
+    const requireContact = !s.isTeacher && !(inactiveLike && openCnt===0);
+    if(requireContact){
       if(!ph){toast('חובה להזין טלפון הורה','err');$('#sPPhone').focus();return;}
       if(!em){toast('חובה להזין אימייל הורה','err');$('#sPMail').focus();return;}
-      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){toast('כתובת מייל הורה אינה תקינה','err');$('#sPMail').focus();return;}
+      if(!emailValid(em)){toast('כתובת מייל הורה אינה תקינה','err');$('#sPMail').focus();return;}
+    } else if(em && !emailValid(em)){
+      toast('כתובת מייל הורה אינה תקינה','err');$('#sPMail').focus();return;
     }
     Object.assign(s,{firstName:f,lastName:$('#sLast').value.trim(),grade:+$('#sGrade').value,classLabel:$('#sClass').value.trim(),parentName:$('#sPName').value.trim(),parentPhone:ph,parentEmail:em});
     if($('#sActive'))s.active=$('#sActive').checked;
@@ -2393,7 +2434,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 72';
+const APP_VERSION='גרסה 29.6.2026 · 76';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
