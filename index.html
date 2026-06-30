@@ -118,6 +118,8 @@ textarea.inp{resize:vertical; min-height:64px}
     transparent 0, transparent calc(var(--pitch) - 15px),
     #f4ddb4 calc(var(--pitch) - 15px), #e2bd83 45%, #c89a5f calc(var(--pitch) - 2px), #b07f49 var(--pitch));}
 .bcell{height:var(--pitch); box-sizing:border-box; padding-bottom:15px; display:flex; align-items:flex-end; flex:0 0 auto}
+.spine.filler{cursor:default; pointer-events:none}
+.spine.filler::after{content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.05))}
 .letter-tab{height:var(--pitch); box-sizing:border-box; padding-bottom:15px; display:flex; align-items:flex-end; flex:0 0 auto; margin-inline:5px}
 .letter-tab:first-child{margin-inline-start:0}
 .letter-tab b{display:flex; align-items:flex-start; justify-content:center; width:23px; height:134px; padding-top:9px; background:linear-gradient(180deg,#eef6dd,#dbe9bf); border:1px solid #cad89f; color:var(--lime-d); border-radius:6px 6px 3px 3px; font-weight:800; font-size:15px; box-shadow:2px 3px 8px rgba(40,60,65,.18); writing-mode:horizontal-tb}
@@ -821,7 +823,39 @@ function renderShelf(){
   });
   wall.innerHTML=`<div class="book-wall">${html}</div>`;
   wall.querySelectorAll('.spine').forEach(el=>{el.addEventListener('click',()=>bookDetail(el.dataset.id));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bookDetail(el.dataset.id);}});});
+  if(typeof requestAnimationFrame==='function') requestAnimationFrame(fillShelfFillers); else fillShelfFillers();
 }
+function makeFiller(i){
+  const h=150+((i*37+13)%38), w=38+((i*23+7)%22);
+  const pal=['#0d8b8d','#5a4a32','#7d6128','#b5651d','#3b6e6f','#8a5a16','#46627a','#6b8e23','#9a2d20','#2f6f5e','#7a4f9a','#c9a14a','#34679a','#7d8a3a'];
+  const c=pal[(i*5+3)%pal.length];
+  const cell=document.createElement('span'); cell.className='bcell filler';
+  const sp=document.createElement('span'); sp.className='spine filler'; sp.setAttribute('aria-hidden','true');
+  sp.style.cssText=`--h:${h}px;--w:${w}px;--c:${c}`;
+  cell.appendChild(sp);
+  return cell;
+}
+// ממלא את "קיר הספרים" בשדרות ריקות (לא לחיצות) רק כדי למלא את המסך — בלי ליצור גלילה.
+// ספרים אמיתיים תמיד ראשונים; ככל שמוזנים יותר ספרים, פוחת הצורך בפיקטיביים.
+function fillShelfFillers(){
+  const wall=document.querySelector('#shelfWall .book-wall'); if(!wall)return;
+  wall.querySelectorAll('.bcell.filler').forEach(e=>e.remove());
+  if(!wall.clientWidth) return;
+  const pitch=212, margin=6;
+  const top=wall.getBoundingClientRect().top;
+  const avail=(window.innerHeight||0) - top - margin;
+  const rowsFit=Math.floor(avail/pitch);
+  if(rowsFit<1) return;
+  const rowsNow=()=>Math.round(wall.getBoundingClientRect().height/pitch);
+  if(rowsNow()>=rowsFit) return;                 // הספרים האמיתיים כבר ממלאים את המסך — אפשר לגלול
+  let i=0, guard=0;
+  while(guard++<4000){ if(rowsNow()>=rowsFit) break; const frag=document.createDocumentFragment(); for(let k=0;k<8;k++)frag.appendChild(makeFiller(i++)); wall.appendChild(frag); }
+  // הסרת שדרות שחרגו מעבר למסך (כדי שלא תיווצר גלילה)
+  const fillers=[...wall.querySelectorAll('.bcell.filler')];
+  for(let j=fillers.length-1;j>=0;j--){ if(rowsNow()<=rowsFit)break; fillers[j].remove(); }
+}
+let _shelfFillT;
+if(typeof window!=='undefined') window.addEventListener('resize',()=>{ clearTimeout(_shelfFillT); _shelfFillT=setTimeout(()=>{ if(typeof CUR!=='undefined'&&CUR==='shelf') fillShelfFillers(); },200); });
 function spine(b){
   const h=150+hash(b.id)%38, w=38+hash(b.title)%22, c=GENRE_C[b.genre]||'#0d8b8d';
   const author=(b.author||'').split(/\s+/).slice(-2).join(' ');
@@ -1293,6 +1327,31 @@ function linkSibling(aId,bId){
   syncParent(fid,a.parentName||a.parentPhone||a.parentEmail?a.id:b.id);
   save();return true;
 }
+function _markStudentInactive(st){ if(!st||st.active===false)return; st.active=false; if(!st.leftAt)st.leftAt=Date.now(); logAct('student',`סימון כלא פעיל: ${st.firstName} ${st.lastName}`); }
+function promptSiblingsInactive(s, sibs, cb){
+  const done=()=>{ closeModal(); save(); renderStudents(); if(cb)cb(); };
+  if(sibs.length===1){
+    const sib=sibs[0];
+    modal(`<div class="mhead"><h3>סימון אחים כלא פעילים</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mbody">
+      <p>${esc(s.firstName+' '+s.lastName)} סומן/ה כלא פעיל/ה. רשום/ה במערכת אח/ות: <b>${esc(sib.firstName+' '+sib.lastName)}</b> (${esc(clsLabel(sib))}).</p>
+      <p class="muted" style="margin:6px 0 0">לסמן גם אותו/ה כלא פעיל/ה?</p>
+      <div class="row" style="margin-top:14px;gap:8px"><button class="btn" id="sibBoth">כן — גם ${esc(sib.firstName)}</button><button class="btn ghost" id="sibOnly">רק ${esc(s.firstName)}</button></div>
+    </div>`);
+    $('#sibBoth').addEventListener('click',()=>{ _markStudentInactive(sib); toast('האח/ות סומן/ה כלא פעיל/ה','ok'); done(); });
+    $('#sibOnly').addEventListener('click',done);
+    return;
+  }
+  modal(`<div class="mhead"><h3>סימון אחים כלא פעילים</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mbody">
+    <p>${esc(s.firstName+' '+s.lastName)} סומן/ה כלא פעיל/ה. ישנם ${sibs.length} אחים רשומים — בחר/י את מי לסמן גם כן:</p>
+    <div class="list" style="margin:10px 0">${sibs.map(sib=>`<label class="litem" style="cursor:pointer"><div class="meta"><b>${esc(sib.firstName+' '+sib.lastName)}</b><small>${esc(clsLabel(sib))}</small></div><div class="actions"><input type="checkbox" class="sibChk" data-id="${sib.id}" style="width:20px;height:20px"></div></label>`).join('')}</div>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn ghost sm" id="sibAll" type="button">סמן הכל</button><button class="btn" id="sibApply">סמן את המסומנים</button><button class="btn ghost" id="sibNone">רק ${esc(s.firstName)}</button></div>
+  </div>`);
+  $('#sibAll').addEventListener('click',()=>document.querySelectorAll('.sibChk').forEach(c=>c.checked=true));
+  $('#sibApply').addEventListener('click',()=>{ let n=0; document.querySelectorAll('.sibChk:checked').forEach(c=>{const sib=DB.students.find(x=>x.id===c.dataset.id);if(sib){_markStudentInactive(sib);n++;}}); toast(n?`${n} אחים סומנו כלא פעילים`:'לא נבחרו אחים','ok'); done(); });
+  $('#sibNone').addEventListener('click',done);
+}
 function unlinkSibling(id){const s=DB.students.find(x=>x.id===id);if(!s)return;const fid=s.familyId;s.familyId=null;
   const rest=familyMembers(fid);if(rest.length===1)rest[0].familyId=null;save();}
 function refreshParentFields(s){if($('#sPName'))$('#sPName').value=s.parentName||'';if($('#sPPhone'))$('#sPPhone').value=s.parentPhone||'';if($('#sPMail'))$('#sPMail').value=s.parentEmail||'';}
@@ -1422,7 +1481,12 @@ function studentPage(id){
   const open=studentOpenItems(s.id);
   const logs=DB.logs.filter(l=>l.studentId===s.id).sort((a,b)=>b.date-a.date);
   const sibs=siblingsOf(s);
-  const sibHtml=sibs.length?`<div class="kv"><b>אחים/בני משפחה</b><span>${sibs.map(x=>`<button class="btn ghost sm" style="margin:0 0 0 6px" onclick="studentPage('${x.id}')">${esc(x.firstName+' '+x.lastName)} · ${gradeHeb(x.grade)+x.classLabel}</button>`).join('')}</span></div>`:'';
+  const sibHtml=sibs.length?`<div class="kv"><b>אחים/בני משפחה</b><span>${sibs.map(x=>{
+    const left=(x.active===false||x.graduated)&&!x.isTeacher;
+    const yr=x.leftAt?new Date(x.leftAt).getFullYear():(x.closedAt?new Date(x.closedAt).getFullYear():null);
+    const suf=left?` · ${x.graduated?'בוגר/ת':'עזב/ה'}${yr?' '+yr:''}`:'';
+    return `<button class="btn ghost sm" style="margin:0 0 0 6px${left?';opacity:.65':''}" onclick="studentPage('${x.id}')">${esc(x.firstName+' '+x.lastName)} · ${gradeHeb(x.grade)+x.classLabel}${esc(suf)}</button>`;
+  }).join('')}</span></div>`:'';
   const logRow=l=>{const b=DB.books.find(x=>x.id===l.bookId);const t={checkout:'השאלה',return:'החזרה',lost:'אבוד'}[l.type];return `<div class="kv"><b>${new Date(l.date).toLocaleDateString('he-IL')}</b><span>${t} · ${esc(b?b.title:'—')}${l.barcode?' · '+esc(l.barcode):''}${l.type==='checkout'&&l.dueDate?' · עד '+new Date(l.dueDate).toLocaleDateString('he-IL'):''}</span></div>`;};
   modal(`<div class="mhead"><h3>${esc(s.firstName+' '+s.lastName)}</h3><button class="x" onclick="closeModal()">×</button></div>
   <div class="mbody">
@@ -1530,14 +1594,19 @@ function newStudent(cb,id){
     }
     Object.assign(s,{firstName:f,lastName:$('#sLast').value.trim(),grade:+$('#sGrade').value,classLabel:$('#sClass').value.trim(),parentName:$('#sPName').value.trim(),parentPhone:ph,parentEmail:em});
     const wasInactive = id ? ((s.active===false)||s.graduated) : false;
+    const wasActiveBefore = id ? (s.active!==false && !s.graduated) : true;
     if($('#sActive'))s.active=$('#sActive').checked;
     if($('#sGrad'))s.graduated=$('#sGrad').checked;
     const nowInactive = (s.active===false)||s.graduated;
     if(nowInactive && !wasInactive && !s.leftAt) s.leftAt=Date.now();   // עזב/בוגר — תיעוד תאריך
     if(!nowInactive) delete s.leftAt;                                    // חזר לפעיל
+    const becameInactive = wasActiveBefore && (s.active===false);
     if(s.familyId)syncParent(s.familyId,s.id);
     logAct('student',`${id?'עדכון':'הוספת'} תלמיד: ${f} ${$('#sLast').value.trim()}`);
-    if(!id)DB.students.push(s);save();closeModal();renderStudents();toast('נשמר','ok');if(cb)cb();
+    if(!id)DB.students.push(s);save();closeModal();renderStudents();toast('נשמר','ok');
+    const sibs = becameInactive ? siblingsOf(s).filter(x=>x.active!==false && !x.isTeacher) : [];
+    if(sibs.length){ promptSiblingsInactive(s, sibs, cb); }
+    else if(cb)cb();
   });
 }
 
@@ -2474,7 +2543,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 77';
+const APP_VERSION='גרסה 29.6.2026 · 80';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
