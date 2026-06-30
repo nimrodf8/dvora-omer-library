@@ -1451,7 +1451,7 @@ window.closeStudentFile=function(id){
   const open=studentOpenItems(id).length;
   const note=open>0?` שימו לב: על שם ${s.firstName} רשומים ${open} ספרים פתוחים — מומלץ להחזירם תחילה.`:'';
   confirmAction({title:'סגירת תיק (לבקשת הורה)',message:`לסגור את התיק של ${s.firstName} ${s.lastName} לבקשת ההורה? התלמיד/ה יעבור/תעבור ל"תלמידי עבר" ולא יופיע/תופיע ברשימות הפעילות, וניתן לפתוח את התיק מחדש בכל עת.${note}`,okLabel:'סגור תיק'},()=>{
-    s.active=false; s.closedReason='נסגר לבקשת ההורה'; s.closedAt=Date.now();
+    s.active=false; s.closedReason='נסגר לבקשת ההורה'; s.closedAt=Date.now(); s.leftAt=Date.now();
     logAct('student',`סגירת תיק לבקשת הורה: ${s.firstName} ${s.lastName}`); cloudForceNextSave=true; save(); renderStudents(); studentPage(id);
     toast('התיק נסגר','ok');
   });
@@ -1459,7 +1459,7 @@ window.closeStudentFile=function(id){
 window.reopenStudentFile=function(id){
   const s=DB.students.find(x=>x.id===id);if(!s)return;
   confirmAction({title:'פתיחת תיק מחדש',message:`להחזיר את ${s.firstName} ${s.lastName} לרשימת התלמידים הפעילים?`,okLabel:'פתח מחדש'},()=>{
-    s.active=true; s.graduated=false; delete s.closedReason; delete s.closedAt;
+    s.active=true; s.graduated=false; delete s.closedReason; delete s.closedAt; delete s.leftAt;
     logAct('student',`פתיחת תיק מחדש: ${s.firstName} ${s.lastName}`); cloudForceNextSave=true; save(); renderStudents(); studentPage(id);
     toast('התיק נפתח מחדש','ok');
   });
@@ -1529,8 +1529,12 @@ function newStudent(cb,id){
       toast('כתובת מייל הורה אינה תקינה','err');$('#sPMail').focus();return;
     }
     Object.assign(s,{firstName:f,lastName:$('#sLast').value.trim(),grade:+$('#sGrade').value,classLabel:$('#sClass').value.trim(),parentName:$('#sPName').value.trim(),parentPhone:ph,parentEmail:em});
+    const wasInactive = id ? ((s.active===false)||s.graduated) : false;
     if($('#sActive'))s.active=$('#sActive').checked;
     if($('#sGrad'))s.graduated=$('#sGrad').checked;
+    const nowInactive = (s.active===false)||s.graduated;
+    if(nowInactive && !wasInactive && !s.leftAt) s.leftAt=Date.now();   // עזב/בוגר — תיעוד תאריך
+    if(!nowInactive) delete s.leftAt;                                    // חזר לפעיל
     if(s.familyId)syncParent(s.familyId,s.id);
     logAct('student',`${id?'עדכון':'הוספת'} תלמיד: ${f} ${$('#sLast').value.trim()}`);
     if(!id)DB.students.push(s);save();closeModal();renderStudents();toast('נשמר','ok');if(cb)cb();
@@ -1762,7 +1766,7 @@ function checkRollover(){
     confirmAction({title:'קידום שכבה שנתי',message:`לבצע מעבר שנה? כיתות ו׳ יסומנו כבוגרים (יישמרו בתלמידי עבר), וכל שאר התלמידים יקודמו שכבה. פעולה זו חד-פעמית ומשנה את כל בסיס הנתונים — נשמר גיבוי אוטומטי לפני הביצוע.`,danger:true,admin:true,confirmType:'מעבר שנה',okLabel:'בצע קידום'},async()=>{
       try{ localBackup('pre-rollover'); if(typeof cloudBackupNow==='function')await cloudBackupNow('לפני קידום שכבה',true); }catch(e){}
       let bumped=0,grad=0;
-      DB.students.forEach(s=>{if(!s.active||s.graduated||s.isTeacher)return;if(s.grade>=6){s.graduated=true;s.active=false;grad++;}else{s.grade++;bumped++;}});
+      DB.students.forEach(s=>{if(!s.active||s.graduated||s.isTeacher)return;if(s.grade>=6){s.graduated=true;s.active=false;s.leftAt=Date.now();grad++;}else{s.grade++;bumped++;}});
       DB.settings.lastRollover=y; logAct('data',`קידום שכבה שנתי: ${bumped} קודמו · ${grad} סיימו ו׳`); cloudForceNextSave=true; save(); banner.classList.add('hidden'); renderStudents();
       toast(`קודמו ${bumped} תלמידים · ${grad} עברו לתלמידי עבר`,'ok');
     });
@@ -2095,9 +2099,29 @@ function reportDefs(){
     {key:'genre', title:'מלאי לפי קטגוריה', icon:'🗂', headers:['קטגוריה','כותרים','עותקים'], rows:byGenre},
     {key:'lost', title:'ספרים שאבדו', icon:'❌', headers:['ספר','ברקוד','תלמיד אחרון','כיתה'], rows:lost},
     {key:'signed', title:'סטטוס חתימת תקנון', icon:'✍️', headers:['תלמיד/ה','כיתה','הורה','חתם/ה','תאריך'], rows:signRows},
+    {key:'left', title:'בוגרים / עזבו', icon:'🎓', headers:['תלמיד/ה','כיתה אחרונה','סטטוס','תאריך עזיבה'], rows:leftRows()},
   ];
 }
-let repFilter={}, _repDefs=[], repClassSel=new Set();
+function leftStudentList(){
+  return DB.students.filter(s=>!s.isTeacher && ((s.active===false)||s.graduated))
+    .map(s=>({ name:s.firstName+' '+s.lastName, cls:clsLabel(s),
+      status: s.graduated?'בוגר/ת':(s.closedReason?'תיק נסגר (הורה)':'לא פעיל/ה'),
+      ts: s.leftAt||s.closedAt||0 }))
+    .sort((a,b)=>(b.ts||0)-(a.ts||0));
+}
+function leftPeriodStart(){
+  const now=new Date();
+  if(leftPeriod==='sy'){ const y=now.getMonth()>=8?now.getFullYear():now.getFullYear()-1; return new Date(y,8,1).getTime(); } // משנת לימוד נוכחית (מ-1 בספטמבר)
+  if(leftPeriod==='y1') return Date.now()-365*864e5;
+  if(leftPeriod==='y2') return Date.now()-730*864e5;
+  return 0; // הכל
+}
+function leftRows(){
+  const start=leftPeriodStart();
+  return leftStudentList().filter(o=> leftPeriod==='all' ? true : (o.ts && o.ts>=start))
+    .map(o=>[o.name, o.cls||'—', o.status, o.ts?new Date(o.ts).toLocaleDateString('he-IL'):'—']);
+}
+let repFilter={}, _repDefs=[], repClassSel=new Set(), leftPeriod='sy';
 function filterRows(rows,q){ q=(q||'').trim().toLowerCase(); if(!q)return rows; return rows.filter(r=>r.some(c=>String(c==null?'':c).toLowerCase().includes(q))); }
 function byclassRows(d){ let all=filterRows(d.rows, repFilter['byclass']); if(repClassSel.size)all=all.filter(r=>repClassSel.has(String(r[0]))); return all; }
 function classLoanRows(lbl){ return (DB.logs||[]).filter(l=>l.type==='checkout').filter(l=>{const s=DB.students.find(x=>x.id===l.studentId);return s&&clsLabel(s)===lbl;}).sort((a,b)=>b.date-a.date); }
@@ -2108,6 +2132,15 @@ function repRowHtml(d,r){
   }
   return `<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`;
 }
+function leftPeriodHtml(){
+  const opts=[['sy','השנה הנוכחית'],['y1','12 חודשים'],['y2','24 חודשים'],['all','הכל']];
+  return `<div class="no-print" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center"><span class="muted" style="margin-inline-end:4px">תקופה:</span>${opts.map(([v,l])=>`<button class="btn ${leftPeriod===v?'':'ghost'} sm" onclick="setLeftPeriod('${v}')">${l}</button>`).join('')}</div>`;
+}
+window.setLeftPeriod=function(v){
+  leftPeriod=v; repShowAll['left']=false;
+  const d=_repDefs.find(x=>x.key==='left'); const body=document.getElementById('repbody-left'); if(d&&body)body.innerHTML=repBodyHtml(d);
+  const cnt=document.getElementById('repcnt-left'); if(cnt)cnt.textContent=filterRows(leftRows(),repFilter['left']).length+' שורות';
+};
 function classChooserHtml(d){
   return `<div class="no-print" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center">
     <span class="muted" style="margin-inline-end:4px">בחירת כיתות:</span>
@@ -2116,6 +2149,13 @@ function classChooserHtml(d){
   </div>`;
 }
 function repBodyHtml(d){
+  if(d.key==='left'){
+    const all=filterRows(leftRows(), repFilter['left']); const N=all.length, showAll=!!repShowAll[d.key];
+    const rows=showAll?all:all.slice(0,12);
+    const toggle = N>12 ? `<div class="rep-more no-print"><button class="btn ghost sm" onclick="toggleReport('${d.key}')">${showAll?'הצג פחות ▲':`הצג את כל ${N} השורות ▼`}</button></div>` : '';
+    const table = N? `<div style="${showAll?'max-height:420px;overflow:auto':''}"><table class="rep-table"><thead><tr>${d.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>repRowHtml(d,r)).join('')}</tbody></table></div>${toggle}` : `<div class="rep-empty">${repFilter['left']?'אין תוצאות לסינון זה.':'אין תלמידים שעזבו בתקופה זו 👍'}</div>`;
+    return leftPeriodHtml()+table;
+  }
   if(d.key==='byclass'){
     const all=byclassRows(d); const N=all.length, showAll=!!repShowAll[d.key];
     const rows=showAll?all:all.slice(0,12);
@@ -2201,7 +2241,7 @@ function renderReports(){
   const p=$('#reportsPanel');
   let html=`<div class="stat-grid">`+stats.map(s=>`<div class="stat${s.warn?' warn':''}"><div class="v">${s.v}</div><div class="l">${s.l}</div></div>`).join('')+`</div>`;
   html+=defs.map(d=>{
-    const cnt=(d.key==='byclass'?byclassRows(d):filterRows(d.rows,repFilter[d.key])).length;
+    const cnt=(d.key==='byclass'?byclassRows(d):d.key==='left'?filterRows(leftRows(),repFilter['left']):filterRows(d.rows,repFilter[d.key])).length;
     const exp=d.key==='byclass'?'exportByClass()':`exportReport('${d.key}')`;
     return `<div class="card rep-card"><div class="rep-head"><div><h3>${d.icon} ${esc(d.title)}</h3></div><div class="row" style="gap:8px;align-items:center"><input class="inp no-print" style="height:32px;max-width:150px;padding:4px 8px" placeholder="🔍 סינון…" value="${esc(repFilter[d.key]||'')}" oninput="setRepFilter('${d.key}',this.value)"><span class="cnt" id="repcnt-${d.key}">${cnt} שורות</span><button class="btn ghost sm no-print" onclick="${exp}">⬇ אקסל</button></div></div><div id="repbody-${d.key}">${repBodyHtml(d)}</div></div>`;
   }).join('');
@@ -2209,7 +2249,7 @@ function renderReports(){
 }
 function exportReport(key){
   const d=(_repDefs.length?_repDefs:reportDefs()).find(x=>x.key===key); if(!d)return;
-  const rows=filterRows(d.rows, repFilter[d.key]);
+  const rows=key==='left'?filterRows(leftRows(), repFilter['left']):filterRows(d.rows, repFilter[d.key]);
   if(!rows.length){toast('אין נתונים לייצוא','err');return;}
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet([d.headers,...rows]);
@@ -2434,7 +2474,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 76';
+const APP_VERSION='גרסה 29.6.2026 · 77';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
