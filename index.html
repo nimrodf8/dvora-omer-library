@@ -2605,7 +2605,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 87';
+const APP_VERSION='גרסה 29.6.2026 · 88';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sch=document.getElementById('schoolLogoLogin');if(sch)sch.src=SCHOOL_LOGO;const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
@@ -2914,7 +2914,9 @@ function showSignPage(sid){
     if(!drew){err.textContent='נא לחתום במסגרת';return;}
     const btn=document.getElementById('spSubmit'); btn.disabled=true; btn.textContent='שולח…';
     try{
-      if(!supa)throw new Error('no-conn');
+      if(!supa && window.supabase){ try{ supa=window.supabase.createClient(SUPA_URL,SUPA_KEY); }catch(e){} }
+      if(!window.supabase) throw new Error('lib-not-loaded');
+      if(!supa) throw new Error('no-conn');
       const fg = kids.length>1 ? ('fg_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7)) : '';
       for(let i=0;i<kids.length;i++){
         const base = kids[i].cls ? (kids[i].name+' · '+kids[i].cls) : kids[i].name;
@@ -2925,7 +2927,19 @@ function showSignPage(sid){
       }
       const names=kids.map(k=>k.name).join(', ');
       inner.innerHTML=`<div class="cloud-title">ספריית ביה״ס דבורה עומר · כפר סבא</div><h3 style="margin:10px 0">✓ תודה!</h3><p>החתימה נשלחה לספרייה עבור: <b>${esc(names)}</b>. התיקים ייפתחו להשאלה. אפשר לסגור את החלון.</p>`;
-    }catch(e){ err.textContent='השליחה נכשלה. בדקו חיבור לאינטרנט ונסו שוב.'; btn.disabled=false; btn.textContent='שליחת חתימה לספרייה'; }
+    }catch(e){
+      console.error('signature submit failed:', e);
+      const code=(e&&e.code)||'';
+      const msg=(e&&(e.message||e.error_description||e.details||e.hint))||'';
+      let human;
+      if(msg==='lib-not-loaded') human='ספריית החיבור לא נטענה. רעננו את הדף (משכו מטה לרענון) ונסו שוב.';
+      else if(msg==='no-conn'||/Failed to fetch|NetworkError|network|fetch/i.test(msg)) human='אין חיבור לשרת. בדקו את חיבור האינטרנט ונסו שוב.';
+      else if(code==='42501'||/row-level security|policy|permission denied/i.test(msg)) human='שגיאת הרשאה בשרת (RLS). נא לדווח לספרייה — נדרש תיקון הגדרה.';
+      else if(code==='42P01'||/does not exist|relation/i.test(msg)) human='טבלת החתימות חסרה בשרת. נא לדווח לספרייה.';
+      else human='השליחה נכשלה'+(code?(' ['+code+']'):'')+(msg?': '+msg:'')+'. נסו שוב או צרו קשר עם הספרייה.';
+      err.textContent=human;
+      btn.disabled=false; btn.textContent='שליחת חתימה לספרייה';
+    }
   });
 }
 async function cloudDoLogin(email,pw){  const {data,error}=await supa.auth.signInWithPassword({email:email,password:pw});
