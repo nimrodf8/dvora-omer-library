@@ -576,7 +576,8 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="chWa"><span>💬 וואטסאפ <span class="muted">(ידני)</span></span></label>
       <button class="btn sm" id="saveChannels" style="margin-top:8px">שמירת ערוצים</button>
       <hr style="border:none;border-top:1px solid var(--line); margin:14px 0">
-      <p class="muted" style="margin:0 0 8px">✍ מרכז התבניות — לכל סיטואציה נוסח נפרד. עברו בין הלשוניות כדי לראות ולערוך את הטקסטים הנשלחים להורים. שדות דינמיים בסוגריים מסולסלים מוחלפים אוטומטית בעת השליחה.</p>
+      <p style="margin:14px 0 4px; font-weight:800; color:var(--teal-d); font-size:15px">✍ מרכז התבניות</p>
+      <p class="muted" style="margin:0 0 8px">לכל סיטואציה נוסח נפרד. עברו בין הלשוניות כדי לראות ולערוך את הטקסטים הנשלחים להורים. שדות דינמיים בסוגריים מסולסלים מוחלפים אוטומטית בעת השליחה.</p>
       <div class="tpl-tabs no-print">
         <button type="button" class="tpl-tab on" data-tpl="footer">חתימה קבועה</button>
         <button type="button" class="tpl-tab" data-tpl="checkout">השאלה</button>
@@ -2830,7 +2831,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 98';
+const APP_VERSION='גרסה 29.6.2026 · 99';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
