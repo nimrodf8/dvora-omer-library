@@ -478,7 +478,8 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
     </div>
     <div class="card" id="declCard">
       <h3 style="margin:0 0 6px; color:var(--teal-d)">הצהרת הורה והתחייבות</h3>
-      <p style="margin:0 0 14px">קראתי את תקנון הספרייה, הבנתי את תוכנו, ואני מתחייב/ת כי בני/בתי ינהג/תנהג על פיו. ידוע לי כי במקרה של אובדן או נזק בלתי סביר לספר, אדאג להחלפתו או לפיצוי הספרייה כמפורט בסעיף 5.</p>
+      <p style="margin:0 0 8px">קראתי את תקנון הספרייה, הבנתי את תוכנו, ואני מתחייב/ת כי בני/בתי ינהג/תנהג על פיו. ידוע לי כי במקרה של אובדן או נזק בלתי סביר לספר, אדאג להחלפתו או לפיצוי הספרייה כמפורט בסעיף 5.</p>
+      <p style="margin:0 0 14px">אני מאשר/ת לקבל מהמערכת הודעות על השאלת ספרים על ידי ילדי/תי, ותזכורות על מועד החזרה צפוי ועל איחור בהחזרה. <b>(אישור חובה)</b></p>
       <div class="grid" style="grid-template-columns:1fr 1fr; gap:12px">
         <label class="fld" style="margin:0"><span>שם התלמיד/ה</span><input class="inp" id="dTalmid" list="dlDeclStud" placeholder="בחרו תלמיד/ה מהרשימה"><datalist id="dlDeclStud"></datalist></label>
         <label class="fld" style="margin:0"><span>כיתה</span><input class="inp" id="dClass"></label>
@@ -2697,7 +2698,7 @@ window._mapRename=function(u,v){const M=mapData();if(M[u])M[u].t=v;save();};
 /* ============ TERMS ============ */
 const TERMS_HTML=`
 <h3>בית הספר היסודי ע"ש דבורה עומר — כפר סבא</h3>
-<p class="t-sub">תקנון ספריית בית הספר — שנת הלימודים התשפ"ו</p>
+<p class="t-sub">תקנון ספריית בית הספר — שנת הלימודים {שנה}</p>
 <div class="t-intro"><b>מטרת הספרייה.</b> ספריית בית הספר היא בית לספרים ולקוראים, ובה מגוון רחב של ספרים — סיפורת, עיון, שירה ועוד. מטרתה לטפח אהבת קריאה, סקרנות ואחריות אישית כלפי רכוש משותף. התקנון נועד לשמור על הספרים לרווחת כלל התלמידים.</div>
 <div class="t-sec"><b>1. שעות פעילות.</b> הספרייה פתוחה במהלך שעות הפעילות הרגילות של בית הספר, בימים ובשעות הייעודיים שיפורסמו בלוח הספרייה ובאתר/אפליקציית בית הספר.</div>
 <div class="t-sec"><b>2. השאלה.</b>
@@ -2714,7 +2715,7 @@ const TERMS_HTML=`
 <div class="t-sec"><b>5. ספר שאבד או ניזוק.</b> ספר שאבד או ניזוק באופן בלתי סביר יוחלף בספר זהה. אם לא ניתן להשיגו, ההורים מתבקשים לפצות את הספרייה בעלות הספר או ברכישת ספר חלופי בתיאום עם צוות הספרייה.</div>
 <div class="t-sec"><b>6. התנהגות בספרייה.</b> שמירה על שקט, יחס מכבד לצוות ולחברים, והחזרת הספרים והכיסאות למקומם.</div>`;
 const TERMS_PLAIN=`בית הספר היסודי ע"ש דבורה עומר — כפר סבא
-תקנון ספריית בית הספר — שנת הלימודים התשפ"ו
+תקנון ספריית בית הספר — שנת הלימודים {שנה}
 
 מטרת הספרייה
 ספריית בית הספר היא בית לספרים ולקוראים, ובה מגוון רחב של ספרים — סיפורת, עיון, שירה ועוד. מטרתה לטפח אהבת קריאה, סקרנות ואחריות אישית כלפי רכוש משותף. התקנון נועד לשמור על הספרים לרווחת כלל התלמידים.
@@ -2753,7 +2754,7 @@ function signStateText(){
   el.innerHTML=st.termsSigned?`<span style="color:#2e9a4f">✓ תיק פתוח — נחתם ${st.termsSignedAt?new Date(st.termsSignedAt).toLocaleDateString('he-IL'):''}</span>`:'<span style="color:#b5651d">התיק טרם נחתם</span>';
 }
 function renderTerms(){
-  $('#termsView').innerHTML = DB.settings.terms ? `<pre>${esc(DB.settings.terms)}</pre>` : TERMS_HTML;
+  $('#termsView').innerHTML = termsDocHtml();
   $('#termsView').classList.remove('hidden'); $('#termsEdit').classList.add('hidden');
   if(!$('#dDate').value) $('#dDate').value=new Date().toISOString().slice(0,10);
   const dl=$('#dlDeclStud'); if(dl)dl.innerHTML=DB.students.filter(s=>!s.isTeacher).map(s=>`<option value="${esc(s.firstName+' '+s.lastName+' — '+gradeHeb(s.grade)+s.classLabel)}"></option>`).join('');
@@ -2795,6 +2796,42 @@ function setupSig(){
 $('#sigClear').addEventListener('click',()=>{const c=$('#sigPad');if(sigCtx)sigCtx.clearRect(0,0,c.width,c.height);});
 
 /* print the declaration form */
+function hebGematria(num){
+  const map=[[400,'ת'],[300,'ש'],[200,'ר'],[100,'ק'],[90,'צ'],[80,'פ'],[70,'ע'],[60,'ס'],[50,'נ'],[40,'מ'],[30,'ל'],[20,'כ'],[10,'י'],[9,'ט'],[8,'ח'],[7,'ז'],[6,'ו'],[5,'ה'],[4,'ד'],[3,'ג'],[2,'ב'],[1,'א']];
+  let out='', n=num; for(const [v,l] of map){ while(n>=v){ out+=l; n-=v; } }
+  return out.replace('יה','טו').replace('יו','טז');
+}
+// שנת הלימודים הנוכחית בעברית. מ-1 ביולי ואילך → שנת הלימודים הקרובה (שמתחילה בספטמבר).
+function currentSchoolYearHeb(){
+  const d=new Date(); const startY = d.getMonth()>=6 ? d.getFullYear() : d.getFullYear()-1;
+  const g=hebGematria((startY+3761)-5000);
+  return 'ה'+(g.length>1 ? g.slice(0,-1)+'"'+g.slice(-1) : g+"'");   // למשל: התשפ"ז
+}
+function fillYear(s){ return String(s==null?'':s).split('{שנה}').join(currentSchoolYearHeb()); }
+function termsDocHtml(){ return DB.settings.terms ? '<pre style="white-space:pre-wrap;font:inherit">'+esc(fillYear(DB.settings.terms))+'</pre>' : fillYear(TERMS_HTML); }
+function loadJSZip(){ return new Promise((res,rej)=>{ if(window.JSZip)return res(); const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'; s.onload=()=>res(); s.onerror=()=>rej(new Error('JSZip')); document.head.appendChild(s); }); }
+function _escXml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// מחליף את השדה {שנה} בתוך פסקאות ה-XML גם אם הטקסט מפוצל למספר ריצות (runs)
+function _fillDocPlaceholders(xml,val){
+  return xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g,function(par){
+    let full=''; const tRe=/(<w:t[^>]*>)([\s\S]*?)(<\/w:t>)/g; let m;
+    while((m=tRe.exec(par))) full+=m[2];
+    if(full.indexOf('{שנה}')<0) return par;
+    const replaced=full.split('{שנה}').join(val); let idx=0;
+    return par.replace(/(<w:t[^>]*>)([\s\S]*?)(<\/w:t>)/g,function(mm,open,txt,close){ idx++; return idx===1 ? open+_escXml(replaced)+close : open+close; });
+  });
+}
+async function fillDocxYear(dataUrl,val){
+  await loadJSZip();
+  const b=dataUrl.split(',')[1];
+  const zip=await window.JSZip.loadAsync(b,{base64:true});
+  for(const name of Object.keys(zip.files)){
+    if(/word\/(document|header\d*|footer\d*)\.xml$/.test(name)){
+      let x=await zip.file(name).async('string'); x=_fillDocPlaceholders(x,val); zip.file(name,x);
+    }
+  }
+  return await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+}
 function renderFormTplStatus(){
   const el=$('#formTplStatus'); if(!el)return;
   const d=DB.settings.termsFormDoc;
@@ -2820,10 +2857,21 @@ if($('#formTplFile'))$('#formTplFile').addEventListener('change',e=>{
   rd.onerror=()=>toast('שגיאה בקריאת הקובץ','err');
   rd.readAsDataURL(f); e.target.value='';
 });
-$('#printTerms').addEventListener('click',()=>{
+$('#printTerms').addEventListener('click',async ()=>{
   const tpl=DB.settings.termsFormDoc;
-  if(tpl&&tpl.data){ const a=document.createElement('a'); a.href=tpl.data; a.download=tpl.name||'טופס-תקנון.docx'; document.body.appendChild(a); a.click(); a.remove(); toast('הורד טופס העיצוב — פִתחו ב-Word והדפיסו','ok'); return; }
-  const body=DB.settings.terms?`<pre style="white-space:pre-wrap;font:inherit">${esc(DB.settings.terms)}</pre>`:TERMS_HTML;
+  if(tpl&&tpl.data){
+    const yr=currentSchoolYearHeb(); const name=tpl.name||'טופס-תקנון.docx';
+    try{
+      const blob=await fillDocxYear(tpl.data,yr);
+      const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),5000);
+      toast(`הורד טופס לשנת ${yr} — פִתחו ב-Word והדפיסו`,'ok');
+    }catch(err){
+      const a=document.createElement('a'); a.href=tpl.data; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+      toast('הורד הטופס (לא בוצע עדכון שנה אוטומטי)','err');
+    }
+    return;
+  }
+  const body=termsDocHtml();
   const v=id=>esc(($('#'+id)&&$('#'+id).value)||'');
   let sig=''; const c=$('#sigPad'); try{sig=c.toDataURL('image/png');}catch(e){}
   const w=window.open('','_blank'); if(!w){toast('חלון ההדפסה נחסם','err');return;}
@@ -2839,6 +2887,7 @@ $('#printTerms').addEventListener('click',()=>{
   ${body}
   <div class="decl"><h4>הצהרת הורה והתחייבות</h4>
   <p>קראתי את תקנון הספרייה, הבנתי את תוכנו, ואני מתחייב/ת כי בני/בתי ינהג/תנהג על פיו. ידוע לי כי במקרה של אובדן או נזק בלתי סביר לספר, אדאג להחלפתו או לפיצוי הספרייה כמפורט בסעיף 5.</p>
+  <p>אני מאשר/ת לקבל מהמערכת הודעות על השאלת ספרים על ידי ילדי/תי, ותזכורות על מועד החזרה צפוי ועל איחור בהחזרה. <b>(אישור חובה)</b></p>
   <div class="f"><span class="lbl">שם התלמיד/ה</span><span class="val">${v('dTalmid')}</span><span class="lbl">כיתה</span><span class="val">${v('dClass')}</span></div>
   <div class="f"><span class="lbl">שם ההורה/אפוטרופוס</span><span class="val">${v('dParent')}</span><span class="lbl">ת"ז</span><span class="val">${v('dId')}</span></div>
   <div class="f sig"><span class="lbl">חתימה</span><span class="val">${sig?`<img src="${sig}">`:''}</span><span class="lbl">תאריך</span><span class="val">${v('dDate')}</span></div>
@@ -2886,7 +2935,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 104';
+const APP_VERSION='גרסה 29.6.2026 · 106';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
