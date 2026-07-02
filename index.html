@@ -147,6 +147,16 @@ textarea.inp{resize:vertical; min-height:64px}
 .update-banner .btn{background:#fff; color:var(--teal-d); border:none}
 .update-banner .btn:hover{background:#eef7f7}
 .update-banner .ub-x{background:transparent; border:none; color:#fff; font-size:22px; line-height:1; cursor:pointer; padding:0 6px}
+.tpl-tabs{display:flex; flex-wrap:wrap; gap:4px; border-bottom:2px solid var(--line); margin-bottom:12px}
+.tpl-tab{background:transparent; border:none; border-bottom:3px solid transparent; padding:8px 12px; font-size:13.5px; font-weight:600; color:var(--muted); cursor:pointer; margin-bottom:-2px}
+.tpl-tab:hover{color:var(--teal-d)}
+.tpl-tab.on{color:var(--teal-d); border-bottom-color:var(--teal)}
+.tpl-pane code{background:var(--teal-xl); padding:1px 6px; border-radius:4px; font-size:12px; color:var(--teal-d); font-weight:700; margin:0 1px}
+.search-wrap{position:relative; display:block}
+.search-wrap .inp{padding-inline-end:32px}
+.search-clear{position:absolute; inset-inline-end:8px; top:50%; transform:translateY(-50%); border:none; background:#00000012; color:#555; width:20px; height:20px; border-radius:50%; cursor:pointer; font-size:15px; line-height:20px; text-align:center; padding:0; display:none}
+.search-clear:hover{background:#00000022}
+.search-clear.show{display:block}
 .empty-state{text-align:center; padding:70px 20px; color:var(--muted)}
 .empty-state .big{font-size:54px; margin-bottom:10px}
 .map-grid{display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start}
@@ -355,7 +365,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <div class="row"><button class="btn ghost sm" id="xlBooks">⬇ ייצוא לאקסל (XLSX)</button><button class="btn ghost sm" id="dlBooks">⬇ קובץ קטלוג (CSV)</button><button class="btn ghost sm" id="upBooksBtn">⬆ עדכון מקובץ</button><input type="file" id="upBooksFile" accept=".csv,.txt" class="hidden"><button class="btn" id="newBookBtn">+ ספר חדש</button></div>
     </div>
     <div class="controls no-print">
-      <label class="fld grow" style="margin:0"><span>חיפוש</span><input class="inp" id="catSearch" placeholder="שם, סופר, סדרה, ברקוד, מספר דנה קוד…"></label>
+      <label class="fld grow" style="margin:0"><span>חיפוש</span><span class="search-wrap"><input class="inp" id="catSearch" placeholder="שם, סופר, סדרה, ברקוד, מספר דנה קוד…"><button type="button" class="search-clear" id="catSearchClear" title="נקה חיפוש">×</button></span></label>
       <label class="fld" style="margin:0"><span>מיון לפי</span>
         <select class="inp" id="catSort">
           <option value="title" selected>שם הספר (א״ב)</option>
@@ -389,7 +399,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <div class="row"><button class="btn ghost sm" id="dlStudents">⬇ קובץ תלמידים (CSV)</button><button class="btn ghost sm" id="upStudentsBtn">⬆ עדכון מקובץ</button><input type="file" id="upStudentsFile" accept=".csv,.txt" class="hidden"><button class="btn" id="newStudentBtn">+ תלמיד חדש</button></div>
     </div>
     <div class="controls no-print">
-      <label class="fld grow" style="margin:0"><span>חיפוש</span><input class="inp" id="studSearch" placeholder="שם תלמיד, כיתה, הורה…"></label>
+      <label class="fld grow" style="margin:0"><span>חיפוש</span><span class="search-wrap"><input class="inp" id="studSearch" placeholder="שם תלמיד, כיתה, הורה…"><button type="button" class="search-clear" id="studSearchClear" title="נקה חיפוש">×</button></span></label>
       <label class="fld" style="margin:0"><span>כיתה</span><select class="inp" id="studClass"><option value="">כל הכיתות</option></select></label>
       <label class="fld" style="margin:0"><span>הצג</span><select class="inp" id="studFilter">
         <option value="active">פעילים</option><option value="past">תלמידי עבר (בוגרים / לא פעילים)</option><option value="all">הכל</option></select></label>
@@ -566,10 +576,37 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="chWa"><span>💬 וואטסאפ <span class="muted">(ידני)</span></span></label>
       <button class="btn sm" id="saveChannels" style="margin-top:8px">שמירת ערוצים</button>
       <hr style="border:none;border-top:1px solid var(--line); margin:14px 0">
-      <p class="muted" style="margin:0 0 6px">✍ טקסט קבוע שיתווסף לתחתית <b>כל</b> המיילים האוטומטיים (השאלה, תזכורת ואיחור). למשל ברכה, שעות פעילות הספרייה, או פרטי קשר.</p>
-      <label class="fld" style="margin:0"><span>טקסט קבוע למיילים</span><textarea class="inp" id="emailFooter" rows="4" placeholder="למשל: בברכה, צוות ספריית דבורה עומר · שעות פעילות: א׳–ה׳ 8:00–14:00 · טל׳ 09-0000000"></textarea></label>
-      <label class="fld" style="margin:8px 0 0; max-width:320px"><span>מייל לפניות הורים (תשובות יחזרו לכאן)</span><input class="inp" id="supportEmail" type="email" placeholder="dvoraomerlib@gmail.com"></label>
-      <button class="btn sm" id="saveFooter" style="margin-top:8px">שמירת טקסט קבוע</button>
+      <p class="muted" style="margin:0 0 8px">✍ מרכז התבניות — לכל סיטואציה נוסח נפרד. עברו בין הלשוניות כדי לראות ולערוך את הטקסטים הנשלחים להורים. שדות דינמיים בסוגריים מסולסלים מוחלפים אוטומטית בעת השליחה.</p>
+      <div class="tpl-tabs no-print">
+        <button type="button" class="tpl-tab on" data-tpl="footer">חתימה קבועה</button>
+        <button type="button" class="tpl-tab" data-tpl="checkout">השאלה</button>
+        <button type="button" class="tpl-tab" data-tpl="remind">תזכורת לפני</button>
+        <button type="button" class="tpl-tab" data-tpl="overdue">איחור</button>
+        <button type="button" class="tpl-tab" data-tpl="terms">תקנון</button>
+      </div>
+      <div class="tpl-pane" data-pane="footer">
+        <p class="muted" style="margin:0 0 6px">טקסט קבוע שמתווסף לתחתית <b>כל</b> המיילים האוטומטיים (השאלה, תזכורת ואיחור). למשל ברכה, שעות פעילות או פרטי קשר.</p>
+        <textarea class="inp" id="emailFooter" rows="5" placeholder="למשל: בברכה, צוות ספריית דבורה עומר · שעות פעילות: א׳–ה׳ 8:00–14:00 · טל׳ 09-0000000"></textarea>
+        <label class="fld" style="margin:8px 0 0; max-width:320px"><span>מייל לפניות הורים (תשובות יחזרו לכאן)</span><input class="inp" id="supportEmail" type="email" placeholder="dvoraomerlib@gmail.com"></label>
+      </div>
+      <div class="tpl-pane" data-pane="checkout" hidden>
+        <p class="muted" style="margin:0 0 6px">נשלח מיד עם השאלת ספר. שדות: <code>{תלמיד}</code> <code>{ספר}</code> <code>{תאריך}</code></p>
+        <textarea class="inp" id="tplCheckout" rows="4"></textarea>
+      </div>
+      <div class="tpl-pane" data-pane="remind" hidden>
+        <p class="muted" style="margin:0 0 6px">תזכורת לפני מועד ההחזרה. שדות: <code>{תלמיד}</code> <code>{ספר}</code> <code>{תאריך}</code></p>
+        <textarea class="inp" id="tplRemind" rows="4"></textarea>
+      </div>
+      <div class="tpl-pane" data-pane="overdue" hidden>
+        <p class="muted" style="margin:0 0 6px">התראה על איחור בהחזרה. שדות: <code>{תלמיד}</code> <code>{ספר}</code> <code>{תאריך}</code></p>
+        <textarea class="inp" id="tplOverdue" rows="4"></textarea>
+      </div>
+      <div class="tpl-pane" data-pane="terms" hidden>
+        <p class="muted" style="margin:0 0 6px">בקשת חתימת הורה על התקנון. שדות: <code>{תלמיד}</code> <code>{קישור}</code></p>
+        <textarea class="inp" id="tplTerms" rows="4"></textarea>
+      </div>
+      <p class="muted" style="margin:8px 0 0; font-size:12px">💡 "תזכורת לפני" ו"איחור" נשלחים אוטומטית מהשרת — שינוי בנוסח שלהם ייכנס לתוקף לאחר פריסה מחדש של הפונקציה <b>notify-cron</b>.</p>
+      <button class="btn sm" id="saveFooter" style="margin-top:10px">שמירת התבניות</button>
       <hr style="border:none;border-top:1px solid var(--line); margin:14px 0">
       <p class="muted" style="margin:0 0 8px">🔎 בדיקת חיבור: שלחו מייל בדיקה (יוצא מ-do-not-reply@dvoraomer-library.org). דורש שהדומיין יאומת ב-Resend.</p>
       <div class="row" style="align-items:flex-end">
@@ -720,6 +757,7 @@ function migrate(){ (DB.books||[]).forEach(ensureItems);
   const s=DB.settings||(DB.settings={}); if(s.maxBooks==null)s.maxBooks=2; if(s.loanDays==null)s.loanDays=30; if(s.reminderDays==null)s.reminderDays=21; if(s.remindBeforeDays==null)s.remindBeforeDays=5; if(s.repeatDays==null)s.repeatDays=5; if(s.terms==null)s.terms=''; if(s.adminPin==null)s.adminPin=''; if(!s.libMap)s.libMap=JSON.parse(JSON.stringify(LIB_MAP));
   if(!s.channels)s.channels={email:true, sms:false, whatsapp:true}; else{ if(s.channels.email==null)s.channels.email=true; if(s.channels.sms==null)s.channels.sms=false; if(s.channels.whatsapp==null)s.channels.whatsapp=true; }
   if(s.emailFooter==null)s.emailFooter='';
+  if(!s.msgTemplates||typeof s.msgTemplates!=='object')s.msgTemplates={};
   if(!s.emailFooter)s.emailFooter='בברכה,\nצוות ספריית ביה״ס דבורה עומר · כפר סבא\n\nלשאלות, בקשות או עדכון פרטים ניתן לפנות אלינו במייל: dvoraomerlib@gmail.com\n(הודעה זו נשלחה מכתובת שאינה מקבלת תשובות — נא לפנות לכתובת המייל שלמעלה.)';
   if(s.supportEmail==null)s.supportEmail='dvoraomerlib@gmail.com';
   if(!Array.isArray(DB.activity))DB.activity=[];
@@ -775,7 +813,7 @@ function detectSeries(title){
   return {base:'', idx:''};
 }
 function seed(){
-  const DEF={maxBooks:2, loanDays:30, reminderDays:21, repeatDays:5, scanGap:40, terms:'', emailFooter:'', supportEmail:'dvoraomerlib@gmail.com', channels:{email:true, sms:false, whatsapp:true}};
+  const DEF={maxBooks:2, loanDays:30, reminderDays:21, repeatDays:5, scanGap:40, terms:'', emailFooter:'', supportEmail:'dvoraomerlib@gmail.com', channels:{email:true, sms:false, whatsapp:true}, msgTemplates:{}};
   const day=864e5;
   const classes=SEED.classes.map(c=>({id:uid(),grade:c[0],label:c[1],teacher:c[2]||''}));
   const students=SEED.students.map(s=>({id:uid(),firstName:s[0],lastName:s[1],grade:s[2],classLabel:s[3],
@@ -829,8 +867,8 @@ function go(v){
   $('#view-'+v).classList.remove('hidden');
   window.scrollTo(0,0);
   if(v==='shelf')renderShelf();
-  if(v==='catalog')renderCatalog();
-  if(v==='students')renderStudents();
+  if(v==='catalog'){resetCatalogSearch();renderCatalog();}
+  if(v==='students'){resetStudentsSearch();renderStudents();}
   if(v==='classes')renderClasses();
   if(v==='settings'){loadSettings();renderActivity();renderDeletedBooks();renderUsers();applyDevOnly();renderBarcodeMeta();if(typeof renderMsgLog==='function')renderMsgLog();}
   if(v==='reminders')renderReminders();
@@ -980,6 +1018,8 @@ function quickCheckout(bookId,itemId){closeModal();go('checkout');const b=DB.boo
 /* ============ CATALOG ============ */
 $('#newBookBtn').addEventListener('click',()=>editBook(null));
 ['#catSearch','#catSort','#catLang','#catGenre','#catAge','#catAvail'].forEach(s=>$(s)&&$(s).addEventListener('input',renderCatalog));
+function resetCatalogSearch(){ const s=$('#catSearch'); if(s)s.value=''; ['#catSort','#catLang','#catGenre','#catAge','#catAvail'].forEach(x=>{const el=$(x);if(el)el.selectedIndex=0;}); const c=$('#catSearchClear'); if(c)c.classList.remove('show'); }
+(function(){ const inp=$('#catSearch'), btn=$('#catSearchClear'); if(inp&&btn){ const upd=()=>btn.classList.toggle('show',!!inp.value); inp.addEventListener('input',upd); btn.addEventListener('click',()=>{ inp.value=''; upd(); renderCatalog(); inp.focus(); }); upd(); } })();
 function renderCatalog(){
   const q=$('#catSearch').value.trim().toLowerCase();
   const sort=($('#catSort')&&$('#catSort').value)||'title';
@@ -1276,7 +1316,7 @@ function openCheckout(b,it){
       panel.innerHTML=`<div class="card"><p>✓ הושאל בהצלחה: <b>${esc(b.title)}</b> (${esc(copyLabel(b,it))}) ל־<b>${esc(st.firstName+' '+st.lastName)}</b>. להחזרה עד ${dueStr2}.</p>${st.isTeacher?'':`<p id="coAutoStat" class="muted" style="margin:6px 0 4px">שולח מייל אוטומטי…</p><p style="margin:8px 0 6px">שליחה ידנית נוספת:</p><div class="row"><button class="btn sm" ${noP?'disabled title="אין טלפון הורה"':''} onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','wa')">💬 וואטסאפ</button><button class="btn ghost sm" ${noM?'disabled title="אין מייל הורה"':''} onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','mail')">📧 מייל</button><button class="btn ghost sm" onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','copy')">🔗 העתקה</button></div>`}</div>`;
       if(!st.isTeacher){
         const subj='הושאל ספר — ספריית דבורה עומר';
-        const msg=`שלום, הושאל היום לתלמיד/ה ${st.firstName} ${st.lastName} הספר "${b.title}" בספריית ביה״ס דבורה עומר. להחזרה עד ${dueStr2}. תודה!`;
+        const msg=applyTpl('checkout',{'תלמיד':st.firstName+' '+st.lastName,'ספר':b.title,'תאריך':dueStr2});
         autoEmailParent(st,subj,msg,'checkout',it.id).then(r=>{const el=document.getElementById('coAutoStat');if(el)el.innerHTML=notifyResultText(r);});
       }
       toast('הושאל','ok');setTimeout(()=>$('#scanInput').focus(),100);
@@ -1348,6 +1388,8 @@ function markLost(bookId,itemId,fromScan){const b=DB.books.find(x=>x.id===bookId
 /* ============ STUDENTS ============ */
 $('#newStudentBtn').addEventListener('click',()=>newStudent());
 $('#studSearch').addEventListener('input',renderStudents);$('#studFilter').addEventListener('change',renderStudents);
+function resetStudentsSearch(){ const s=$('#studSearch'); if(s)s.value=''; ['#studFilter','#studClass'].forEach(x=>{const el=$(x);if(el)el.selectedIndex=0;}); const c=$('#studSearchClear'); if(c)c.classList.remove('show'); }
+(function(){ const inp=$('#studSearch'), btn=$('#studSearchClear'); if(inp&&btn){ const upd=()=>btn.classList.toggle('show',!!inp.value); inp.addEventListener('input',upd); btn.addEventListener('click',()=>{ inp.value=''; upd(); renderStudents(); inp.focus(); }); upd(); } })();
 $('#studClass').addEventListener('change',renderStudents);
 function teacherFor(grade,label){const c=DB.classes.find(c=>c.grade==grade&&c.label==label);return c?c.teacher:'';}
 function fillStudClass(){const sel=$('#studClass');if(!sel||sel.options.length>1)return;const ks=[...new Set(DB.students.map(s=>s.grade+'|'+s.classLabel))].sort();sel.innerHTML='<option value="">כל הכיתות</option>'+ks.map(k=>{const[g,l]=k.split('|');return `<option value="${esc(k)}">${gradeHeb(+g)+l}</option>`;}).join('');}
@@ -1456,7 +1498,7 @@ async function sendTermsEmailAuto(s, which){
   which = which||'primary';
   const e1=(s.parentEmail||'').trim(), e2=(s.parentEmail2||'').trim();
   const link=signLink(s.id);
-  const msg=`שלום, לפתיחת תיק הספרייה של ${s.firstName} ${s.lastName} בביה״ס דבורה עומר נדרשת חתימת הורה על תקנון הספרייה.\nלמילוי וחתימה דיגיטלית (כדקה):\n${link}`;
+  const msg=applyTpl('terms',{'תלמיד':s.firstName+' '+s.lastName,'קישור':link});
   const subject='חתימת הורה על תקנון — ספריית דבורה עומר';
   let tos = which==='secondary' ? [e2] : which==='both' ? [e1,e2] : [e1];
   tos = tos.filter(Boolean);
@@ -1471,7 +1513,7 @@ async function sendTermsEmailAuto(s, which){
 }
 window._sendSign=function(id,how,which){  const s=DB.students.find(x=>x.id===id);if(!s)return;
   const link=signLink(id);
-  const msg=`שלום, לפתיחת תיק הספרייה של ${s.firstName} ${s.lastName} בביה״ס דבורה עומר נדרשת חתימת הורה על תקנון הספרייה. למילוי וחתימה דיגיטלית (כדקה): ${link}`;
+  const msg=applyTpl('terms',{'תלמיד':s.firstName+' '+s.lastName,'קישור':link});
   if(how==='mail'){
     if(!s.parentEmail && !s.parentEmail2){ toast('אין כתובת מייל בכרטיס ההורה','err'); return; }
     toast('שולח תקנון במייל…');
@@ -1979,6 +2021,17 @@ function loadSettings(){
   if($('#chWa'))$('#chWa').checked=ch.whatsapp;
   if($('#emailFooter'))$('#emailFooter').value=DB.settings.emailFooter||'';
   if($('#supportEmail'))$('#supportEmail').value=DB.settings.supportEmail||'';
+  const _tpl=DB.settings.msgTemplates||{};
+  ['checkout','remind','overdue','terms'].forEach(k=>{ const el=$('#tpl'+k.charAt(0).toUpperCase()+k.slice(1)); if(el)el.value=(_tpl[k]!=null&&_tpl[k]!=='')?_tpl[k]:DEFAULT_TPL[k]; });
+  bindTplTabs();
+}
+function bindTplTabs(){
+  const tabs=document.querySelectorAll('#view-settings .tpl-tab');
+  tabs.forEach(t=>{ t.onclick=()=>{
+    document.querySelectorAll('#view-settings .tpl-tab').forEach(x=>x.classList.toggle('on',x===t));
+    const k=t.dataset.tpl;
+    document.querySelectorAll('#view-settings .tpl-pane').forEach(p=>{ p.hidden=(p.dataset.pane!==k); });
+  };});
 }
 $('#saveSettings').addEventListener('click',()=>{
   DB.settings.maxBooks=Math.max(1,+$('#setMaxBooks').value||2);
@@ -2003,8 +2056,14 @@ if($('#saveFooter'))$('#saveFooter').addEventListener('click',()=>{
   const se=($('#supportEmail').value||'').trim();
   if(se && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(se)){toast('כתובת מייל לפניות אינה תקינה','err');return;}
   DB.settings.supportEmail=se;
-  cloudForceNextSave=true; save(); logAct('data','עדכון טקסט קבוע / מייל פניות');
-  toast('נשמר','ok');
+  DB.settings.msgTemplates=Object.assign({},DB.settings.msgTemplates,{
+    checkout:($('#tplCheckout')?$('#tplCheckout').value:'').trim(),
+    remind:($('#tplRemind')?$('#tplRemind').value:'').trim(),
+    overdue:($('#tplOverdue')?$('#tplOverdue').value:'').trim(),
+    terms:($('#tplTerms')?$('#tplTerms').value:'').trim()
+  });
+  cloudForceNextSave=true; save(); logAct('data','עדכון תבניות הודעות / מייל פניות');
+  toast('התבניות נשמרו','ok');
 });
 if($('#sendTestMail'))$('#sendTestMail').addEventListener('click',async()=>{
   const to=($('#testMail').value||'').trim();
@@ -2186,12 +2245,19 @@ function renderReminders(){
     return `<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b> ${status}<small>${s?esc(s.firstName+' '+s.lastName+' · '+gradeHeb(s.grade)+s.classLabel):'—'} · הושאל ${bd} · להחזרה עד ${dueStr}${contact?' · '+esc(contact):' · אין פרטי קשר'}<br><span style="color:${overdue?'#b3261e':'#b5651d'}">${msg}</span>${hist}</small></div><div class="actions"><button class="btn sm" ${noMail?'disabled title="אין מייל הורה"':''} onclick="sendReminderAuto('${o.book.id}','${o.item.id}')">📧 שלח מייל אוטומטי</button><button class="btn ghost sm" ${noPhone?'disabled title="אין טלפון הורה"':''} onclick="sendReminder('${o.book.id}','${o.item.id}','wa')">💬 וואטסאפ</button><button class="btn ghost sm" ${noMail?'disabled title="אין מייל הורה"':''} onclick="sendReminder('${o.book.id}','${o.item.id}','mail')">✉ מייל ידני</button><button class="btn ghost sm" onclick="markReminded('${o.book.id}','${o.item.id}')">סמן נשלח</button><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','reminders')">החזרה</button></div></div>`;
   }).join('')+`</div>`;
 }
+const DEFAULT_TPL={
+  checkout:'שלום, הושאל היום לתלמיד/ה {תלמיד} הספר "{ספר}" בספריית ביה״ס דבורה עומר. להחזרה עד {תאריך}. תודה!',
+  remind:'שלום, נזכיר כי על התלמיד/ה {תלמיד} להחזיר את הספר "{ספר}" לספריית ביה״ס דבורה עומר עד {תאריך}. תודה!',
+  overdue:'שלום, התלמיד/ה {תלמיד} טרם החזיר/ה את הספר "{ספר}" לספריית ביה״ס דבורה עומר (היה אמור לחזור עד {תאריך}). נא להחזירו בהקדם. תודה!',
+  terms:'שלום, לפתיחת תיק הספרייה של {תלמיד} בביה״ס דבורה עומר נדרשת חתימת הורה על תקנון הספרייה. למילוי וחתימה דיגיטלית (כדקה): {קישור}'
+};
+function msgTpl(k){ const t=((DB.settings&&DB.settings.msgTemplates)||{})[k]; return (t!=null&&String(t).trim()!=='')?t:DEFAULT_TPL[k]; }
+function applyTpl(k,vars){ let s=msgTpl(k); for(const key in vars){ s=s.split('{'+key+'}').join(vars[key]); } return s; }
 function reminderMsg(s,book,it){
   const dueStr=it.dueDate?new Date(it.dueDate).toLocaleDateString('he-IL'):'';
   const overdue=it.dueDate&&Date.now()>it.dueDate;
   const name=s?s.firstName+' '+s.lastName:'';
-  if(overdue) return `שלום, התלמיד/ה ${name} טרם החזיר/ה את הספר "${book.title}" לספריית ביה״ס דבורה עומר (היה אמור לחזור עד ${dueStr}). נא להחזירו בהקדם. תודה!`;
-  return `שלום, נזכיר כי על התלמיד/ה ${name} להחזיר את הספר "${book.title}" לספריית ביה״ס דבורה עומר עד ${dueStr}. תודה!`;
+  return applyTpl(overdue?'overdue':'remind',{'תלמיד':name,'ספר':book.title,'תאריך':dueStr});
 }
 window.sendReminder=function(bookId,itemId,how){
   const b=DB.books.find(x=>x.id===bookId);const it=itemsOf(b).find(i=>i.id===itemId);if(!it)return;
@@ -2218,7 +2284,7 @@ window.notifyCheckout=function(studentId,bookId,itemId,how){
   const s=DB.students.find(x=>x.id===studentId);const b=DB.books.find(x=>x.id===bookId);const it=b&&itemsOf(b).find(i=>i.id===itemId);
   if(!s||!b||!it)return;
   const dueStr=it.dueDate?new Date(it.dueDate).toLocaleDateString('he-IL'):'';
-  const msg=`שלום, הושאל היום לתלמיד/ה ${s.firstName} ${s.lastName} הספר "${b.title}" בספריית ביה״ס דבורה עומר. להחזרה עד ${dueStr}. תודה!`;
+  const msg=applyTpl('checkout',{'תלמיד':s.firstName+' '+s.lastName,'ספר':b.title,'תאריך':dueStr});
   sendParentMsg(s, msg, how, 'הושאל ספר — ספריית דבורה עומר');
 };
 function sendParentMsg(s, msg, how, subject){
@@ -2764,7 +2830,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 96';
+const APP_VERSION='גרסה 29.6.2026 · 98';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
