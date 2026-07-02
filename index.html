@@ -53,6 +53,10 @@ header.topbar{position:sticky; top:0; z-index:40; display:flex; align-items:cent
 .nav-item svg{width:20px; height:20px; flex:0 0 auto; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round}
 .nav-item:hover{background:var(--teal-xl); color:var(--teal-d)}
 .nav-item.active{background:var(--teal-l); color:var(--teal-d); font-weight:700; border-inline-start-color:var(--teal)}
+.nav-item.nav-primary{background:var(--teal); color:#fff; font-weight:800; font-size:15.5px; box-shadow:0 3px 10px rgba(20,58,74,.25); margin-bottom:4px}
+.nav-item.nav-primary svg{stroke-width:2.2}
+.nav-item.nav-primary:hover{background:var(--teal-d); color:#fff}
+.nav-item.nav-primary.active{background:var(--teal-d); color:#fff; border-inline-start-color:#fff}
 main{flex:1; min-width:0; padding:24px 30px 80px; max-width:1240px}
 
 /* ---------- Generic UI ---------- */
@@ -137,6 +141,7 @@ textarea.inp{resize:vertical; min-height:64px}
 .spine .lbl .t{width:calc(var(--h) - 28px); max-width:calc(var(--h) - 28px); text-align:center; font-weight:700; font-size:13px; line-height:1.15; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:0 1px 2px rgba(0,0,0,.4)}
 .spine .lbl .a{width:calc(var(--h) - 28px); text-align:center; font-size:9.5px; color:rgba(255,255,255,.82); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px}
 .spine .dot{position:absolute; bottom:6px; left:50%; transform:translateX(-50%); width:7px; height:7px; border-radius:50%; box-shadow:0 0 0 2px rgba(255,255,255,.65)}
+.spine .copynum{position:absolute; top:3px; left:50%; transform:translateX(-50%); font-size:9px; font-weight:800; color:#fff; background:rgba(0,0,0,.32); border-radius:8px; min-width:13px; height:13px; line-height:13px; text-align:center; padding:0 3px; box-shadow:0 1px 2px rgba(0,0,0,.35); z-index:2}
 .empty-state{text-align:center; padding:70px 20px; color:var(--muted)}
 .empty-state .big{font-size:54px; margin-bottom:10px}
 .map-grid{display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start}
@@ -292,8 +297,8 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <div class="layout">
   <aside class="sidebar">
     <nav class="nav" id="tabs">
+      <button data-view="checkout" class="nav-item nav-primary"><svg viewBox="0 0 24 24"><path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1Z"/></svg> השאלה / החזרה</button>
       <button data-view="catalog" class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/></svg> קטלוג</button>
-      <button data-view="checkout" class="nav-item"><svg viewBox="0 0 24 24"><path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1Z"/></svg> השאלה</button>
       <button data-view="reminders" class="nav-item"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg> תזכורות</button>
       <button data-view="students" class="nav-item"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.5a3 3 0 0 1 0 5.8M16.5 19a5.5 5.5 0 0 0-2-4.2"/></svg> תלמידים</button>
       <button data-view="classes" class="nav-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="1.5"/><path d="M3 17l3 3M21 17l-3 3M8 9h8M8 12.5h5"/></svg> כיתות ומורים</button>
@@ -844,7 +849,12 @@ function renderShelf(){
   list.forEach(b=>{
     const L=firstLetter(stripArticle(b.title));
     if(L!==cur){ cur=L; html+=`<span class="letter-tab" aria-hidden="true"><b>${esc(L)}</b></span>`; }
-    html+=`<span class="bcell">${spine(b)}</span>`;
+    const items=itemsOf(b);
+    if(items.length>1){
+      items.forEach((it,idx)=>{ html+=`<span class="bcell">${spine(b,it,idx,items.length)}</span>`; });
+    } else {
+      html+=`<span class="bcell">${spine(b,items[0],0,1)}</span>`;
+    }
   });
   wall.innerHTML=`<div class="book-wall">${html}</div>`;
   wall.querySelectorAll('.spine').forEach(el=>{el.addEventListener('click',()=>bookDetail(el.dataset.id));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bookDetail(el.dataset.id);}});});
@@ -883,13 +893,19 @@ function fillShelfFillers(){
 }
 let _shelfFillT;
 if(typeof window!=='undefined') window.addEventListener('resize',()=>{ clearTimeout(_shelfFillT); _shelfFillT=setTimeout(()=>{ if(typeof CUR!=='undefined'&&CUR==='shelf') fillShelfFillers(); },200); });
-function spine(b){
-  const h=150+hash(b.id)%38, w=38+hash(b.title)%22, c=GENRE_C[b.genre]||'#0d8b8d';
+function spine(b,item,idx,total){
+  const key = item ? item.id : b.id;
+  const h=150+hash(key)%38, w=38+hash((b.title||'')+key)%22, c=GENRE_C[b.genre]||'#0d8b8d';
   const author=(b.author||'').split(/\s+/).slice(-2).join(' ');
-  const st=aggStatus(b);
-  const dot=st==='partial'?'#f0871e':st==='out'?'#e0533d':st==='lost'?'#9a2d20':'';
-  return `<button class="spine" data-id="${b.id}" style="--h:${h}px;--w:${w}px;--c:${c}" title="${esc(b.title)} · ${itemsOf(b).length} עותקים${b.location?' · '+esc(b.location):''}">
+  const st = item ? item.status : aggStatus(b);
+  const dot = st==='out'?'#e0533d':st==='lost'?'#9a2d20':(!item&&aggStatus(b)==='partial'?'#f0871e':'');
+  const many = total>1;
+  const num = many?`<span class="copynum">${idx+1}</span>`:'';
+  const ttl = many?`${esc(b.title)} · עותק ${idx+1}/${total}${b.location?' · '+esc(b.location):''}`
+                   :`${esc(b.title)} · ${itemsOf(b).length} עותקים${b.location?' · '+esc(b.location):''}`;
+  return `<button class="spine" data-id="${b.id}" style="--h:${h}px;--w:${w}px;--c:${c}" title="${ttl}">
     <span class="lbl"><span class="t">${esc(b.title)}</span>${w>=46?`<span class="a">${esc(author)}</span>`:''}</span>
+    ${num}
     ${dot?`<span class="dot" style="background:${dot}"></span>`:''}
   </button>`;
 }
@@ -1222,7 +1238,7 @@ function openCheckout(b,it){
   const head=`<h3 style="margin:0;color:var(--teal-d)">${esc(b.title)}</h3><p class="muted">${esc(b.author||'')}${b.location?' · 📍 '+esc(b.location):''} · ${esc(copyLabel(b,it))}</p>`;
   if(it.status==='out'){
     const h=DB.students.find(s=>s.id===it.holder);
-    panel.innerHTML=`<div class="card">${cov}${head}<p><span class="tag out">מושאל</span> אצל <b>${h?esc(h.firstName+' '+h.lastName+' · '+gradeHeb(h.grade)+(h.classLabel||'')):'—'}</b>${it.dueDate?' · עד '+new Date(it.dueDate).toLocaleDateString('he-IL'):''}</p><div style="clear:both"></div><div class="row"><button class="btn" onclick="confirmReturn('${b.id}','${it.id}','scan')">החזרה</button><button class="btn danger" onclick="confirmLost('${b.id}','${it.id}','scan')">סמן כאבוד</button></div></div>`;
+    panel.innerHTML=`<div class="card">${cov}${head}<p><span class="tag out">מושאל</span> <button class="btn sm" onclick="confirmReturn('${b.id}','${it.id}','scan')">↩ החזרה</button> · אצל <b>${h?esc(h.firstName+' '+h.lastName+' · '+gradeHeb(h.grade)+(h.classLabel||'')):'—'}</b>${it.dueDate?' · עד '+new Date(it.dueDate).toLocaleDateString('he-IL'):''}</p><div style="clear:both"></div><div class="row"><button class="btn danger" onclick="confirmLost('${b.id}','${it.id}','scan')">סמן כאבוד</button></div></div>`;
     return;
   }
   if(it.status==='lost'){
@@ -2716,7 +2732,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 90';
+const APP_VERSION='גרסה 29.6.2026 · 92';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sch=document.getElementById('schoolLogoLogin');if(sch)sch.src=SCHOOL_LOGO;const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
