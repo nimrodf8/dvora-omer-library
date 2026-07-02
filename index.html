@@ -894,8 +894,7 @@ function fillShelfFillers(){
 let _shelfFillT;
 if(typeof window!=='undefined') window.addEventListener('resize',()=>{ clearTimeout(_shelfFillT); _shelfFillT=setTimeout(()=>{ if(typeof CUR!=='undefined'&&CUR==='shelf') fillShelfFillers(); },200); });
 function spine(b,item,idx,total){
-  const key = item ? item.id : b.id;
-  const h=150+hash(key)%38, w=38+hash((b.title||'')+key)%22, c=GENRE_C[b.genre]||'#0d8b8d';
+  const h=150+hash(b.id)%38, w=38+hash(b.title||b.id)%22, c=GENRE_C[b.genre]||'#0d8b8d';
   const author=(b.author||'').split(/\s+/).slice(-2).join(' ');
   const st = item ? item.status : aggStatus(b);
   const dot = st==='out'?'#e0533d':st==='lost'?'#9a2d20':(!item&&aggStatus(b)==='partial'?'#f0871e':'');
@@ -2760,7 +2759,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 93';
+const APP_VERSION='גרסה 29.6.2026 · 94';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sch=document.getElementById('schoolLogoLogin');if(sch)sch.src=SCHOOL_LOGO;const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
