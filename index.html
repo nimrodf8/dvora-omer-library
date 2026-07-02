@@ -2298,10 +2298,25 @@ function leftRows(){
   return leftStudentList().filter(o=> leftPeriod==='all' ? true : (o.ts && o.ts>=start))
     .map(o=>[o.name, o.cls||'—', o.status, o.ts?new Date(o.ts).toLocaleDateString('he-IL'):'—']);
 }
-let repFilter={}, _repDefs=[], repClassSel=new Set(), leftPeriod='sy';
+let repFilter={}, _repDefs=[], repClassSel=new Set(), leftPeriod='sy', byclassMode='current';
 function filterRows(rows,q){ q=(q||'').trim().toLowerCase(); if(!q)return rows; return rows.filter(r=>r.some(c=>String(c==null?'':c).toLowerCase().includes(q))); }
-function byclassRows(d){ let all=filterRows(d.rows, repFilter['byclass']); if(repClassSel.size)all=all.filter(r=>repClassSel.has(String(r[0]))); return all; }
-function classLoanRows(lbl){ return (DB.logs||[]).filter(l=>l.type==='checkout').filter(l=>{const s=DB.students.find(x=>x.id===l.studentId);return s&&clsLabel(s)===lbl;}).sort((a,b)=>b.date-a.date); }
+function schoolYearStart(){ const now=new Date(); const y=now.getMonth()>=8?now.getFullYear():now.getFullYear()-1; return new Date(y,8,1).getTime(); }
+function byclassCounts(){
+  const map={};
+  if(byclassMode==='year'){
+    const start=schoolYearStart();
+    (DB.logs||[]).filter(l=>l.type==='checkout'&&l.date>=start).forEach(l=>{const s=DB.students.find(x=>x.id===l.studentId);const k=s?clsLabel(s):'—';map[k]=(map[k]||0)+1;});
+  } else {
+    openLoanRows().forEach(x=>{const k=x.cls||'—';map[k]=(map[k]||0)+1;});
+  }
+  return Object.entries(map).sort((a,b)=>cmp(a[0],b[0])).map(([k,n])=>[k,n]);
+}
+function byclassRows(){ let all=filterRows(byclassCounts(), repFilter['byclass']); if(repClassSel.size)all=all.filter(r=>repClassSel.has(String(r[0]))); return all; }
+function classLoanRows(lbl,yearOnly){ let ls=(DB.logs||[]).filter(l=>l.type==='checkout'); if(yearOnly)ls=ls.filter(l=>l.date>=schoolYearStart()); return ls.filter(l=>{const s=DB.students.find(x=>x.id===l.studentId);return s&&clsLabel(s)===lbl;}).sort((a,b)=>b.date-a.date); }
+function classDetailRows(lbl){
+  if(byclassMode==='year'){ return classLoanRows(lbl,true).map(l=>{const b=DB.books.find(x=>x.id===l.bookId);const s=DB.students.find(x=>x.id===l.studentId);return {dateStr:new Date(l.date).toLocaleDateString('he-IL'),title:b?b.title:'(נמחק)',student:s?s.firstName+' '+s.lastName:'—',due:l.dueDate?new Date(l.dueDate).toLocaleDateString('he-IL'):''};}); }
+  return openLoanRows().filter(x=>x.cls===lbl).map(x=>({dateStr:x.borrow,title:x.title,student:x.student,due:x.due||''}));
+}
 function repRowHtml(d,r){
   if(d.key==='byclass'){
     const lbl=String(r[0]).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
@@ -2319,9 +2334,15 @@ window.setLeftPeriod=function(v){
   const cnt=document.getElementById('repcnt-left'); if(cnt)cnt.textContent=filterRows(leftRows(),repFilter['left']).length+' שורות';
 };
 function classChooserHtml(d){
-  return `<div class="no-print" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center">
+  const rows=byclassCounts();
+  const modes=[['current','מושאלים כרגע'],['year','סה״כ השנה']];
+  return `<div class="no-print" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center">
+    <span class="muted" style="margin-inline-end:4px">תצוגה:</span>
+    ${modes.map(([v,l])=>`<button class="btn ${byclassMode===v?'':'ghost'} sm" onclick="setByclassMode('${v}')">${l}</button>`).join('')}
+  </div>
+  <div class="no-print" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center">
     <span class="muted" style="margin-inline-end:4px">בחירת כיתות:</span>
-    ${d.rows.map(r=>{const lbl=String(r[0]);const on=repClassSel.has(lbl);return `<button class="btn ${on?'':'ghost'} sm" onclick="toggleRepClass('${esc(lbl).replace(/'/g,"\\'")}')">${esc(lbl)}</button>`;}).join('')}
+    ${rows.map(r=>{const lbl=String(r[0]);const on=repClassSel.has(lbl);return `<button class="btn ${on?'':'ghost'} sm" onclick="toggleRepClass('${esc(lbl).replace(/'/g,"\\'")}')">${esc(lbl)}</button>`;}).join('')}
     ${repClassSel.size?`<button class="btn ghost sm" onclick="clearRepClass()" style="text-decoration:underline">נקה בחירה (${repClassSel.size})</button>`:'<span class="muted">— ללא בחירה = כל הכיתות</span>'}
   </div>`;
 }
@@ -2334,10 +2355,12 @@ function repBodyHtml(d){
     return leftPeriodHtml()+table;
   }
   if(d.key==='byclass'){
-    const all=byclassRows(d); const N=all.length, showAll=!!repShowAll[d.key];
+    const all=byclassRows(); const N=all.length, showAll=!!repShowAll[d.key];
+    const h2 = byclassMode==='year'?'סה״כ השנה':'מושאלים כרגע';
+    const headers=['כיתה',h2];
     const rows=showAll?all:all.slice(0,12);
     const toggle = N>12 ? `<div class="rep-more no-print"><button class="btn ghost sm" onclick="toggleReport('${d.key}')">${showAll?'הצג פחות ▲':`הצג את כל ${N} השורות ▼`}</button></div>` : '';
-    const table = N? `<div style="${showAll?'max-height:420px;overflow:auto':''}"><table class="rep-table"><thead><tr>${d.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>repRowHtml(d,r)).join('')}</tbody></table></div>${toggle}` : `<div class="rep-empty">אין השאלות לכיתות שנבחרו.</div>`;
+    const table = N? `<div style="${showAll?'max-height:420px;overflow:auto':''}"><table class="rep-table"><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>repRowHtml(d,r)).join('')}</tbody></table></div>${toggle}` : `<div class="rep-empty">${byclassMode==='current'?'אין ספרים מושאלים כרגע 👍':'אין השאלות בשנת הלימודים הנוכחית.'}</div>`;
     return classChooserHtml(d)+table;
   }
   const all=filterRows(d.rows, repFilter[d.key]); const N=all.length, showAll=!!repShowAll[d.key];
@@ -2345,7 +2368,8 @@ function repBodyHtml(d){
   const toggle = N>8 ? `<div class="rep-more no-print"><button class="btn ghost sm" onclick="toggleReport('${d.key}')">${showAll?'הצג פחות ▲':`הצג את כל ${N} השורות ▼`}</button></div>` : '';
   return N? `<div style="${showAll?'max-height:420px;overflow:auto':''}"><table class="rep-table"><thead><tr>${d.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>repRowHtml(d,r)).join('')}</tbody></table></div>${toggle}` : `<div class="rep-empty">${repFilter[d.key]?'אין תוצאות לסינון זה.':'אין נתונים בקטגוריה זו 👍'}</div>`;
 }
-function refreshByclass(){ const d=_repDefs.find(x=>x.key==='byclass'); if(!d)return; const body=document.getElementById('repbody-byclass'); if(body)body.innerHTML=repBodyHtml(d); const cnt=document.getElementById('repcnt-byclass'); if(cnt)cnt.textContent=byclassRows(d).length+' שורות'; }
+function refreshByclass(){ const d=_repDefs.find(x=>x.key==='byclass'); if(!d)return; const body=document.getElementById('repbody-byclass'); if(body)body.innerHTML=repBodyHtml(d); const cnt=document.getElementById('repcnt-byclass'); if(cnt)cnt.textContent=byclassRows().length+' שורות'; }
+window.setByclassMode=function(m){ byclassMode=m; repShowAll['byclass']=false; refreshByclass(); };
 window.toggleRepClass=function(lbl){ if(repClassSel.has(lbl))repClassSel.delete(lbl); else repClassSel.add(lbl); repShowAll['byclass']=false; refreshByclass(); };
 window.clearRepClass=function(){ repClassSel.clear(); refreshByclass(); };
 window.setRepFilter=function(key,val){
@@ -2356,38 +2380,42 @@ window.setRepFilter=function(key,val){
 };
 window.toggleReport=function(k){ repShowAll[k]=!repShowAll[k]; const d=_repDefs.find(x=>x.key===k); const body=document.getElementById('repbody-'+k); if(d&&body)body.innerHTML=repBodyHtml(d); };
 window.showClassLoans=function(lbl){
-  const rows=classLoanRows(lbl);
-  const body=rows.length?`<table class="rep-table"><thead><tr><th>תאריך</th><th>ספר</th><th>תלמיד/ה</th><th>להחזרה עד</th></tr></thead><tbody>${rows.map(l=>{const b=DB.books.find(x=>x.id===l.bookId);const s=DB.students.find(x=>x.id===l.studentId);return `<tr><td style="white-space:nowrap">${new Date(l.date).toLocaleDateString('he-IL')}</td><td>${esc(b?b.title:'(נמחק)')}</td><td>${esc(s?s.firstName+' '+s.lastName:'—')}</td><td style="white-space:nowrap">${l.dueDate?new Date(l.dueDate).toLocaleDateString('he-IL'):'—'}</td></tr>`;}).join('')}</tbody></table>`:'<p class="muted">אין השאלות לכיתה זו.</p>';
-  modal(`<div class="mhead"><h3>השאלות — כיתה ${esc(lbl)} (${rows.length})</h3><button class="x" onclick="closeModal()">×</button></div><div class="mbody">${body}</div>`);
+  let head, body;
+  if(byclassMode==='current'){
+    const rows=openLoanRows().filter(x=>x.cls===lbl);
+    head=`מושאלים כרגע — כיתה ${esc(lbl)} (${rows.length})`;
+    body=rows.length?`<table class="rep-table"><thead><tr><th>ספר</th><th>תלמיד/ה</th><th>תאריך השאלה</th><th>להחזרה עד</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.title)}</td><td>${esc(x.student)}</td><td style="white-space:nowrap">${esc(x.borrow||'—')}</td><td style="white-space:nowrap">${esc(x.due||'—')}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">אין ספרים מושאלים כרגע בכיתה זו.</p>';
+  } else {
+    const rows=classLoanRows(lbl,true);
+    head=`השאלות בשנה הנוכחית — כיתה ${esc(lbl)} (${rows.length})`;
+    body=rows.length?`<table class="rep-table"><thead><tr><th>תאריך</th><th>ספר</th><th>תלמיד/ה</th><th>להחזרה עד</th></tr></thead><tbody>${rows.map(l=>{const b=DB.books.find(x=>x.id===l.bookId);const s=DB.students.find(x=>x.id===l.studentId);return `<tr><td style="white-space:nowrap">${new Date(l.date).toLocaleDateString('he-IL')}</td><td>${esc(b?b.title:'(נמחק)')}</td><td>${esc(s?s.firstName+' '+s.lastName:'—')}</td><td style="white-space:nowrap">${l.dueDate?new Date(l.dueDate).toLocaleDateString('he-IL'):'—'}</td></tr>`;}).join('')}</tbody></table>`:'<p class="muted">אין השאלות בשנה הנוכחית לכיתה זו.</p>';
+  }
+  modal(`<div class="mhead"><h3>${head}</h3><button class="x" onclick="closeModal()">×</button></div><div class="mbody">${body}</div>`);
 };
 function exportByClass(){
-  const d=_repDefs.find(x=>x.key==='byclass'); if(!d)return;
-  const rows=byclassRows(d);
+  const rows=byclassRows();
   if(!rows.length){toast('אין נתונים לייצוא','err');return;}
+  const h2=byclassMode==='year'?'סה״כ השנה':'מושאלים כרגע';
   const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['כיתה','סה״כ השאלות'],...rows]), 'סיכום לפי כיתה');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['כיתה',h2],...rows]), 'סיכום לפי כיתה');
   // גיליון פירוט מאוחד: שורה לכל השאלה עם כיתה / תלמיד / ספר — מיון וסינון לפי כיתה
   const detailAll=[['כיתה','תלמיד/ה','ספר','תאריך השאלה','להחזרה עד']];
   rows.forEach(r=>{
     const lbl=String(r[0]);
-    classLoanRows(lbl).forEach(l=>{
-      const b=DB.books.find(x=>x.id===l.bookId);
-      const s=DB.students.find(x=>x.id===l.studentId);
-      detailAll.push([lbl, s?s.firstName+' '+s.lastName:'—', b?b.title:'(נמחק)', new Date(l.date).toLocaleDateString('he-IL'), l.dueDate?new Date(l.dueDate).toLocaleDateString('he-IL'):'']);
-    });
+    classDetailRows(lbl).forEach(x=>detailAll.push([lbl, x.student, x.title, x.dateStr, x.due]));
   });
   const wsAll=XLSX.utils.aoa_to_sheet(detailAll); wsAll['!cols']=[{wch:8},{wch:22},{wch:30},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb, wsAll, 'פירוט לפי כיתה');
   const used={};
   rows.forEach(r=>{
     const lbl=String(r[0]);
-    const loans=classLoanRows(lbl);
-    const detail=[['תאריך','ספר','תלמיד/ה','להחזרה עד']].concat(loans.map(l=>{const b=DB.books.find(x=>x.id===l.bookId);const s=DB.students.find(x=>x.id===l.studentId);return [new Date(l.date).toLocaleDateString('he-IL'), b?b.title:'(נמחק)', s?s.firstName+' '+s.lastName:'—', l.dueDate?new Date(l.dueDate).toLocaleDateString('he-IL'):''];}));
+    const dr=classDetailRows(lbl);
+    const detail=[['תאריך','ספר','תלמיד/ה','להחזרה עד']].concat(dr.map(x=>[x.dateStr, x.title, x.student, x.due]));
     let base=('כיתה '+lbl).replace(/[\\\/\?\*\[\]:]/g,' ').slice(0,28), nm=base, i=2; while(used[nm]){nm=base.slice(0,25)+' '+i;i++;} used[nm]=1;
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detail), nm);
   });
-  XLSX.writeFile(wb,`השאלות_לפי_כיתה_${new Date().toLocaleDateString('he-IL').replace(/\./g,'-')}.xlsx`);
-  toast('יוצא לאקסל: סיכום + פירוט השאלות לכל כיתה','ok');
+  XLSX.writeFile(wb,`השאלות_לפי_כיתה_${byclassMode==='year'?'סהכ_השנה':'מושאלים_כרגע'}_${new Date().toLocaleDateString('he-IL').replace(/\./g,'-')}.xlsx`);
+  toast('יוצא לאקסל: '+h2+' + פירוט לכל כיתה','ok');
 }
 function renderDeletedBooks(){
   const box=document.getElementById('deletedBooks'); if(!box)return;
@@ -2732,7 +2760,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 92';
+const APP_VERSION='גרסה 29.6.2026 · 93';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sch=document.getElementById('schoolLogoLogin');if(sch)sch.src=SCHOOL_LOGO;const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
