@@ -630,7 +630,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
     </div>
 
     <div class="sgroup">
-      <button type="button" class="sgh" onclick="toggleSettingsGroup(this)"><span>🗂 נתונים והרשאות</span><span class="sgchev">▾</span></button>
+      <button type="button" class="sgh" onclick="toggleSettingsGroup(this)"><span>🗂 נתונים ומשתמשים</span><span class="sgchev">▾</span></button>
       <div class="sgb">
       <div class="card" style="margin-bottom:16px">
       <div class="row" style="justify-content:space-between; align-items:center">
@@ -649,9 +649,19 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <p class="muted" style="margin:0 0 10px">ספרים שנמחקו מהקטלוג נשמרים כאן (עד 50 אחרונים) וניתן לשחזרם — כולל כל העותקים והברקודים.</p>
       <div id="deletedBooks"></div>
     </div>
-      <div class="card">
-      <h3 style="margin:0 0 10px; color:var(--teal-d)">הרשאות (יחובר בשלב Supabase)</h3>
-      <p class="muted" style="margin:0">אדמין — גישה מלאה · ספרן/מתנדב — קטלוג, השאלה, החזרה · הורה — צפייה בלבד בספרים של ילדם, עם מייל אוטומטי בעת השאלה. הרשאות אמיתיות בין מכשירים מצריכות את שלב ה־Supabase.</p>
+      <div class="card" style="margin-bottom:16px">
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <h3 style="margin:0; color:var(--teal-d)">ניהול משתמשים (אדמין)</h3>
+        <button class="btn ghost sm" id="usersRefresh">↻ רענון</button>
+      </div>
+      <p class="muted" style="margin:8px 0 12px">הקמת משתמשים חדשים (ספרן/ית או מנהל/ת) ישירות מהמערכת — נוצרים ב-Supabase Auth. דורש הפעלת פונקציית <b>manage-users</b> (ראו הוראות).</p>
+      <div class="grid" style="grid-template-columns:1.4fr 1fr 0.9fr auto; gap:8px; align-items:end">
+        <label class="fld" style="margin:0"><span>אימייל</span><input class="inp" id="nuEmail" type="email" placeholder="name@example.com" autocomplete="off"></label>
+        <label class="fld" style="margin:0"><span>סיסמה</span><input class="inp" id="nuPass" type="text" placeholder="לפחות 6 תווים" autocomplete="off"></label>
+        <label class="fld" style="margin:0"><span>תפקיד</span><select class="inp" id="nuRole"><option value="librarian">ספרן/ית</option><option value="admin">מנהל/ת</option></select></label>
+        <button class="btn" id="nuCreate">➕ הקם</button>
+      </div>
+      <div id="usersList" style="margin-top:14px"></div>
     </div>
       </div>
     </div>
@@ -672,20 +682,6 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <button class="btn ghost sm" id="changePwBtn">🔑 שינוי סיסמה</button>
     </div>
       <div class="card dev-only" style="margin-bottom:16px">
-      <div class="row" style="justify-content:space-between; align-items:center">
-        <h3 style="margin:0; color:var(--teal-d)">ניהול משתמשים (אדמין)</h3>
-        <button class="btn ghost sm" id="usersRefresh">↻ רענון</button>
-      </div>
-      <p class="muted" style="margin:8px 0 12px">הקמת משתמשים חדשים (ספרן/ית או מנהל/ת) ישירות מהמערכת — נוצרים ב-Supabase Auth. דורש הפעלת פונקציית <b>manage-users</b> (ראו הוראות).</p>
-      <div class="grid" style="grid-template-columns:1.4fr 1fr 0.9fr auto; gap:8px; align-items:end">
-        <label class="fld" style="margin:0"><span>אימייל</span><input class="inp" id="nuEmail" type="email" placeholder="name@example.com" autocomplete="off"></label>
-        <label class="fld" style="margin:0"><span>סיסמה</span><input class="inp" id="nuPass" type="text" placeholder="לפחות 6 תווים" autocomplete="off"></label>
-        <label class="fld" style="margin:0"><span>תפקיד</span><select class="inp" id="nuRole"><option value="librarian">ספרן/ית</option><option value="admin">מנהל/ת</option></select></label>
-        <button class="btn" id="nuCreate">➕ הקם</button>
-      </div>
-      <div id="usersList" style="margin-top:14px"></div>
-    </div>
-      <div class="card dev-only" style="margin-bottom:16px">
       <p class="muted" style="margin:0 0 10px">הנתונים נשמרים על המכשיר ובענן. <b>גיבוי בענן</b> שומר תמונת-מצב מלאה שאפשר לשחזר ממנה בכל רגע (וגם נשמר גיבוי אוטומטי תקופתי). גיבוי JSON שומר קובץ במכשיר.</p>
       <div class="row">
         <button class="btn sm" id="cloudBackupBtn">☁ גיבוי לענן עכשיו</button>
@@ -698,6 +694,10 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
         <button class="btn ghost sm" id="restoreAuto">↩ שחזר מגיבוי אוטומטי אחרון</button>
         <button class="btn danger sm" id="resetData">טען מחדש נתוני בית הספר</button>
       </div>
+    </div>
+      <div class="card">
+      <h3 style="margin:0 0 10px; color:var(--teal-d)">הרשאות (יחובר בשלב Supabase)</h3>
+      <p class="muted" style="margin:0">אדמין — גישה מלאה · ספרן/מתנדב — קטלוג, השאלה, החזרה · הורה — צפייה בלבד בספרים של ילדם, עם מייל אוטומטי בעת השאלה. הרשאות אמיתיות בין מכשירים מצריכות את שלב ה־Supabase.</p>
     </div>
       </div>
     </div>
@@ -2858,7 +2858,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 101';
+const APP_VERSION='גרסה 29.6.2026 · 102';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
