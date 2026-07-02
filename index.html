@@ -2806,9 +2806,17 @@ if($('#setFormTplBtn'))$('#setFormTplBtn').addEventListener('click',()=>$('#form
 if($('#formTplFile'))$('#formTplFile').addEventListener('change',e=>{
   const f=e.target.files&&e.target.files[0]; if(!f){return;}
   if(!/\.docx$/i.test(f.name)){toast('נא להעלות קובץ Word בפורמט ‎.docx','err');e.target.value='';return;}
-  if(f.size>5*1024*1024){toast('הקובץ גדול מדי (מקסימום ‎5MB)','err');e.target.value='';return;}
+  if(f.size>2*1024*1024){toast('הקובץ גדול מדי (מקסימום ‎2MB). טופס Word מעוצב הוא בדרך כלל קטן בהרבה.','err');e.target.value='';return;}
   const rd=new FileReader();
-  rd.onload=()=>{ DB.settings.termsFormDoc={name:f.name,data:rd.result,ts:Date.now()}; cloudForceNextSave=true; save(); logAct('data',`קביעת תבנית עיצוב לטופס תקנון: ${f.name}`); toast('תבנית העיצוב נשמרה ✓','ok'); renderFormTplStatus(); };
+  rd.onload=()=>{
+    DB.settings.termsFormDoc={name:f.name,data:rd.result,ts:Date.now()};
+    cloudForceNextSave=true; save();   // נשמר מקומית + נדחף במלואו לענן → מסונכרן לכל המכשירים ב-realtime
+    logAct('data',`קביעת תבנית עיצוב לטופס תקנון: ${f.name}`);
+    let ok=false; try{ const back=JSON.parse(localStorage.getItem(KEY)||'{}'); ok=!!(back.settings&&back.settings.termsFormDoc&&back.settings.termsFormDoc.data===rd.result); }catch(e){}
+    if(ok) toast('תבנית העיצוב נשמרה — תסונכרן לכל המכשירים ✓','ok');
+    else toast('נשמר בענן, אך האחסון המקומי מלא — נסו קובץ קטן יותר','err');
+    renderFormTplStatus();
+  };
   rd.onerror=()=>toast('שגיאה בקריאת הקובץ','err');
   rd.readAsDataURL(f); e.target.value='';
 });
@@ -2878,7 +2886,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 103';
+const APP_VERSION='גרסה 29.6.2026 · 104';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
