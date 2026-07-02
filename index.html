@@ -464,7 +464,8 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
   <!-- ===== TERMS ===== -->
   <section id="view-terms" class="view hidden">
     <div class="view-head"><div><h2>תקנון הספרייה</h2><p>הנוסח הרשמי וטופס הצהרת ההורה. החתימה המקוונת תופעל בשלב ההורים/Supabase</p></div>
-      <div class="row no-print"><button class="btn ghost sm" id="editTermsBtn">✎ עריכת נוסח</button><button class="btn ghost sm" id="printTerms">🖨 הדפסת טופס</button></div></div>
+      <div class="row no-print"><button class="btn ghost sm" id="editTermsBtn">✎ עריכת נוסח</button><button class="btn ghost sm" id="setFormTplBtn">📄 קבע תבנית עיצוב</button><input type="file" id="formTplFile" accept=".docx" class="hidden"><button class="btn ghost sm" id="printTerms">🖨 הדפסת טופס</button></div></div>
+    <div id="formTplStatus" class="muted no-print" style="margin:-4px 0 12px"></div>
     <div class="card" id="termsCard">
       <div id="termsView" class="terms-doc"></div>
       <div id="termsEdit" class="hidden no-print">
@@ -2756,7 +2757,7 @@ function renderTerms(){
   $('#termsView').classList.remove('hidden'); $('#termsEdit').classList.add('hidden');
   if(!$('#dDate').value) $('#dDate').value=new Date().toISOString().slice(0,10);
   const dl=$('#dlDeclStud'); if(dl)dl.innerHTML=DB.students.filter(s=>!s.isTeacher).map(s=>`<option value="${esc(s.firstName+' '+s.lastName+' — '+gradeHeb(s.grade)+s.classLabel)}"></option>`).join('');
-  signStateText(); setupSig(); renderSignQueue();
+  signStateText(); setupSig(); renderSignQueue(); renderFormTplStatus();
 }
 $('#editTermsBtn').addEventListener('click',()=>{$('#termsText').value=DB.settings.terms||TERMS_PLAIN;$('#termsView').classList.add('hidden');$('#termsEdit').classList.remove('hidden');});
 $('#cancelTerms').addEventListener('click',renderTerms);
@@ -2794,7 +2795,26 @@ function setupSig(){
 $('#sigClear').addEventListener('click',()=>{const c=$('#sigPad');if(sigCtx)sigCtx.clearRect(0,0,c.width,c.height);});
 
 /* print the declaration form */
+function renderFormTplStatus(){
+  const el=$('#formTplStatus'); if(!el)return;
+  const d=DB.settings.termsFormDoc;
+  if(d&&d.data){ el.innerHTML=`📄 תבנית עיצוב פעילה: <b>${esc(d.name||'טופס.docx')}</b> — כפתור "הדפסת טופס" יוריד קובץ זה. <button class="btn ghost sm" id="rmFormTpl">הסר תבנית</button>`;
+    const rm=$('#rmFormTpl'); if(rm)rm.onclick=()=>confirmAction({title:'הסרת תבנית עיצוב',message:'להסיר את תבנית העיצוב? "הדפסת טופס" יחזור להדפסת הנוסח הרגיל.',okLabel:'הסר'},()=>{ delete DB.settings.termsFormDoc; cloudForceNextSave=true; save(); logAct('data','הסרת תבנית עיצוב לטופס תקנון'); toast('התבנית הוסרה','ok'); renderFormTplStatus(); }); }
+  else { el.innerHTML='אין תבנית עיצוב — "הדפסת טופס" מדפיס את הנוסח הרגיל. אפשר להעלות קובץ Word מעוצב (.docx) דרך "קבע תבנית עיצוב".'; }
+}
+if($('#setFormTplBtn'))$('#setFormTplBtn').addEventListener('click',()=>$('#formTplFile')&&$('#formTplFile').click());
+if($('#formTplFile'))$('#formTplFile').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f){return;}
+  if(!/\.docx$/i.test(f.name)){toast('נא להעלות קובץ Word בפורמט ‎.docx','err');e.target.value='';return;}
+  if(f.size>5*1024*1024){toast('הקובץ גדול מדי (מקסימום ‎5MB)','err');e.target.value='';return;}
+  const rd=new FileReader();
+  rd.onload=()=>{ DB.settings.termsFormDoc={name:f.name,data:rd.result,ts:Date.now()}; cloudForceNextSave=true; save(); logAct('data',`קביעת תבנית עיצוב לטופס תקנון: ${f.name}`); toast('תבנית העיצוב נשמרה ✓','ok'); renderFormTplStatus(); };
+  rd.onerror=()=>toast('שגיאה בקריאת הקובץ','err');
+  rd.readAsDataURL(f); e.target.value='';
+});
 $('#printTerms').addEventListener('click',()=>{
+  const tpl=DB.settings.termsFormDoc;
+  if(tpl&&tpl.data){ const a=document.createElement('a'); a.href=tpl.data; a.download=tpl.name||'טופס-תקנון.docx'; document.body.appendChild(a); a.click(); a.remove(); toast('הורד טופס העיצוב — פִתחו ב-Word והדפיסו','ok'); return; }
   const body=DB.settings.terms?`<pre style="white-space:pre-wrap;font:inherit">${esc(DB.settings.terms)}</pre>`:TERMS_HTML;
   const v=id=>esc(($('#'+id)&&$('#'+id).value)||'');
   let sig=''; const c=$('#sigPad'); try{sig=c.toDataURL('image/png');}catch(e){}
@@ -2858,7 +2878,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 102';
+const APP_VERSION='גרסה 29.6.2026 · 103';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
