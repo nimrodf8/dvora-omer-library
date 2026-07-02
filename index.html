@@ -157,6 +157,14 @@ textarea.inp{resize:vertical; min-height:64px}
 .search-clear{position:absolute; inset-inline-end:8px; top:50%; transform:translateY(-50%); border:none; background:#00000012; color:#555; width:20px; height:20px; border-radius:50%; cursor:pointer; font-size:15px; line-height:20px; text-align:center; padding:0; display:none}
 .search-clear:hover{background:#00000022}
 .search-clear.show{display:block}
+.sgroup{margin-bottom:14px}
+.sgroup>.sgh{width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--teal-l); border:1px solid var(--teal); border-radius:12px; padding:13px 16px; cursor:pointer; font-size:16px; font-weight:800; color:var(--teal-d); text-align:start}
+.sgroup>.sgh:hover{filter:brightness(.97)}
+.sgroup.open>.sgh{border-radius:12px 12px 0 0}
+.sgroup>.sgh .sgchev{transition:transform .2s; font-size:13px; color:var(--teal)}
+.sgroup.open>.sgh .sgchev{transform:rotate(180deg)}
+.sgroup>.sgb{display:none; border:1px solid var(--teal); border-top:none; border-radius:0 0 12px 12px; padding:14px 14px 2px; background:rgba(13,139,141,.03)}
+.sgroup.open>.sgb{display:block}
 .empty-state{text-align:center; padding:70px 20px; color:var(--muted)}
 .empty-state .big{font-size:54px; margin-bottom:10px}
 .map-grid{display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start}
@@ -507,9 +515,14 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
     </div>
   </section>
   <section id="view-settings" class="view hidden">
-    <div class="view-head"><div><h2>הגדרות</h2><p>מדיניות השאלה · סורק · גיבוי נתונים · משתמשים</p></div></div>
+    <div class="view-head"><div><h2>הגדרות</h2><p>מאורגן לפי נושאים: מדיניות ותפעול · התראות · נתונים וגיבוי · ניהול ואבטחה</p></div></div>
 
-    <div class="card" style="margin-bottom:16px">
+    <p class="muted no-print" style="margin:-4px 0 14px">מאורגן לפי נושאים — לחצו על כותרת כדי לפתוח או לסגור קטגוריה.</p>
+
+    <div class="sgroup open">
+      <button type="button" class="sgh" onclick="toggleSettingsGroup(this)"><span>📋 מדיניות ותפעול</span><span class="sgchev">▾</span></button>
+      <div class="sgb">
+      <div class="card" style="margin-bottom:16px">
       <h3 style="margin:0 0 10px; color:var(--teal-d)">מדיניות השאלה</h3>
       <div class="grid three">
         <label class="fld" style="margin:0"><span>מקסימום ספרים לתלמיד</span><input class="inp" id="setMaxBooks" type="number" min="1"></label>
@@ -520,8 +533,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <button class="btn sm" id="saveSettings">שמירת מדיניות</button>
       <div class="muted" style="margin-top:8px">המגבלה נאכפת בעת השאלה, משך ההשאלה קובע את תאריך ההחזרה, ותזכורת ראשונה נשלחת לאחר הסף — ואז שוב בכל מספר הימים שהוגדר עד החזרת הספר.</div>
     </div>
-
-    <div class="card" style="margin-bottom:16px">
+      <div class="card" style="margin-bottom:16px">
       <h3 style="margin:0 0 10px; color:var(--teal-d)">סורק ברקודים</h3>
       <p class="muted" style="margin:0">סורק USB סטנדרטי מתחבר ופשוט "מקליד" את המספר וסוגר ב־Enter — אין דרייבר להתקין. הגדירו את הסורק לסיומת Enter (ברירת המחדל ברובם). במסך ההשאלה ודאו שהשדה ממוקד.</p>
       <div class="row" style="margin-top:10px">
@@ -535,8 +547,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
         <button class="btn ghost sm" id="scanTestClear" style="margin-top:8px">נקה</button>
       </div>
     </div>
-
-    <div class="card no-print" style="margin-bottom:16px">
+      <div class="card no-print" style="margin-bottom:16px">
       <h3 style="margin:0 0 6px; color:var(--teal-d)">הדפסת ברקודים</h3>
       <p class="muted" style="margin:0 0 12px">לספרים ללא ברקוד — מחוללים מספרים, מדפיסים על דף מדבקות A4 (30 לדף), ומדביקים. כל מדבקה כוללת ברקוד וגם את המספר בכתב.</p>
       <div class="grid three">
@@ -554,21 +565,14 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
         <span class="muted" style="flex:1">המספרים מתקדמים בכל "חולל" כדי שיישארו ייחודיים.</span>
       </div>
     </div>
-    <div class="label-sheet" id="labelSheet"></div>
-
-    <div class="card dev-only" style="margin-bottom:16px">
-      <h3 style="margin:0 0 10px; color:var(--teal-d)">אבטחה ואדמין</h3>
-      <p class="muted" style="margin:0 0 10px">קוד אדמין נדרש כדי לאשר פעולות מחיקה (מחיקת ספר/כיתה, סימון אבוד, שחזור/טעינת נתונים, עריכת מפה). השאירו ריק כדי לאפשר אישור ללא קוד. בשלב Supabase זה יוחלף בהרשאות אמיתיות לפי משתמש.</p>
-      <div class="row" style="align-items:flex-end">
-        <label class="fld" style="margin:0; max-width:220px"><span>קוד אדמין</span><input class="inp" id="setAdminPin" type="text" autocomplete="off" placeholder="ריק = ללא קוד"></label>
-        <button class="btn sm" id="saveAdminPin">שמירת קוד</button>
+      <div class="label-sheet" id="labelSheet"></div>
       </div>
-      <hr style="border:none;border-top:1px solid var(--line); margin:14px 0">
-      <p class="muted" style="margin:0 0 8px">שינוי סיסמת החשבון המחובר לענן (כל משתמש משנה את הסיסמה של עצמו).</p>
-      <button class="btn ghost sm" id="changePwBtn">🔑 שינוי סיסמה</button>
     </div>
 
-    <div class="card" style="margin-bottom:16px">
+    <div class="sgroup">
+      <button type="button" class="sgh" onclick="toggleSettingsGroup(this)"><span>🔔 התראות והודעות</span><span class="sgchev">▾</span></button>
+      <div class="sgb">
+      <div class="card" style="margin-bottom:16px">
       <h3 style="margin:0 0 10px; color:var(--teal-d)">ערוצי התראות</h3>
       <p class="muted" style="margin:0 0 10px">אילו ערוצים פעילים לשליחת התראות להורים. <b>מייל</b> חינמי (Resend) ונשלח אוטומטית מ-do-not-reply@dvoraomer-library.org. <b>SMS</b> בנוי אך כבוי — הפעלתו תדרוש ספק וקרדיט בתשלום ולכן הוא לא ישלח עד שיופעל כאן. וואטסאפ = כפתורי שליחה ידנית.</p>
       <label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="chEmail"><span>📧 מייל אוטומטי <span class="muted">(מומלץ · חינמי)</span></span></label>
@@ -622,8 +626,52 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       </div>
       <div id="msgLogList" style="margin-top:10px"><p class="muted">טוען יומן…</p></div>
     </div>
+      </div>
+    </div>
 
-    <div class="card dev-only" style="margin-bottom:16px">
+    <div class="sgroup">
+      <button type="button" class="sgh" onclick="toggleSettingsGroup(this)"><span>🗂 נתונים והרשאות</span><span class="sgchev">▾</span></button>
+      <div class="sgb">
+      <div class="card" style="margin-bottom:16px">
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <h3 style="margin:0; color:var(--teal-d)">יומן פעילות (למנהל/ת בלבד)</h3>
+        <button class="btn ghost sm" id="actExport">⬇ ייצוא לאקסל</button>
+      </div>
+      <p class="muted" style="margin:8px 0 10px">תיעוד פעולות המשתמשים: השאלה, החזרה, שליחת תקנון, חתימות, עריכות. כולל מי ביצע ומתי.</p>
+      <div class="row" style="margin-bottom:8px">
+        <label class="fld" style="margin:0; max-width:220px"><span>סינון לפי סוג</span>
+          <select class="inp" id="actFilter"><option value="">הכל</option><option value="login">התחברות</option><option value="checkout">השאלה</option><option value="return">החזרה</option><option value="lost">אבוד</option><option value="sign_sent">שליחת תקנון</option><option value="sign_recv">חתימה התקבלה</option><option value="sign_manual">חתימה ידנית</option><option value="student">תלמידים</option><option value="book">ספרים</option><option value="class">כיתות</option><option value="data">נתונים</option></select></label>
+      </div>
+      <div id="activityLog" style="max-height:340px; overflow:auto"></div>
+    </div>
+      <div class="card" style="margin-bottom:16px">
+      <h3 style="margin:0 0 8px; color:var(--teal-d)">ספרים שנמחקו</h3>
+      <p class="muted" style="margin:0 0 10px">ספרים שנמחקו מהקטלוג נשמרים כאן (עד 50 אחרונים) וניתן לשחזרם — כולל כל העותקים והברקודים.</p>
+      <div id="deletedBooks"></div>
+    </div>
+      <div class="card">
+      <h3 style="margin:0 0 10px; color:var(--teal-d)">הרשאות (יחובר בשלב Supabase)</h3>
+      <p class="muted" style="margin:0">אדמין — גישה מלאה · ספרן/מתנדב — קטלוג, השאלה, החזרה · הורה — צפייה בלבד בספרים של ילדם, עם מייל אוטומטי בעת השאלה. הרשאות אמיתיות בין מכשירים מצריכות את שלב ה־Supabase.</p>
+    </div>
+      </div>
+    </div>
+
+    <div class="sgroup dev-only">
+      <button type="button" class="sgh" onclick="toggleSettingsGroup(this)"><span>🔧 כלים למפתח (גלוי רק לי)</span><span class="sgchev">▾</span></button>
+      <div class="sgb">
+        <p class="muted" style="margin:0 0 12px">🔒 אזור זה גלוי רק לך (מנהל–מפתח). ספרנים ומנהלים רגילים אינם רואים אותו.</p>
+      <div class="card dev-only" style="margin-bottom:16px">
+      <h3 style="margin:0 0 10px; color:var(--teal-d)">אבטחה ואדמין</h3>
+      <p class="muted" style="margin:0 0 10px">קוד אדמין נדרש כדי לאשר פעולות מחיקה (מחיקת ספר/כיתה, סימון אבוד, שחזור/טעינת נתונים, עריכת מפה). השאירו ריק כדי לאפשר אישור ללא קוד. בשלב Supabase זה יוחלף בהרשאות אמיתיות לפי משתמש.</p>
+      <div class="row" style="align-items:flex-end">
+        <label class="fld" style="margin:0; max-width:220px"><span>קוד אדמין</span><input class="inp" id="setAdminPin" type="text" autocomplete="off" placeholder="ריק = ללא קוד"></label>
+        <button class="btn sm" id="saveAdminPin">שמירת קוד</button>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--line); margin:14px 0">
+      <p class="muted" style="margin:0 0 8px">שינוי סיסמת החשבון המחובר לענן (כל משתמש משנה את הסיסמה של עצמו).</p>
+      <button class="btn ghost sm" id="changePwBtn">🔑 שינוי סיסמה</button>
+    </div>
+      <div class="card dev-only" style="margin-bottom:16px">
       <div class="row" style="justify-content:space-between; align-items:center">
         <h3 style="margin:0; color:var(--teal-d)">ניהול משתמשים (אדמין)</h3>
         <button class="btn ghost sm" id="usersRefresh">↻ רענון</button>
@@ -637,8 +685,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       </div>
       <div id="usersList" style="margin-top:14px"></div>
     </div>
-
-    <div class="card dev-only" style="margin-bottom:16px">
+      <div class="card dev-only" style="margin-bottom:16px">
       <p class="muted" style="margin:0 0 10px">הנתונים נשמרים על המכשיר ובענן. <b>גיבוי בענן</b> שומר תמונת-מצב מלאה שאפשר לשחזר ממנה בכל רגע (וגם נשמר גיבוי אוטומטי תקופתי). גיבוי JSON שומר קובץ במכשיר.</p>
       <div class="row">
         <button class="btn sm" id="cloudBackupBtn">☁ גיבוי לענן עכשיו</button>
@@ -652,30 +699,9 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
         <button class="btn danger sm" id="resetData">טען מחדש נתוני בית הספר</button>
       </div>
     </div>
-
-    <div class="card" style="margin-bottom:16px">
-      <div class="row" style="justify-content:space-between; align-items:center">
-        <h3 style="margin:0; color:var(--teal-d)">יומן פעילות (למנהל/ת בלבד)</h3>
-        <button class="btn ghost sm" id="actExport">⬇ ייצוא לאקסל</button>
       </div>
-      <p class="muted" style="margin:8px 0 10px">תיעוד פעולות המשתמשים: השאלה, החזרה, שליחת תקנון, חתימות, עריכות. כולל מי ביצע ומתי.</p>
-      <div class="row" style="margin-bottom:8px">
-        <label class="fld" style="margin:0; max-width:220px"><span>סינון לפי סוג</span>
-          <select class="inp" id="actFilter"><option value="">הכל</option><option value="login">התחברות</option><option value="checkout">השאלה</option><option value="return">החזרה</option><option value="lost">אבוד</option><option value="sign_sent">שליחת תקנון</option><option value="sign_recv">חתימה התקבלה</option><option value="sign_manual">חתימה ידנית</option><option value="student">תלמידים</option><option value="book">ספרים</option><option value="class">כיתות</option><option value="data">נתונים</option></select></label>
-      </div>
-      <div id="activityLog" style="max-height:340px; overflow:auto"></div>
     </div>
-
-    <div class="card" style="margin-bottom:16px">
-      <h3 style="margin:0 0 8px; color:var(--teal-d)">ספרים שנמחקו</h3>
-      <p class="muted" style="margin:0 0 10px">ספרים שנמחקו מהקטלוג נשמרים כאן (עד 50 אחרונים) וניתן לשחזרם — כולל כל העותקים והברקודים.</p>
-      <div id="deletedBooks"></div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin:0 0 10px; color:var(--teal-d)">הרשאות (יחובר בשלב Supabase)</h3>
-      <p class="muted" style="margin:0">אדמין — גישה מלאה · ספרן/מתנדב — קטלוג, השאלה, החזרה · הורה — צפייה בלבד בספרים של ילדם, עם מייל אוטומטי בעת השאלה. הרשאות אמיתיות בין מכשירים מצריכות את שלב ה־Supabase.</p>
-    </div>
+  
   </section>
 </main>
 </div>
@@ -2441,6 +2467,7 @@ function repBodyHtml(d){
 }
 function refreshByclass(){ const d=_repDefs.find(x=>x.key==='byclass'); if(!d)return; const body=document.getElementById('repbody-byclass'); if(body)body.innerHTML=repBodyHtml(d); const cnt=document.getElementById('repcnt-byclass'); if(cnt)cnt.textContent=byclassRows().length+' שורות'; }
 window.setByclassMode=function(m){ byclassMode=m; repShowAll['byclass']=false; refreshByclass(); };
+window.toggleSettingsGroup=function(h){ h.parentElement.classList.toggle('open'); };
 window.toggleRepClass=function(lbl){ if(repClassSel.has(lbl))repClassSel.delete(lbl); else repClassSel.add(lbl); repShowAll['byclass']=false; refreshByclass(); };
 window.clearRepClass=function(){ repClassSel.clear(); refreshByclass(); };
 window.setRepFilter=function(key,val){
@@ -2831,7 +2858,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 99';
+const APP_VERSION='גרסה 29.6.2026 · 101';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
