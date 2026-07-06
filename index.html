@@ -684,6 +684,13 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <button class="btn ghost sm" id="changePwBtn">🔑 שינוי סיסמה</button>
     </div>
       <div class="card dev-only" style="margin-bottom:16px">
+      <h3 style="margin:0 0 10px; color:var(--teal-d)">פרטיות פרטי הורים</h3>
+      <p class="muted" style="margin:0 0 10px">שליטה בחשיפת פרטי הקשר של ההורים. אין השפעה על שמירת הנתונים — הם תמיד נשמרים וממשיכים לשמש לשליחת הודעות ותזכורות.</p>
+      <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" id="setShowParentContact" style="margin-top:3px"><span>הצגת פרטי קשר מלאים (טלפון ומייל) של הורים בתיק התלמיד ובעריכה. <span class="muted">כבוי = מוצג רק חיווי "✓ הוזן". המנהל־המפתח רואה תמיד.</span></span></label>
+      <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" id="setAllowParentWa" style="margin-top:3px"><span>אפשר שליחת WhatsApp למספר הישיר של ההורה (השאלה, תזכורת, תקנון). <span class="muted">כבוי = יופיעו רק מייל והעתקת קישור. הקישור הכללי לקבוצה אינו חושף מספר ונשאר תמיד.</span></span></label>
+      <button class="btn sm" id="saveParentPrivacy" style="margin-top:4px">שמירה</button>
+    </div>
+      <div class="card dev-only" style="margin-bottom:16px">
       <p class="muted" style="margin:0 0 10px">הנתונים נשמרים על המכשיר ובענן. <b>גיבוי בענן</b> שומר תמונת-מצב מלאה שאפשר לשחזר ממנה בכל רגע (וגם נשמר גיבוי אוטומטי תקופתי). גיבוי JSON שומר קובץ במכשיר.</p>
       <div class="row">
         <button class="btn sm" id="cloudBackupBtn">☁ גיבוי לענן עכשיו</button>
@@ -787,6 +794,8 @@ function migrate(){ (DB.books||[]).forEach(ensureItems);
   if(!s.channels)s.channels={email:true, sms:false, whatsapp:true}; else{ if(s.channels.email==null)s.channels.email=true; if(s.channels.sms==null)s.channels.sms=false; if(s.channels.whatsapp==null)s.channels.whatsapp=true; }
   if(s.emailFooter==null)s.emailFooter='';
   if(!s.msgTemplates||typeof s.msgTemplates!=='object')s.msgTemplates={};
+  if(typeof s.showParentContact!=='boolean')s.showParentContact=false;
+  if(typeof s.allowParentWa!=='boolean')s.allowParentWa=false;
   if(!s.emailFooter)s.emailFooter='בברכה,\nצוות ספריית ביה״ס דבורה עומר · כפר סבא\n\nלשאלות, בקשות או עדכון פרטים ניתן לפנות אלינו במייל: dvoraomerlib@gmail.com\n(הודעה זו נשלחה מכתובת שאינה מקבלת תשובות — נא לפנות לכתובת המייל שלמעלה.)';
   if(s.supportEmail==null)s.supportEmail='dvoraomerlib@gmail.com';
   if(!Array.isArray(DB.activity))DB.activity=[];
@@ -842,7 +851,7 @@ function detectSeries(title){
   return {base:'', idx:''};
 }
 function seed(){
-  const DEF={maxBooks:2, loanDays:30, reminderDays:21, repeatDays:5, scanGap:40, terms:'', emailFooter:'', supportEmail:'dvoraomerlib@gmail.com', channels:{email:true, sms:false, whatsapp:true}, msgTemplates:{}};
+  const DEF={maxBooks:2, loanDays:30, reminderDays:21, repeatDays:5, scanGap:40, terms:'', emailFooter:'', supportEmail:'dvoraomerlib@gmail.com', channels:{email:true, sms:false, whatsapp:true}, msgTemplates:{}, showParentContact:false, allowParentWa:false};
   const day=864e5;
   const classes=SEED.classes.map(c=>({id:uid(),grade:c[0],label:c[1],teacher:c[2]||''}));
   const students=SEED.students.map(s=>({id:uid(),firstName:s[0],lastName:s[1],grade:s[2],classLabel:s[3],
@@ -1342,7 +1351,7 @@ function openCheckout(b,it){
       save();renderShelf();
       const noP=!st.parentPhone, noM=!st.parentEmail;
       const dueStr2=new Date(dueTs).toLocaleDateString('he-IL');
-      panel.innerHTML=`<div class="card"><p>✓ הושאל בהצלחה: <b>${esc(b.title)}</b> (${esc(copyLabel(b,it))}) ל־<b>${esc(st.firstName+' '+st.lastName)}</b>. להחזרה עד ${dueStr2}.</p>${st.isTeacher?'':`<p id="coAutoStat" class="muted" style="margin:6px 0 4px">שולח מייל אוטומטי…</p><p style="margin:8px 0 6px">שליחה ידנית נוספת:</p><div class="row"><button class="btn sm" ${noP?'disabled title="אין טלפון הורה"':''} onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','wa')">💬 וואטסאפ</button><button class="btn ghost sm" ${noM?'disabled title="אין מייל הורה"':''} onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','mail')">📧 מייל</button><button class="btn ghost sm" onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','copy')">🔗 העתקה</button></div>`}</div>`;
+      panel.innerHTML=`<div class="card"><p>✓ הושאל בהצלחה: <b>${esc(b.title)}</b> (${esc(copyLabel(b,it))}) ל־<b>${esc(st.firstName+' '+st.lastName)}</b>. להחזרה עד ${dueStr2}.</p>${st.isTeacher?'':`<p id="coAutoStat" class="muted" style="margin:6px 0 4px">שולח מייל אוטומטי…</p><p style="margin:8px 0 6px">שליחה ידנית נוספת:</p><div class="row">${parentWaOn()?`<button class="btn ghost sm" ${noP?'disabled title="אין טלפון הורה"':''} onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','wa')">💬 וואטסאפ</button>`:''}<button class="btn sm" ${noM?'disabled title="אין מייל הורה"':''} onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','mail')">📧 מייל</button><button class="btn ghost sm" onclick="notifyCheckout('${st.id}','${b.id}','${it.id}','copy')">🔗 העתקה</button></div>`}</div>`;
       if(!st.isTeacher){
         const subj='הושאל ספר — ספריית דבורה עומר';
         const msg=applyTpl('checkout',{'תלמיד':st.firstName+' '+st.lastName,'ספר':b.title,'תאריך':dueStr2});
@@ -1427,7 +1436,7 @@ function studentRow(s){
   const sib=siblingsOf(s).length;
   const tag=s.isTeacher?'<span class="tag" style="background:var(--orange-l);border-color:#f6d4b0;color:var(--orange-d)">מורה</span>':s.graduated?'<span class="tag lost">בוגר/עבר חט״ב</span>':(!s.active?'<span class="tag" style="background:#eee;border-color:#ddd;color:#777">לא פעיל</span>':'');
   const signBadge=s.isTeacher?'':(s.termsSigned?'<span class="tag" style="background:#e7f6ec;border-color:#bfe6cc;color:#2e7d46">תקנון ✓</span>':'<span class="tag" style="background:#fff3e0;border-color:#ffe0b2;color:#b5651d">ללא תקנון</span>');
-  return `<div class="litem"><div class="cover" style="font-size:18px;cursor:pointer" onclick="studentPage('${s.id}')">${esc(s.firstName[0]||'')}</div><div class="meta"><b style="cursor:pointer" onclick="studentPage('${s.id}')">${esc(s.firstName+' '+s.lastName)}</b><small>${tag?tag+' · ':''}${signBadge?signBadge+' · ':''}הורה: ${esc(s.parentName||'—')}${s.parentPhone?(isDevUser()?' · '+esc(s.parentPhone):' · ☎︎✓'):''}${sib?' · 👨‍👩‍👧 '+sib+(sib>1?' אחים':' אח/אחות'):''}${open?' · '+open+' ספרים פתוחים':''}</small></div><div class="actions"><button class="btn ghost sm" onclick="studentPage('${s.id}')">תיק</button><button class="btn ghost sm" onclick="newStudent(null,'${s.id}')">עריכה</button></div></div>`;
+  return `<div class="litem"><div class="cover" style="font-size:18px;cursor:pointer" onclick="studentPage('${s.id}')">${esc(s.firstName[0]||'')}</div><div class="meta"><b style="cursor:pointer" onclick="studentPage('${s.id}')">${esc(s.firstName+' '+s.lastName)}</b><small>${tag?tag+' · ':''}${signBadge?signBadge+' · ':''}הורה: ${esc(s.parentName||'—')}${s.parentPhone?(canSeeParentContact()?' · '+esc(s.parentPhone):' · ☎︎✓'):''}${sib?' · 👨‍👩‍👧 '+sib+(sib>1?' אחים':' אח/אחות'):''}${open?' · '+open+' ספרים פתוחים':''}</small></div><div class="actions"><button class="btn ghost sm" onclick="studentPage('${s.id}')">תיק</button><button class="btn ghost sm" onclick="newStudent(null,'${s.id}')">עריכה</button></div></div>`;
 }
 function renderStudents(){
   fillStudClass();
@@ -1573,7 +1582,7 @@ window._sendSignMenu=function(id){
     <p style="margin:0 0 10px">תלמיד/ה: <b>${esc(s.firstName+' '+s.lastName)}</b> · ${gradeHeb(s.grade)+s.classLabel}</p>
     <p class="muted" style="margin:0 0 12px">המייל נשלח <b>אוטומטית ממערכת הספרייה</b>. ההורה ימלא ויחתום דיגיטלית — והתיק ייפתח אוטומטית בכל המכשירים המחוברים.</p>
     ${mailOpts}
-    <div class="row" style="margin-top:12px;gap:8px;border-top:1px solid var(--line);padding-top:12px"><button class="btn ghost" onclick="_sendSign('${s.id}','wa');closeModal()">💬 שליחה בוואטסאפ</button><button class="btn ghost" onclick="_sendSign('${s.id}','copy')">🔗 העתקת הקישור</button></div>
+    <div class="row" style="margin-top:12px;gap:8px;border-top:1px solid var(--line);padding-top:12px">${parentWaOn()?`<button class="btn ghost" onclick="_sendSign('${s.id}','wa');closeModal()">💬 שליחה בוואטסאפ</button>`:''}<button class="btn ghost" onclick="_sendSign('${s.id}','copy')">🔗 העתקת הקישור</button></div>
   </div>`);
 };
 function genericLink(){ return location.origin+location.pathname+'?sign=generic'; }
@@ -1668,7 +1677,7 @@ function studentPage(id){
     ${s.active===false?`<div style="background:#fff4e5;border:1px solid #f0c98a;border-radius:10px;padding:8px 12px;margin-bottom:12px;color:#8a5a16">🚪 התיק סגור${s.closedReason?' · '+esc(s.closedReason):(s.graduated?' · בוגר/ת':'')}${s.closedAt?' · '+new Date(s.closedAt).toLocaleDateString('he-IL'):''}</div>`:''}
     <div class="kv"><b>כיתה</b><span>${gradeHeb(s.grade)+s.classLabel} · מחנך/ת ${esc(teacherFor(s.grade,s.classLabel)||'—')}</span></div>
     <div class="kv"><b>הורה</b><span>${esc(s.parentName||'—')}</span></div>
-    ${(function(){ const dev=isDevUser();
+    ${(function(){ const dev=canSeeParentContact();
       const ph=s.parentPhone?(dev?esc(s.parentPhone):'<span style="color:#2e9a4f">✓ הוזן</span>'):'—';
       const ml=(s.parentEmail||s.parentEmail2)?(dev?[s.parentEmail,s.parentEmail2].filter(Boolean).map(esc).join(' · '):'<span style="color:#2e9a4f">✓ הוזן</span>'):'—';
       const note='';
@@ -1745,9 +1754,9 @@ function newStudent(cb,id){
     <div class="grid two"><label class="fld"><span>שכבה</span><select class="inp" id="sGrade">${gradeOpt}</select></label><label class="fld"><span>כיתה</span><input class="inp" id="sClass" value="${esc(s.classLabel)}"></label></div>
     <div class="muted" id="sTeacher" style="margin:-6px 0 12px"></div>
     <label class="fld"><span>שם הורה</span><input class="inp" id="sPName" value="${esc(s.parentName)}"></label>
-    ${isDevUser()?'':'<p class="muted" style="margin:2px 0 8px;font-size:12.5px">🔒 פרטי הקשר שמורים ומשמשים לשליחת הודעות. הם גלויים למנהל המפתח בלבד. השאירו ריק לשמירת הפרטים הקיימים, או הקלידו ערך חדש כדי לעדכן.</p>'}
-    <div class="grid two"><label class="fld"><span>טלפון הורה *</span><input class="inp" id="sPPhone" value="${isDevUser()?esc(s.parentPhone):''}" inputmode="tel" placeholder="${isDevUser()?'050-0000000':(s.parentPhone?'שמור — ריק לשמירה':'050-0000000')}"></label><label class="fld"><span>אימייל הורה *</span><input class="inp" id="sPMail" type="email" value="${isDevUser()?esc(s.parentEmail):''}" placeholder="${isDevUser()?'name@example.com':(s.parentEmail?'שמור — ריק לשמירה':'name@example.com')}"></label></div>
-    <label class="fld"><span>אימייל הורה נוסף (לא חובה)</span><input class="inp" id="sPMail2" type="email" value="${isDevUser()?esc(s.parentEmail2||''):''}" placeholder="${isDevUser()?'הורה שני — name@example.com':(s.parentEmail2?'שמור — ריק לשמירה':'הורה שני — name@example.com')}"></label>
+    ${canSeeParentContact()?'':'<p class="muted" style="margin:2px 0 8px;font-size:12.5px">🔒 פרטי הקשר שמורים ומשמשים לשליחת הודעות. הם גלויים למנהל המפתח בלבד. השאירו ריק לשמירת הפרטים הקיימים, או הקלידו ערך חדש כדי לעדכן.</p>'}
+    <div class="grid two"><label class="fld"><span>טלפון הורה *</span><input class="inp" id="sPPhone" value="${canSeeParentContact()?esc(s.parentPhone):''}" inputmode="tel" placeholder="${canSeeParentContact()?'050-0000000':(s.parentPhone?'שמור — ריק לשמירה':'050-0000000')}"></label><label class="fld"><span>אימייל הורה *</span><input class="inp" id="sPMail" type="email" value="${canSeeParentContact()?esc(s.parentEmail):''}" placeholder="${canSeeParentContact()?'name@example.com':(s.parentEmail?'שמור — ריק לשמירה':'name@example.com')}"></label></div>
+    <label class="fld"><span>אימייל הורה נוסף (לא חובה)</span><input class="inp" id="sPMail2" type="email" value="${canSeeParentContact()?esc(s.parentEmail2||''):''}" placeholder="${canSeeParentContact()?'הורה שני — name@example.com':(s.parentEmail2?'שמור — ריק לשמירה':'הורה שני — name@example.com')}"></label>
     ${s.isTeacher?'':'<div class="muted" style="margin:-6px 0 12px">טלפון ומייל הורה הם שדות חובה (נדרשים לשליחת התראות).</div>'}
     <div class="row" style="gap:20px; margin:2px 0 12px">
       <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="sActive" ${s.active!==false?'checked':''}> פעיל/ה</label>
@@ -1762,7 +1771,7 @@ function newStudent(cb,id){
   $('#sSave').addEventListener('click',()=>{
     const f=$('#sFirst').value.trim();if(!f){toast('חסר שם','err');return;}
     let ph=$('#sPPhone').value.trim(), em=$('#sPMail').value.trim();
-    if(!isDevUser()){ if(!ph)ph=s.parentPhone||''; if(!em)em=s.parentEmail||''; }
+    if(!canSeeParentContact()){ if(!ph)ph=s.parentPhone||''; if(!em)em=s.parentEmail||''; }
     const emailValid=x=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x);
     const willActive = $('#sActive') ? $('#sActive').checked : (s.active!==false);
     const willGrad   = $('#sGrad')   ? $('#sGrad').checked   : !!s.graduated;
@@ -1776,7 +1785,7 @@ function newStudent(cb,id){
     } else if(em && !emailValid(em)){
       toast('כתובת מייל הורה אינה תקינה','err');$('#sPMail').focus();return;
     }
-    const em2=($('#sPMail2')?$('#sPMail2').value.trim():'') || (!isDevUser()?(s.parentEmail2||''):'');
+    const em2=($('#sPMail2')?$('#sPMail2').value.trim():'') || (!canSeeParentContact()?(s.parentEmail2||''):'');
     if(em2 && !emailValid(em2)){toast('כתובת המייל הנוסף אינה תקינה','err');$('#sPMail2').focus();return;}
     Object.assign(s,{firstName:f,lastName:$('#sLast').value.trim(),grade:+$('#sGrade').value,classLabel:$('#sClass').value.trim(),parentName:$('#sPName').value.trim(),parentPhone:ph,parentEmail:em,parentEmail2:em2});
     const wasInactive = id ? ((s.active===false)||s.graduated) : false;
@@ -2061,6 +2070,8 @@ function loadSettings(){
   const _tpl=DB.settings.msgTemplates||{};
   ['checkout','remind','overdue','terms'].forEach(k=>{ const el=$('#tpl'+k.charAt(0).toUpperCase()+k.slice(1)); if(el)el.value=(_tpl[k]!=null&&_tpl[k]!=='')?_tpl[k]:DEFAULT_TPL[k]; });
   bindTplTabs();
+  if($('#setShowParentContact'))$('#setShowParentContact').checked=!!DB.settings.showParentContact;
+  if($('#setAllowParentWa'))$('#setAllowParentWa').checked=!!DB.settings.allowParentWa;
 }
 function bindTplTabs(){
   const tabs=document.querySelectorAll('#view-settings .tpl-tab');
@@ -2079,6 +2090,12 @@ $('#saveSettings').addEventListener('click',()=>{
   save();toast('המדיניות נשמרה','ok');paintCount();
 });
 $('#saveAdminPin').addEventListener('click',()=>{DB.settings.adminPin=$('#setAdminPin').value.trim();save();toast(DB.settings.adminPin?'קוד אדמין נשמר':'קוד אדמין הוסר','ok');});
+if($('#saveParentPrivacy'))$('#saveParentPrivacy').addEventListener('click',()=>{
+  DB.settings.showParentContact=!!($('#setShowParentContact')&&$('#setShowParentContact').checked);
+  DB.settings.allowParentWa=!!($('#setAllowParentWa')&&$('#setAllowParentWa').checked);
+  cloudForceNextSave=true; save(); logAct('data','עדכון הגדרות פרטיות הורים');
+  toast('הגדרות הפרטיות נשמרו','ok');
+});
 $('#changePwBtn').addEventListener('click',()=>{ if(typeof cloudChangePassword==='function')cloudChangePassword(); });
 if($('#saveChannels'))$('#saveChannels').addEventListener('click',()=>{
   const wasSms=channelsCfg().sms, nowSms=$('#chSms').checked;
@@ -2279,7 +2296,7 @@ function renderReminders(){
     const status=overdue?'<span class="tag lost">באיחור</span>':'<span class="tag" style="background:#fff3e0;border-color:#ffe0b2;color:#b5651d">לקראת החזרה</span>';
     const msg=overdue?`הספר היה צריך לחזור ב‑${dueStr} — באיחור של ${lateBy} ימים.`:`הספר אמור לחזור בעוד ${o.until} ימים (עד ${dueStr}).`;
     const noPhone=!(s&&s.parentPhone), noMail=!(s&&s.parentEmail);
-    return `<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b> ${status}<small>${s?esc(s.firstName+' '+s.lastName+' · '+gradeHeb(s.grade)+s.classLabel):'—'} · הושאל ${bd} · להחזרה עד ${dueStr}${contact?' · '+esc(contact):' · אין פרטי קשר'}<br><span style="color:${overdue?'#b3261e':'#b5651d'}">${msg}</span>${hist}</small></div><div class="actions"><button class="btn sm" ${noMail?'disabled title="אין מייל הורה"':''} onclick="sendReminderAuto('${o.book.id}','${o.item.id}')">📧 שלח מייל אוטומטי</button><button class="btn ghost sm" ${noPhone?'disabled title="אין טלפון הורה"':''} onclick="sendReminder('${o.book.id}','${o.item.id}','wa')">💬 וואטסאפ</button><button class="btn ghost sm" ${noMail?'disabled title="אין מייל הורה"':''} onclick="sendReminder('${o.book.id}','${o.item.id}','mail')">✉ מייל ידני</button><button class="btn ghost sm" onclick="markReminded('${o.book.id}','${o.item.id}')">סמן נשלח</button><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','reminders')">החזרה</button></div></div>`;
+    return `<div class="litem"><div class="meta"><b>${esc(o.book.title)}</b> ${status}<small>${s?esc(s.firstName+' '+s.lastName+' · '+gradeHeb(s.grade)+s.classLabel):'—'} · הושאל ${bd} · להחזרה עד ${dueStr}${contact?' · '+esc(contact):' · אין פרטי קשר'}<br><span style="color:${overdue?'#b3261e':'#b5651d'}">${msg}</span>${hist}</small></div><div class="actions"><button class="btn sm" ${noMail?'disabled title="אין מייל הורה"':''} onclick="sendReminderAuto('${o.book.id}','${o.item.id}')">📧 שלח מייל אוטומטי</button>${parentWaOn()?`<button class="btn ghost sm" ${noPhone?'disabled title="אין טלפון הורה"':''} onclick="sendReminder('${o.book.id}','${o.item.id}','wa')">💬 וואטסאפ</button>`:''}<button class="btn ghost sm" ${noMail?'disabled title="אין מייל הורה"':''} onclick="sendReminder('${o.book.id}','${o.item.id}','mail')">✉ מייל ידני</button><button class="btn ghost sm" onclick="markReminded('${o.book.id}','${o.item.id}')">סמן נשלח</button><button class="btn ghost sm" onclick="confirmReturn('${o.book.id}','${o.item.id}','reminders')">החזרה</button></div></div>`;
   }).join('')+`</div>`;
 }
 const DEFAULT_TPL={
@@ -2943,7 +2960,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 108';
+const APP_VERSION='גרסה 29.6.2026 · 109';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3099,6 +3116,8 @@ function applyRoleUI(){
 const DEV_EMAILS=['nimrodf8@gmail.com'];
 const DEV_IDS=['136e50b8-cc73-443d-8fc5-b83a8193884c'];
 function isDevUser(){ return !!(cloudUser && (DEV_IDS.includes(cloudUser.id) || DEV_EMAILS.includes((cloudUser.email||'').toLowerCase()))); }
+function canSeeParentContact(){ return !!(DB.settings&&DB.settings.showParentContact) || isDevUser(); }
+function parentWaOn(){ return !!(DB.settings&&DB.settings.allowParentWa); }
 function applyDevOnly(){ document.querySelectorAll('#view-settings .dev-only').forEach(el=>{ el.style.display=isDevUser()?'':'none'; }); }
 function dbScore(d){ if(!d||!Array.isArray(d.students))return -1; let p=0; d.students.forEach(s=>{if(s.parentName)p++;if(s.parentPhone)p++;if(s.parentEmail)p++;if(s.familyId)p++;}); return (d.students.length*10)+p+((d.books&&d.books.length)||0); }
 function localBackup(tag){ try{ localStorage.setItem('dvora_lib_backup', JSON.stringify({ts:Date.now(),tag:tag||'',data:DB})); }catch(e){} }
