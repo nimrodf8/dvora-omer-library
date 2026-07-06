@@ -852,7 +852,7 @@ const Store={
 function localTs(){ try{return +(localStorage.getItem(TSKEY)||0);}catch(e){return 0;} }
 function setLocalTs(ms){ try{localStorage.setItem(TSKEY,String(ms||Date.now()));}catch(e){} }
 let DB=Store.read()||seed();
-function save(){ Store.write(DB); setLocalTs(Date.now()); paintCount(); if(typeof cloudPushDebounced==='function')cloudPushDebounced(); }
+function save(){ Store.write(DB); setLocalTs(Date.now()); paintCount(); if(typeof CUR!=='undefined'&&CUR==='reports'&&typeof renderReports==='function')renderReports(); if(typeof cloudPushDebounced==='function')cloudPushDebounced(); }
 
 /* ---- copies (items) model + migration ---- */
 function ensureItems(b){
@@ -3039,7 +3039,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 114';
+const APP_VERSION='גרסה 29.6.2026 · 115';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
