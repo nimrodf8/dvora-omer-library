@@ -647,6 +647,11 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <div id="activityLog" style="max-height:340px; overflow:auto"></div>
     </div>
       <div class="card" style="margin-bottom:16px">
+      <h3 style="margin:0 0 8px; color:var(--teal-d)">עדכוני פרטי הורים ממתינים <span id="parentUpdatesCount" class="muted"></span></h3>
+      <p class="muted" style="margin:0 0 10px">בקשות עדכון פרטי קשר ששלחו הורים מאזור ההורים. אישור מחיל את השינוי; דחייה משאירה את הפרטים הקיימים. הנתונים לעולם לא נמחקים.</p>
+      <div id="parentUpdatesList"><p class="muted">טוען…</p></div>
+    </div>
+      <div class="card" style="margin-bottom:16px">
       <h3 style="margin:0 0 8px; color:var(--teal-d)">ספרים שנמחקו</h3>
       <p class="muted" style="margin:0 0 10px">ספרים שנמחקו מהקטלוג נשמרים כאן (עד 50 אחרונים) וניתן לשחזרם — כולל כל העותקים והברקודים.</p>
       <div id="deletedBooks"></div>
@@ -735,6 +740,78 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <div id="signPage" class="cloud-overlay hidden" style="align-items:flex-start; overflow:auto">
   <div class="cloud-card" style="max-width:680px; margin:24px auto" id="signPageInner"></div>
 </div>
+
+<div id="parentPage" class="hidden"></div>
+<style>
+#parentPage{position:fixed;inset:0;z-index:100;overflow:auto;background:#FBF7F0;color:#2A2620;font-family:'Rubik',sans-serif;
+  background-image:radial-gradient(circle at 12% 8%,#fff 0,transparent 42%),radial-gradient(circle at 92% 0%,#F7EFE1 0,transparent 40%)}
+#parentPage .pp-wrap{max-width:940px;margin:0 auto;padding:0 18px}
+#parentPage .pp-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+#parentPage .pp-card{background:#fff;width:100%;max-width:420px;border-radius:22px;box-shadow:0 6px 22px rgba(70,55,30,.09);border:1px solid #E7DECE;padding:34px 30px;text-align:center;position:relative;overflow:hidden}
+#parentPage .pp-card:before{content:"";position:absolute;inset-inline:0;top:0;height:6px;background:linear-gradient(90deg,#0D8B8D,#E8853B,#5E9E52)}
+#parentPage .pp-crest{width:60px;height:60px;border-radius:16px;margin:6px auto 12px;display:flex;align-items:center;justify-content:center;background:#E4F0EF;font-size:30px;border:1px solid #E7DECE}
+#parentPage h1{margin:0 0 2px;font-size:25px;font-weight:800;color:#0A6E70;font-family:inherit}
+#parentPage .pp-sub{color:#8A8178;margin:0 0 22px;font-size:15px}
+#parentPage .pp-fld{text-align:start;margin:0 0 14px}
+#parentPage .pp-fld label{display:block;font-weight:700;font-size:14px;margin:0 0 5px}
+#parentPage .pp-fld input{width:100%;padding:12px 14px;border:1.5px solid #E7DECE;border-radius:12px;font-size:16px;font-family:inherit;background:#fff}
+#parentPage .pp-fld input:focus{outline:none;border-color:#0D8B8D}
+#parentPage .pp-code{letter-spacing:.5em;text-align:center;font-weight:700;font-size:22px}
+#parentPage .pp-btn{border:none;border-radius:12px;padding:13px 18px;font-size:16px;font-weight:700;background:#0D8B8D;color:#fff;width:100%}
+#parentPage .pp-btn:hover{background:#0A6E70}
+#parentPage .pp-btn.apricot{background:#E8853B}#parentPage .pp-btn.apricot:hover{background:#C96A24}
+#parentPage .pp-links{margin-top:16px;display:flex;flex-direction:column;gap:9px}
+#parentPage .pp-links a{color:#0A6E70;font-weight:600;font-size:14.5px;cursor:pointer}
+#parentPage .pp-links a:hover{text-decoration:underline}
+#parentPage .pp-err{color:#C0492F;font-size:14px;font-weight:600;margin:-4px 0 12px;min-height:0}
+#parentPage .pp-top{background:#0A6E70;color:#fff;position:sticky;top:0;z-index:20}
+#parentPage .pp-top .pp-wrap{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;gap:12px}
+#parentPage .pp-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+#parentPage .pp-brand .dot{width:34px;height:34px;border-radius:10px;background:#ffffff22;display:flex;align-items:center;justify-content:center;font-size:18px}
+#parentPage .pp-logout{background:#ffffff1f;color:#fff;border:none;border-radius:9px;padding:7px 12px;font-size:13.5px;font-weight:600;cursor:pointer}
+#parentPage .pp-hero{padding:26px 0 8px}
+#parentPage .pp-hero h2{margin:0 0 4px;font-size:26px;font-weight:800}
+#parentPage .pp-hero p{margin:0;color:#8A8178}
+#parentPage .pp-activity{margin:16px 0 4px;background:linear-gradient(100deg,#E8853B,#F0A85E);color:#fff;border-radius:16px;padding:14px 18px;display:flex;gap:12px;align-items:center}
+#parentPage .pp-tabs{display:flex;gap:8px;margin:22px 0 20px;flex-wrap:wrap}
+#parentPage .pp-tab{background:#fff;border:1.5px solid #E7DECE;border-radius:999px;padding:9px 18px;font-weight:700;font-size:15px;color:#8A8178;cursor:pointer}
+#parentPage .pp-tab.on{background:#0D8B8D;color:#fff;border-color:#0D8B8D}
+#parentPage .pp-kid{background:#fff;border:1px solid #E7DECE;border-radius:18px;padding:18px 20px;margin-bottom:18px}
+#parentPage .pp-kid-head{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+#parentPage .pp-av{width:46px;height:46px;border-radius:13px;background:#E4F0EF;color:#0A6E70;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px}
+#parentPage .pp-kid-head h3{margin:0;font-size:21px;font-weight:700}
+#parentPage .pp-cls{color:#8A8178;font-size:14px}
+#parentPage .pp-lbl{font-size:12.5px;font-weight:700;color:#8A8178;margin:16px 0 8px;display:flex;align-items:center;gap:8px}
+#parentPage .pp-lbl:after{content:"";flex:1;height:1px;background:#E7DECE}
+#parentPage .pp-loan{display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px dashed #E7DECE}
+#parentPage .pp-loan:last-child{border-bottom:none}
+#parentPage .pp-spine{width:30px;height:44px;border-radius:3px 5px 5px 3px;flex:none;box-shadow:inset -3px 0 0 rgba(0,0,0,.13)}
+#parentPage .pp-loan .info{flex:1;min-width:0}
+#parentPage .pp-loan .info .t{font-weight:700}
+#parentPage .pp-loan .info .m{font-size:13px;color:#8A8178}
+#parentPage .pp-pill{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap}
+#parentPage .pp-pill.ok{background:#E7F1E3;color:#5E9E52}
+#parentPage .pp-pill.warn{background:#FBEEDD;color:#C96A24}
+#parentPage .pp-pill.late{background:#F7E1DC;color:#C0492F}
+#parentPage .pp-pill.ret{background:#F3ECE0;color:#8A8178}
+#parentPage .pp-histbtn{background:none;border:none;color:#0A6E70;font-weight:700;font-size:14px;padding:6px 0;cursor:pointer}
+#parentPage .pp-empty{color:#8A8178;font-size:14.5px;padding:6px 0}
+#parentPage .pp-search{position:relative;margin-bottom:16px}
+#parentPage .pp-search input{width:100%;padding:13px 44px 13px 16px;border:1.5px solid #E7DECE;border-radius:14px;font-size:16px;font-family:inherit;background:#fff}
+#parentPage .pp-search input:focus{outline:none;border-color:#0D8B8D}
+#parentPage .pp-search .mag{position:absolute;inset-inline-end:15px;top:50%;transform:translateY(-50%);color:#8A8178}
+#parentPage .pp-note{background:#E4F0EF;border-radius:12px;padding:10px 14px;font-size:14px;color:#0A6E70;margin-bottom:16px}
+#parentPage .pp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+#parentPage .pp-book{background:#fff;border:1px solid #E7DECE;border-radius:14px;padding:14px;display:flex;gap:13px}
+#parentPage .pp-book .cover{width:44px;height:62px;border-radius:4px 6px 6px 4px;flex:none;box-shadow:inset -3px 0 0 rgba(0,0,0,.13)}
+#parentPage .pp-book .bt{font-weight:700;font-size:15.5px;line-height:1.25}
+#parentPage .pp-book .ba{font-size:13px;color:#8A8178;margin:2px 0 8px}
+#parentPage .pp-panel{background:#fff;border:1px solid #E7DECE;border-radius:18px;padding:22px;max-width:560px}
+#parentPage .pp-panel h3{margin:0 0 4px;font-size:20px}
+#parentPage .pp-lead{color:#8A8178;margin:0 0 18px;font-size:14.5px}
+#parentPage .pp-pending{background:#FBEEDD;color:#C96A24;border-radius:12px;padding:11px 14px;font-size:14px;font-weight:600;margin-top:14px}
+#parentPage .pp-foot{color:#8A8178;text-align:center;padding:30px 0 40px;font-size:13px}
+</style>
 
 <script>
 "use strict";
@@ -908,7 +985,7 @@ function go(v){
   if(v==='catalog'){resetCatalogSearch();renderCatalog();}
   if(v==='students'){resetStudentsSearch();renderStudents();}
   if(v==='classes')renderClasses();
-  if(v==='settings'){loadSettings();renderActivity();renderDeletedBooks();renderUsers();applyDevOnly();renderBarcodeMeta();if(typeof renderMsgLog==='function')renderMsgLog();}
+  if(v==='settings'){loadSettings();renderActivity();renderDeletedBooks();renderUsers();applyDevOnly();renderBarcodeMeta();if(typeof renderMsgLog==='function')renderMsgLog();if(typeof renderParentUpdates==='function')renderParentUpdates();}
   if(v==='reminders')renderReminders();
   if(v==='map')renderMap();
   if(v==='reports')renderReports();
@@ -1445,7 +1522,7 @@ function renderStudents(){
   if(f==='active')list=list.filter(s=>s.active&&!s.graduated); if(f==='past')list=list.filter(s=>s.graduated||!s.active);
   if(fc)list=list.filter(s=>(s.grade+'|'+s.classLabel)===fc);
   if(q)list=list.filter(s=>[s.firstName,s.lastName,gradeHeb(s.grade)+s.classLabel,s.parentName].join(' ').toLowerCase().includes(q));
-  list.sort((a,b)=>a.grade-b.grade||cmp(a.classLabel,b.classLabel)||(a.isTeacher-b.isTeacher)||cmp(a.lastName,b.lastName));
+  list.sort((a,b)=>a.grade-b.grade||cmp(a.classLabel,b.classLabel)||(a.isTeacher-b.isTeacher)||cmp(a.lastName,b.lastName)||cmp(a.firstName,b.firstName));
   // group by class
   const groups={};list.forEach(s=>{const k=s.grade+'|'+s.classLabel;(groups[k]=groups[k]||[]).push(s);});
   const keys=Object.keys(groups).sort((a,b)=>{const[ga,la]=a.split('|'),[gb,lb]=b.split('|');return (+ga)-(+gb)||cmp(la,lb);});
@@ -1684,7 +1761,8 @@ function studentPage(id){
       return `<div class="kv"><b>טלפון הורה</b><span>${ph}</span></div><div class="kv"><b>מייל הורה</b><span>${ml}${note}</span></div>`;
     })()}
     ${s.isTeacher?'':`<div class="kv"><b>תקנון</b><span>${s.termsSigned?`<span style="color:#2e9a4f">✓ נחתם${s.termsSignedAt?' · '+new Date(s.termsSignedAt).toLocaleDateString('he-IL'):''}${s.termsSignedBy?' · '+esc(s.termsSignedBy):''}</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',false)">בטל פתיחת תיק</button>`:`<span style="color:#b5651d">טרם נחתם — התיק סגור להשאלה</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',true)">סמן כחתום ידנית</button>`}</span></div>
-    <div class="kv"><b>חתימת הורה</b><span><button class="btn sm" onclick="_sendSignMenu('${s.id}')">✍ שליחת תקנון לחתימה</button>${s.termsSigned?' <span class="muted">כבר נחתם — אפשר לשלוח שוב</span>':''}</span></div>`}
+    <div class="kv"><b>חתימת הורה</b><span><button class="btn sm" onclick="_sendSignMenu('${s.id}')">✍ שליחת תקנון לחתימה</button>${s.termsSigned?' <span class="muted">כבר נחתם — אפשר לשלוח שוב</span>':''}</span></div>
+    <div class="kv"><b>אזור ההורים</b><span id="pcodeShow_${s.id}" style="font-weight:800;letter-spacing:.12em;color:var(--teal-d)">…</span> <button class="btn ghost sm" onclick="parentCodeManage('${s.id}')">🔑 ניהול קוד</button></div>`}
     ${s.notifyConsent?'<div class="kv"><b>הודעות</b><span style="color:#2e9a4f">✓ ההורה אישר קבלת הודעות על השאלה ותזכורות החזרה</span></div>':''}
     ${sibHtml}
     <h3 style="color:var(--teal-d);font-size:17px;margin:16px 0 6px">ספרים פתוחים (${open.length})</h3>
@@ -1699,6 +1777,7 @@ function studentPage(id){
       <button class="btn danger sm" style="margin-inline-start:auto" onclick="delStudent('${s.id}')">🗑 מחיקה לצמיתות</button>
     </div>
   </div>`);
+  if(!s.isTeacher && typeof parentCodeFill==='function') parentCodeFill(s);
 }
 window.closeStudentFile=function(id){
   const s=DB.students.find(x=>x.id===id);if(!s)return;
@@ -2960,7 +3039,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 109';
+const APP_VERSION='גרסה 29.6.2026 · 112';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3384,8 +3463,246 @@ window.cloudChangePassword=function(){
   });
 })();
 
+/* ================= PARENT PORTAL (public, ?parent=1) ================= */
+const _ppCOLORS=['#0D8B8D','#E8853B','#5E9E52','#7C6BAF','#C0492F','#3B7EA8','#B5852A'];
+function _ppHash(s){let h=0;s=String(s||'');for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h;}
+function _ppColor(s){return _ppCOLORS[_ppHash(s)%_ppCOLORS.length];}
+function _ppEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+let _ppData=null, _ppAuth=null;
+async function ppCall(action,body){
+  const res=await fetch(`${SUPA_URL}/functions/v1/parent-portal`,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`},body:JSON.stringify(Object.assign({action},body))});
+  let j={}; try{j=await res.json();}catch(e){}
+  if(!res.ok||j.error) throw new Error(j.error||('HTTP '+res.status));
+  return j;
+}
+function showParentPortal(){
+  document.getElementById('parentPage').classList.remove('hidden');
+  ppRenderLogin();
+}
+function ppRenderLogin(msg){
+  const el=document.getElementById('parentPage');
+  el.innerHTML=`<div class="pp-login"><div class="pp-card">
+    <div class="pp-crest">📚</div>
+    <h1>אזור ההורים</h1>
+    <p class="pp-sub">ספריית בית הספר ע״ש דבורה עומר</p>
+    <div class="pp-fld"><label>כתובת המייל שמסרתם לספרייה</label><input id="ppEmail" type="email" placeholder="name@example.com"></div>
+    <div class="pp-fld"><label>קוד גישה (4 ספרות)</label><input id="ppCode" class="pp-code" inputmode="numeric" maxlength="4" placeholder="••••"></div>
+    <div class="pp-err" id="ppErr">${msg?_ppEsc(msg):''}</div>
+    <button class="pp-btn" id="ppLoginBtn">כניסה לאזור האישי</button>
+    <div class="pp-links">
+      <a id="ppReset">שכחתם את הקוד? שִלחו לי קוד חדש למייל</a>
+      <a id="ppForgotMail">לא זוכרים איזה מייל רשמתם? פנו לספרייה</a>
+    </div>
+  </div></div>`;
+  document.getElementById('ppLoginBtn').addEventListener('click',ppLogin);
+  document.getElementById('ppCode').addEventListener('keydown',e=>{if(e.key==='Enter')ppLogin();});
+  document.getElementById('ppReset').addEventListener('click',ppReset);
+  document.getElementById('ppForgotMail').addEventListener('click',()=>{location.href='mailto:'+((DB.settings&&DB.settings.supportEmail)||'dvoraomerlib@gmail.com')+'?subject='+encodeURIComponent('שחזור מייל לאזור ההורים')+'&body='+encodeURIComponent('שלום, איני זוכר/ת באיזו כתובת מייל נרשמתי לאזור ההורים. שם ההורה: ______ , שם הילד/ה והכיתה: ______ . אשמח שתעדכנו אותי. תודה!');});
+}
+async function ppLogin(){
+  const email=(document.getElementById('ppEmail').value||'').trim().toLowerCase();
+  const code=(document.getElementById('ppCode').value||'').trim();
+  const err=document.getElementById('ppErr'); err.textContent='';
+  if(!email){err.textContent='נא להזין את כתובת המייל.';return;}
+  if(!/^\d{4}$/.test(code)){err.textContent='הקוד מורכב מ-4 ספרות.';return;}
+  const btn=document.getElementById('ppLoginBtn'); btn.disabled=true; btn.textContent='מתחבר…';
+  try{
+    const r=await ppCall('login',{email,code});
+    _ppData=r; _ppAuth={email,code};
+    ppRenderPortal();
+  }catch(e){
+    err.textContent=/invalid|code|not found|לא נמצא|שגוי/i.test(e.message)?'המייל או הקוד שגויים. אפשר לבקש קוד חדש למטה.':'ההתחברות נכשלה. נסו שוב.';
+    btn.disabled=false; btn.textContent='כניסה לאזור האישי';
+  }
+}
+async function ppReset(){
+  const email=(document.getElementById('ppEmail').value||'').trim().toLowerCase();
+  const err=document.getElementById('ppErr'); err.textContent='';
+  if(!email){err.textContent='הזינו קודם את המייל, ואז נשלח אליו קוד חדש.';return;}
+  try{ await ppCall('reset',{email}); err.style.color='#5E9E52'; err.textContent='אם המייל רשום במערכת — נשלח אליו קוד גישה חדש. בדקו את תיבת הדואר.'; }
+  catch(e){ err.style.color='#5E9E52'; err.textContent='אם המייל רשום במערכת — נשלח אליו קוד גישה חדש. בדקו את תיבת הדואר.'; }
+}
+function ppLogout(){ _ppData=null; _ppAuth=null; ppRenderLogin(); }
+function ppRenderPortal(){
+  const d=_ppData, el=document.getElementById('parentPage');
+  const act=d.activity?`<div class="pp-activity"><span style="font-size:22px">🔔</span><div>${_ppEsc(d.activity)}</div></div>`:'';
+  el.innerHTML=`
+    <div class="pp-top"><div class="pp-wrap">
+      <div class="pp-brand"><span class="dot">📚</span> ספריית דבורה עומר</div>
+      <div style="display:flex;align-items:center;gap:12px"><span style="font-size:14px;opacity:.9">${_ppEsc(d.familyName||'')}</span><button class="pp-logout" id="ppLogout">יציאה</button></div>
+    </div></div>
+    <div class="pp-wrap">
+      <div class="pp-hero"><h2>שלום, ${_ppEsc(d.familyName||'')} 👋</h2><p>כאן תוכלו לעקוב אחר הספרים של ילדיכם ולעיין בקטלוג הספרייה.</p>${act}</div>
+      <div class="pp-tabs">
+        <button class="pp-tab on" data-t="family">👨‍👩‍👧 המשפחה שלי</button>
+        <button class="pp-tab" data-t="catalog">📖 קטלוג זמין</button>
+        <button class="pp-tab" data-t="info">✏️ הפרטים שלי</button>
+      </div>
+      <section id="ppT-family"></section>
+      <section id="ppT-catalog" class="hidden">
+        <div class="pp-note">👀 לצפייה בלבד — ההשאלה מתבצעת בספרייה בבית הספר. כאן אפשר לראות מה זמין כרגע.</div>
+        <div class="pp-search"><input id="ppCatQ" placeholder="חיפוש לפי שם ספר או סופר…"><span class="mag">🔍</span></div>
+        <div class="pp-grid" id="ppCatGrid"></div>
+      </section>
+      <section id="ppT-info" class="hidden">
+        <div class="pp-panel">
+          <h3>הפרטים שלי</h3>
+          <p class="pp-lead">אפשר לעדכן את פרטי הקשר. <b>העדכון יישלח לאישור הספרייה</b> וייכנס לתוקף רק לאחר אישור.</p>
+          <div class="pp-fld"><label>שם ההורה</label><input id="ppName" value="${_ppEsc(d.parent&&d.parent.name||'')}"></div>
+          <div class="pp-fld"><label>טלפון</label><input id="ppPhone" inputmode="tel" value="${_ppEsc(d.parent&&d.parent.phone||'')}"></div>
+          <div class="pp-fld"><label>מייל</label><input id="ppMail" type="email" value="${_ppEsc(d.parent&&d.parent.email||'')}"></div>
+          <button class="pp-btn apricot" id="ppInfoSave">שמירה ושליחה לאישור</button>
+          <div class="pp-pending hidden" id="ppPending">⏳ העדכון נשלח לספרייה וממתין לאישור. הפרטים הנוכחיים נשארים פעילים עד האישור.</div>
+        </div>
+        <div class="pp-panel" style="margin-top:16px">
+          <h3>קוד הגישה שלי</h3>
+          <p class="pp-lead">אפשר לבחור קוד גישה חדש בן 4 ספרות. הקוד מתעדכן מיד — הקפידו לזכור אותו.</p>
+          <div class="pp-fld"><label>קוד חדש (4 ספרות)</label><input id="ppNewCode" class="pp-code" inputmode="numeric" maxlength="4" placeholder="••••"></div>
+          <button class="pp-btn" id="ppCodeSave">עדכון הקוד</button>
+          <div class="pp-pending hidden" id="ppCodeMsg" style="background:#E7F1E3;color:#5E9E52"></div>
+        </div>
+      </section>
+      <div class="pp-foot">ספריית בית הספר ע״ש דבורה עומר · אזור ההורים · לפניות: ${_ppEsc((DB.settings&&DB.settings.supportEmail)||'dvoraomerlib@gmail.com')}</div>
+    </div>`;
+  document.getElementById('ppLogout').addEventListener('click',ppLogout);
+  el.querySelectorAll('.pp-tab').forEach(t=>t.addEventListener('click',()=>{
+    el.querySelectorAll('.pp-tab').forEach(x=>x.classList.remove('on')); t.classList.add('on');
+    ['family','catalog','info'].forEach(n=>document.getElementById('ppT-'+n).classList.toggle('hidden',n!==t.dataset.t));
+    el.scrollTop=0;
+  }));
+  ppRenderFamily(); ppRenderCatalog();
+  document.getElementById('ppCatQ').addEventListener('input',ppRenderCatalog);
+  document.getElementById('ppInfoSave').addEventListener('click',ppSubmitInfo);
+  document.getElementById('ppCodeSave').addEventListener('click',ppChangeCode);
+}
+async function ppChangeCode(){
+  const nc=(document.getElementById('ppNewCode').value||'').trim();
+  const msg=document.getElementById('ppCodeMsg');
+  if(!/^\d{4}$/.test(nc)){ msg.classList.remove('hidden'); msg.style.background='#F7E1DC'; msg.style.color='#C0492F'; msg.textContent='הקוד חייב להיות 4 ספרות.'; return; }
+  const btn=document.getElementById('ppCodeSave'); btn.disabled=true; btn.textContent='מעדכן…';
+  try{
+    await ppCall('changeCode',{email:_ppAuth.email,code:_ppAuth.code,newCode:nc});
+    _ppAuth.code=nc;
+    msg.classList.remove('hidden'); msg.style.background='#E7F1E3'; msg.style.color='#5E9E52'; msg.textContent='הקוד עודכן בהצלחה ✓';
+    document.getElementById('ppNewCode').value='';
+    btn.disabled=false; btn.textContent='עדכון הקוד';
+  }catch(e){ msg.classList.remove('hidden'); msg.style.background='#F7E1DC'; msg.style.color='#C0492F'; msg.textContent='העדכון נכשל, נסו שוב.'; btn.disabled=false; btn.textContent='עדכון הקוד'; }
+}
+function ppRenderFamily(){
+  const wrap=document.getElementById('ppT-family'); wrap.innerHTML='';
+  (_ppData.kids||[]).forEach(k=>{
+    const cur=(k.current||[]).map(l=>{
+      const late=l.left<0, warn=l.left>=0&&l.left<=5;
+      const pill=late?`<span class="pp-pill late">באיחור ${-l.left} ימים</span>`:warn?`<span class="pp-pill warn">עוד ${l.left} ימים</span>`:`<span class="pp-pill ok">עוד ${l.left} ימים</span>`;
+      return `<div class="pp-loan"><span class="pp-spine" style="background:${_ppColor(l.t)}"></span><div class="info"><div class="t">${_ppEsc(l.t)}</div><div class="m">${_ppEsc(l.a||'')} · הושאל ${_ppEsc(l.borrow)} · להחזרה עד ${_ppEsc(l.due)}</div></div>${pill}</div>`;
+    }).join('') || '<div class="pp-empty">אין ספרים מושאלים כרגע 👍</div>';
+    const hist=(k.history||[]).map(h=>`<div class="pp-loan"><span class="pp-spine" style="background:${_ppColor(h.t)};opacity:.55"></span><div class="info"><div class="t">${_ppEsc(h.t)}</div><div class="m">${_ppEsc(h.a||'')} · הושאל ${_ppEsc(h.borrow)} · הוחזר ${_ppEsc(h.ret)}</div></div><span class="pp-pill ret">הוחזר</span></div>`).join('');
+    const row=document.createElement('div'); row.className='pp-kid';
+    row.innerHTML=`<div class="pp-kid-head"><div class="pp-av">${_ppEsc((k.name||'')[0]||'')}</div><div><h3>${_ppEsc(k.name)}</h3><div class="pp-cls">כיתה ${_ppEsc(k.cls||'')}${k.teacher?' · מחנך/ת '+_ppEsc(k.teacher):''}</div></div></div>
+      <div class="pp-lbl">📕 מושאל כעת</div>${cur}
+      <button class="pp-histbtn">▾ הצגת היסטוריית השאלות (${(k.history||[]).length})</button>
+      <div class="hidden">${hist||'<div class="pp-empty">אין היסטוריה עדיין.</div>'}</div>`;
+    const btn=row.querySelector('.pp-histbtn'), box=btn.nextElementSibling;
+    btn.addEventListener('click',()=>{box.classList.toggle('hidden');btn.textContent=box.classList.contains('hidden')?`▾ הצגת היסטוריית השאלות (${(k.history||[]).length})`:'▴ הסתרת היסטוריה';});
+    wrap.appendChild(row);
+  });
+}
+function ppRenderCatalog(){
+  const q=(document.getElementById('ppCatQ').value||'').trim();
+  const rows=(_ppData.catalog||[]).filter(b=>!q||(b.t&&b.t.includes(q))||(b.a&&b.a.includes(q)));
+  document.getElementById('ppCatGrid').innerHTML=rows.map(b=>`<div class="pp-book"><span class="cover" style="background:${_ppColor(b.t)}"></span><div><div class="bt">${_ppEsc(b.t)}</div><div class="ba">${_ppEsc(b.a||'')}</div>${b.avail?'<span class="pp-pill ok">✔ זמין להשאלה</span>':'<span class="pp-pill late">מושאל כרגע</span>'}</div></div>`).join('')||'<div class="pp-empty">לא נמצאו ספרים תואמים.</div>';
+}
+async function ppSubmitInfo(){
+  const changes={name:(document.getElementById('ppName').value||'').trim(),phone:(document.getElementById('ppPhone').value||'').trim(),email:(document.getElementById('ppMail').value||'').trim()};
+  const btn=document.getElementById('ppInfoSave'); btn.disabled=true; btn.textContent='שולח…';
+  try{ await ppCall('submitUpdate',{email:_ppAuth.email,code:_ppAuth.code,changes}); document.getElementById('ppPending').classList.remove('hidden'); btn.textContent='נשלח לאישור ✓'; }
+  catch(e){ btn.disabled=false; btn.textContent='שמירה ושליחה לאישור'; alert('השליחה נכשלה, נסו שוב.'); }
+}
+function parentLink(){ return location.origin+location.pathname+'?parent=1'; }
+async function parentCodeFill(s){
+  const span=document.getElementById('pcodeShow_'+s.id); if(!span)return;
+  const email=(s.parentEmail||'').trim().toLowerCase();
+  if(!email){ span.textContent='אין מייל הורה'; span.style.color='#8a8178'; span.style.fontWeight='400'; return; }
+  if(!cloudOn||!supa){ span.textContent='—'; return; }
+  try{ const {data}=await supa.from('parent_codes').select('code').eq('email',email).maybeSingle(); span.textContent=data&&data.code?('קוד: '+data.code):'טרם הונפק'; if(!(data&&data.code)){span.style.color='#b5651d';} }
+  catch(e){ span.textContent='—'; }
+}
+window.parentCodeManage=function(id){
+  const s=DB.students.find(x=>x.id===id); if(!s)return;
+  const email=(s.parentEmail||'').trim().toLowerCase();
+  if(!email){ toast('אין מייל הורה בכרטיס — הוסיפו מייל כדי להנפיק קוד','err'); return; }
+  if(!cloudOn||!supa){ toast('נדרש חיבור לענן','err'); return; }
+  modal(`<div class="mhead"><h3>אזור ההורים — ${esc(s.firstName+' '+s.lastName)}</h3><button class="x" onclick="closeModal()">×</button></div><div class="mbody" id="pcmBody"><p class="muted">טוען…</p></div>`);
+  async function refresh(){
+    let code=null; try{ const {data}=await supa.from('parent_codes').select('code').eq('email',email).maybeSingle(); code=data?data.code:null; }catch(e){}
+    const link=parentLink(); const body=document.getElementById('pcmBody'); if(!body)return;
+    body.innerHTML=`
+      <p class="muted" style="margin:0 0 6px">מייל ההורה: <b>${esc(email)}</b></p>
+      <div class="kv"><b>קוד גישה</b><span style="font-size:22px;font-weight:800;letter-spacing:.15em;color:var(--teal-d)">${code?esc(code):'— טרם הונפק —'}</span></div>
+      <p class="muted" style="margin:8px 0">ההורה נכנס לאזור ההורים עם המייל והקוד. הקוד משותף לכל ילדי המשפחה עם אותו מייל.</p>
+      <div class="row" style="flex-wrap:wrap;gap:8px">
+        <button class="btn sm" id="pcmGen">${code?'רענון קוד':'הנפקת קוד'}</button>
+        <button class="btn ghost sm" id="pcmCopy" ${code?'':'disabled'}>העתקת קישור + קוד</button>
+        <button class="btn ghost sm" id="pcmMail" ${code?'':'disabled'}>שליחת הקוד למייל ההורה</button>
+      </div>
+      <div id="pcmMsg" class="muted" style="margin-top:8px"></div>`;
+    document.getElementById('pcmGen').onclick=async()=>{
+      const nc=String(Math.floor(1000+Math.random()*9000));
+      try{ const {error}=await supa.from('parent_codes').upsert({email,code:nc,updated_at:new Date().toISOString()}); if(error)throw error; logAct('data','הנפקת קוד אזור הורים'); toast('הקוד עודכן','ok'); refresh(); }
+      catch(e){ toast('שמירת הקוד נכשלה','err'); }
+    };
+    document.getElementById('pcmCopy').onclick=()=>{ try{navigator.clipboard.writeText(`אזור ההורים של ספריית דבורה עומר:\n${link}\nמייל: ${email}\nקוד: ${code}`);}catch(e){} document.getElementById('pcmMsg').textContent='הקישור והקוד הועתקו ✓'; };
+    document.getElementById('pcmMail').onclick=async()=>{
+      const msg=`שלום,\nלכניסה לאזור ההורים של ספריית בית הספר דבורה עומר:\n${link}\nהתחברו עם המייל הזה ועם הקוד: ${code}\n\nבברכה, צוות הספרייה`;
+      try{ await cloudSendNotification({to:[email],subject:'קוד גישה לאזור ההורים — ספריית דבורה עומר',message:msg,type:'generic',studentId:s.id}); document.getElementById('pcmMsg').textContent='נשלח למייל ההורה ✓'; }
+      catch(e){ document.getElementById('pcmMsg').textContent='השליחה נכשלה: '+(e.message||''); }
+    };
+  }
+  refresh();
+};
+async function renderParentUpdates(){
+  const box=document.getElementById('parentUpdatesList'); if(!box)return;
+  if(!cloudOn||!supa){ box.innerHTML='<p class="muted">זמין בחיבור לענן.</p>'; return; }
+  let rows=[]; try{ const {data,error}=await supa.from('parent_updates').select('*').eq('status','pending').order('created_at',{ascending:false}); if(error)throw error; rows=data||[]; }
+  catch(e){ box.innerHTML='<p class="muted">טעינת הבקשות נכשלה (ודאו שהטבלה parent_updates קיימת).</p>'; return; }
+  const badge=document.getElementById('parentUpdatesCount'); if(badge)badge.textContent=rows.length?('('+rows.length+')'):'';
+  if(!rows.length){ box.innerHTML='<p class="muted">אין בקשות עדכון ממתינות.</p>'; return; }
+  box.innerHTML=rows.map(r=>{
+    const c=r.changes||{}; const who=(DB.students||[]).filter(s=>(s.parentEmail||'').toLowerCase()===r.email||(s.parentEmail2||'').toLowerCase()===r.email);
+    const names=who.map(s=>s.firstName+' '+s.lastName).join(', ')||'—';
+    return `<div class="litem"><div class="meta"><b>${esc(r.email)}</b><small>ילדים: ${esc(names)}<br>
+      שם: ${esc(c.name||'—')} · טלפון: ${esc(c.phone||'—')} · מייל: ${esc(c.email||'—')}</small></div>
+      <div class="actions"><button class="btn sm" onclick="parentUpdateApprove(${r.id})">אישור</button><button class="btn ghost sm" onclick="parentUpdateReject(${r.id})">דחייה</button></div></div>`;
+  }).join('');
+}
+window.parentUpdateApprove=async function(rid){
+  if(!supa)return;
+  try{
+    const {data,error}=await supa.from('parent_updates').select('*').eq('id',rid).maybeSingle(); if(error)throw error;
+    if(!data){toast('הבקשה לא נמצאה','err');return;}
+    const c=data.changes||{}; const email=(data.email||'').toLowerCase(); let n=0;
+    (DB.students||[]).forEach(s=>{ if((s.parentEmail||'').toLowerCase()===email||(s.parentEmail2||'').toLowerCase()===email){
+      if(c.name)s.parentName=c.name; if(c.phone)s.parentPhone=c.phone;
+      if(c.email && c.email.toLowerCase()!==email){ if((s.parentEmail||'').toLowerCase()===email)s.parentEmail=c.email; else s.parentEmail2=c.email; }
+      n++;
+    }});
+    // אם המייל שונה — נעביר גם את קוד הגישה למייל החדש (הנתונים נשמרים, לא נמחקים)
+    if(c.email && c.email.toLowerCase()!==email){ try{ const {data:cc}=await supa.from('parent_codes').select('code').eq('email',email).maybeSingle(); if(cc&&cc.code){ await supa.from('parent_codes').upsert({email:c.email.toLowerCase(),code:cc.code,updated_at:new Date().toISOString()}); } }catch(e){} }
+    await supa.from('parent_updates').update({status:'approved',handled_at:new Date().toISOString()}).eq('id',rid);
+    cloudForceNextSave=true; save(); logAct('data',`אישור עדכון פרטי הורה (${n} תלמידים)`);
+    toast('העדכון אושר והוחל','ok'); renderParentUpdates();
+  }catch(e){ toast('האישור נכשל','err'); }
+};
+window.parentUpdateReject=async function(rid){
+  if(!supa)return;
+  try{ await supa.from('parent_updates').update({status:'rejected',handled_at:new Date().toISOString()}).eq('id',rid); toast('הבקשה נדחתה','ok'); renderParentUpdates(); }
+  catch(e){ toast('הדחייה נכשלה','err'); }
+};
+
 const _signParam=(function(){try{return new URLSearchParams(location.search).get('sign');}catch(e){return null;}})();
+const _parentParam=(function(){try{return new URLSearchParams(location.search).get('parent');}catch(e){return null;}})();
 if(_signParam){ showSignPage(_signParam); }              // עמוד חתימת הורים (ציבורי, האפליקציה מוסתרת)
+else if(_parentParam){ showParentPortal(); }              // אזור ההורים (ציבורי, דרך Edge Function)
 else if(CLOUD_ENABLED && window.supabase){ cloudInit(); } // כניסה חובה — האתר נעול עד התחברות
 else { cloudShowLogin(); }                                 // ללא ענן אין גישה (fail-closed)
 </script>
