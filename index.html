@@ -53,6 +53,8 @@ header.topbar{position:sticky; top:0; z-index:40; display:flex; align-items:cent
 .nav-item svg{width:20px; height:20px; flex:0 0 auto; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round}
 .nav-item:hover{background:var(--teal-xl); color:var(--teal-d)}
 .nav-item.active{background:var(--teal-l); color:var(--teal-d); font-weight:700; border-inline-start-color:var(--teal)}
+.grp-badge{display:inline-flex;align-items:center;margin-inline-start:8px;padding:2px 9px;border-radius:999px;background:#d64545;color:#fff;font-size:11.5px;font-weight:700;vertical-align:middle}
+.nav-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-inline-start:6px;border-radius:999px;background:#d64545;color:#fff;font-size:11px;font-weight:800;vertical-align:middle}
 .nav-item.nav-primary{background:var(--teal); color:#fff; font-weight:800; font-size:15.5px; box-shadow:0 3px 10px rgba(20,58,74,.25); margin-bottom:4px}
 .nav-item.nav-primary svg{stroke-width:2.2}
 .nav-item.nav-primary:hover{background:var(--teal-d); color:#fff}
@@ -339,7 +341,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <button data-view="map" class="nav-item"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg> מפת התמצאות</button>
       <button data-view="reports" class="nav-item"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg> דוחות</button>
       <button data-view="terms" class="nav-item"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg> תקנון</button>
-      <button data-view="settings" class="nav-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H3a2 2 0 0 1 0-4h.1A1.6 1.6 0 0 0 4.2 7.5l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3 1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8 1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg> הגדרות</button>
+      <button data-view="settings" class="nav-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H3a2 2 0 0 1 0-4h.1A1.6 1.6 0 0 0 4.2 7.5l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3 1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8 1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg> הגדרות<span class="nav-badge hidden" id="settingsBadge"></span></button>
       <button data-view="guide" class="nav-item"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 8h6M8 12h8M8 16h5"/></svg> מדריך לספרן</button>
     </nav>
     <div class="side-logo"><img id="libLogo" class="side-logo-img" alt="לוגו ספריית דבורה עומר" title="חזרה לעמוד הראשי"></div>
@@ -645,7 +647,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
     </div>
 
     <div class="sgroup">
-      <button type="button" class="sgh" onclick="toggleSettingsGroup(this)"><span>🗂 נתונים ומשתמשים</span><span class="sgchev">▾</span></button>
+      <button type="button" class="sgh" onclick="toggleSettingsGroup(this)"><span>🗂 נתונים ומשתמשים<span class="grp-badge hidden" id="dataGroupBadge">עדכון הורים ממתין</span></span><span class="sgchev">▾</span></button>
       <div class="sgb">
       <div class="card" style="margin-bottom:16px">
       <div class="row" style="justify-content:space-between; align-items:center">
@@ -3145,7 +3147,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 129';
+const APP_VERSION='גרסה 29.6.2026 · 131';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3181,6 +3183,9 @@ if(typeof window!=='undefined'){
   setTimeout(()=>checkForUpdate(true),20000);
   setInterval(()=>checkForUpdate(false),600000);   // כל 10 דקות
   document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible')checkForUpdate(false); });
+  setTimeout(()=>{ if(typeof updatePendingBadge==='function')updatePendingBadge(); },3000);
+  setInterval(()=>{ if(typeof updatePendingBadge==='function')updatePendingBadge(); },120000); // בדיקת עדכוני הורים כל 2 דק'
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&typeof updatePendingBadge==='function')updatePendingBadge(); });
 }
 (function(){['libLogo','libLogoBig'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=LIB_LOGO;});const sch=document.getElementById('schoolLogoLogin');if(sch)sch.src=SCHOOL_LOGO;const sl=document.getElementById('libLogo');if(sl)sl.addEventListener('click',()=>go('shelf'));})();
 
@@ -3219,7 +3224,14 @@ function setupTabGuard(){
 }
 function cloudShowLogin(){ document.body.classList.add('locked'); const o=document.getElementById('cloudLogin'); if(o)o.classList.remove('hidden'); cloudStatusRender(); }
 function cloudHideLogin(){ document.body.classList.remove('locked'); const o=document.getElementById('cloudLogin'); if(o)o.classList.add('hidden'); }
-function cloudReRender(){ paintCount(); try{go(CUR||'shelf');}catch(e){renderShelf();} }
+function cloudReRender(){ paintCount(); try{go(CUR||'shelf');}catch(e){renderShelf();} if(typeof updatePendingBadge==='function')updatePendingBadge(); }
+async function updatePendingBadge(){
+  const el=document.getElementById('settingsBadge'); if(!el)return;
+  const gb=document.getElementById('dataGroupBadge');
+  if(!cloudOn||!supa||cloudRole!=='admin'){ el.classList.add('hidden'); if(gb)gb.classList.add('hidden'); return; }
+  try{ const {data,error}=await supa.from('parent_updates').select('id').eq('status','pending'); if(error)throw error; const n=(data||[]).length; if(n>0){ el.textContent=n; el.classList.remove('hidden'); if(gb){gb.textContent=n>1?('עדכוני הורים ממתינים · '+n):'עדכון הורים ממתין';gb.classList.remove('hidden');} } else { el.classList.add('hidden'); if(gb)gb.classList.add('hidden'); } }
+  catch(e){ el.classList.add('hidden'); if(gb)gb.classList.add('hidden'); }
+}
 
 async function cloudLoad(){
   const {data,error}=await supa.from('library_state').select('data,updated_at').eq('id',1).maybeSingle();
@@ -3799,6 +3811,8 @@ async function renderParentUpdates(){
   let rows=[]; try{ const {data,error}=await supa.from('parent_updates').select('*').eq('status','pending').order('created_at',{ascending:false}); if(error)throw error; rows=data||[]; }
   catch(e){ box.innerHTML='<p class="muted">טעינת הבקשות נכשלה (ודאו שהטבלה parent_updates קיימת).</p>'; return; }
   const badge=document.getElementById('parentUpdatesCount'); if(badge)badge.textContent=rows.length?('('+rows.length+')'):'';
+  const nb=document.getElementById('settingsBadge'); if(nb){ if(rows.length){nb.textContent=rows.length;nb.classList.remove('hidden');}else nb.classList.add('hidden'); }
+  const gb=document.getElementById('dataGroupBadge'); if(gb){ if(rows.length){gb.textContent=rows.length>1?('עדכוני הורים ממתינים · '+rows.length):'עדכון הורים ממתין';gb.classList.remove('hidden');}else gb.classList.add('hidden'); }
   if(!rows.length){ box.innerHTML='<p class="muted">אין בקשות עדכון ממתינות.</p>'; return; }
   box.innerHTML=rows.map(r=>{
     const c=r.changes||{}; const who=(DB.students||[]).filter(s=>(s.parentEmail||'').toLowerCase()===r.email||(s.parentEmail2||'').toLowerCase()===r.email);
@@ -3823,12 +3837,12 @@ window.parentUpdateApprove=async function(rid){
     if(c.email && c.email.toLowerCase()!==email){ try{ const {data:cc}=await supa.from('parent_codes').select('code').eq('email',email).maybeSingle(); if(cc&&cc.code){ await supa.from('parent_codes').upsert({email:c.email.toLowerCase(),code:cc.code,updated_at:new Date().toISOString()}); } }catch(e){} }
     await supa.from('parent_updates').update({status:'approved',handled_at:new Date().toISOString()}).eq('id',rid);
     cloudForceNextSave=true; save(); logAct('data',`אישור עדכון פרטי הורה (${n} תלמידים)`);
-    toast('העדכון אושר והוחל','ok'); renderParentUpdates();
+    toast('העדכון אושר והוחל','ok'); renderParentUpdates(); updatePendingBadge();
   }catch(e){ toast('האישור נכשל','err'); }
 };
 window.parentUpdateReject=async function(rid){
   if(!supa)return;
-  try{ await supa.from('parent_updates').update({status:'rejected',handled_at:new Date().toISOString()}).eq('id',rid); toast('הבקשה נדחתה','ok'); renderParentUpdates(); }
+  try{ await supa.from('parent_updates').update({status:'rejected',handled_at:new Date().toISOString()}).eq('id',rid); toast('הבקשה נדחתה','ok'); renderParentUpdates(); updatePendingBadge(); }
   catch(e){ toast('הדחייה נכשלה','err'); }
 };
 
