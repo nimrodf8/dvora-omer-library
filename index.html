@@ -3039,7 +3039,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 112';
+const APP_VERSION='גרסה 29.6.2026 · 113';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3636,13 +3636,15 @@ window.parentCodeManage=function(id){
   async function refresh(){
     let code=null; try{ const {data}=await supa.from('parent_codes').select('code').eq('email',email).maybeSingle(); code=data?data.code:null; }catch(e){}
     const link=parentLink(); const body=document.getElementById('pcmBody'); if(!body)return;
+    const canSee=canSeeParentContact();
+    const emailShow=canSee?esc(email):'<span style="color:#2e9a4f">✓ הוזן (מוסתר)</span>';
     body.innerHTML=`
-      <p class="muted" style="margin:0 0 6px">מייל ההורה: <b>${esc(email)}</b></p>
+      <p class="muted" style="margin:0 0 6px">מייל ההורה: <b>${emailShow}</b></p>
       <div class="kv"><b>קוד גישה</b><span style="font-size:22px;font-weight:800;letter-spacing:.15em;color:var(--teal-d)">${code?esc(code):'— טרם הונפק —'}</span></div>
       <p class="muted" style="margin:8px 0">ההורה נכנס לאזור ההורים עם המייל והקוד. הקוד משותף לכל ילדי המשפחה עם אותו מייל.</p>
       <div class="row" style="flex-wrap:wrap;gap:8px">
         <button class="btn sm" id="pcmGen">${code?'רענון קוד':'הנפקת קוד'}</button>
-        <button class="btn ghost sm" id="pcmCopy" ${code?'':'disabled'}>העתקת קישור + קוד</button>
+        <button class="btn ghost sm" id="pcmCopy" ${code?'':'disabled'}>${canSee?'העתקת קישור + קוד':'העתקת קישור + קוד (ללא מייל)'}</button>
         <button class="btn ghost sm" id="pcmMail" ${code?'':'disabled'}>שליחת הקוד למייל ההורה</button>
       </div>
       <div id="pcmMsg" class="muted" style="margin-top:8px"></div>`;
@@ -3651,7 +3653,7 @@ window.parentCodeManage=function(id){
       try{ const {error}=await supa.from('parent_codes').upsert({email,code:nc,updated_at:new Date().toISOString()}); if(error)throw error; logAct('data','הנפקת קוד אזור הורים'); toast('הקוד עודכן','ok'); refresh(); }
       catch(e){ toast('שמירת הקוד נכשלה','err'); }
     };
-    document.getElementById('pcmCopy').onclick=()=>{ try{navigator.clipboard.writeText(`אזור ההורים של ספריית דבורה עומר:\n${link}\nמייל: ${email}\nקוד: ${code}`);}catch(e){} document.getElementById('pcmMsg').textContent='הקישור והקוד הועתקו ✓'; };
+    document.getElementById('pcmCopy').onclick=()=>{ const txt=canSee?`אזור ההורים של ספריית דבורה עומר:\n${link}\nמייל: ${email}\nקוד: ${code}`:`אזור ההורים של ספריית דבורה עומר:\n${link}\nהתחברו עם מייל ההורה הרשום והקוד: ${code}`; try{navigator.clipboard.writeText(txt);}catch(e){} document.getElementById('pcmMsg').textContent='הועתק ✓'; };
     document.getElementById('pcmMail').onclick=async()=>{
       const msg=`שלום,\nלכניסה לאזור ההורים של ספריית בית הספר דבורה עומר:\n${link}\nהתחברו עם המייל הזה ועם הקוד: ${code}\n\nבברכה, צוות הספרייה`;
       try{ await cloudSendNotification({to:[email],subject:'קוד גישה לאזור ההורים — ספריית דבורה עומר',message:msg,type:'generic',studentId:s.id}); document.getElementById('pcmMsg').textContent='נשלח למייל ההורה ✓'; }
