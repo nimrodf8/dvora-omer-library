@@ -1762,7 +1762,7 @@ function studentPage(id){
     })()}
     ${s.isTeacher?'':`<div class="kv"><b>תקנון</b><span>${s.termsSigned?`<span style="color:#2e9a4f">✓ נחתם${s.termsSignedAt?' · '+new Date(s.termsSignedAt).toLocaleDateString('he-IL'):''}${s.termsSignedBy?' · '+esc(s.termsSignedBy):''}</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',false)">בטל פתיחת תיק</button>`:`<span style="color:#b5651d">טרם נחתם — התיק סגור להשאלה</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',true)">סמן כחתום ידנית</button>`}</span></div>
     <div class="kv"><b>חתימת הורה</b><span><button class="btn sm" onclick="_sendSignMenu('${s.id}')">✍ שליחת תקנון לחתימה</button>${s.termsSigned?' <span class="muted">כבר נחתם — אפשר לשלוח שוב</span>':''}</span></div>
-    <div class="kv"><b>אזור ההורים</b><span id="pcodeShow_${s.id}" style="font-weight:800;letter-spacing:.12em;color:var(--teal-d)">…</span> <button class="btn ghost sm" onclick="parentCodeManage('${s.id}')">🔑 ניהול קוד</button></div>`}
+    ${cloudRole==='admin'?`<div class="kv"><b>אזור ההורים</b><span id="pcodeShow_${s.id}" style="font-weight:800;letter-spacing:.12em;color:var(--teal-d)">…</span> <button class="btn ghost sm" onclick="parentCodeManage('${s.id}')">🔑 ניהול קוד</button></div>`:''}`}
     ${s.notifyConsent?'<div class="kv"><b>הודעות</b><span style="color:#2e9a4f">✓ ההורה אישר קבלת הודעות על השאלה ותזכורות החזרה</span></div>':''}
     ${sibHtml}
     <h3 style="color:var(--teal-d);font-size:17px;margin:16px 0 6px">ספרים פתוחים (${open.length})</h3>
@@ -1777,7 +1777,7 @@ function studentPage(id){
       <button class="btn danger sm" style="margin-inline-start:auto" onclick="delStudent('${s.id}')">🗑 מחיקה לצמיתות</button>
     </div>
   </div>`);
-  if(!s.isTeacher && typeof parentCodeFill==='function') parentCodeFill(s);
+  if(!s.isTeacher && cloudRole==='admin' && typeof parentCodeFill==='function') parentCodeFill(s);
 }
 window.closeStudentFile=function(id){
   const s=DB.students.find(x=>x.id===id);if(!s)return;
@@ -3039,7 +3039,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 113';
+const APP_VERSION='גרסה 29.6.2026 · 114';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3628,6 +3628,7 @@ async function parentCodeFill(s){
   catch(e){ span.textContent='—'; }
 }
 window.parentCodeManage=function(id){
+  if(cloudRole!=='admin'){ toast('ניהול קוד הורה זמין למנהל/ת בלבד','err'); return; }
   const s=DB.students.find(x=>x.id===id); if(!s)return;
   const email=(s.parentEmail||'').trim().toLowerCase();
   if(!email){ toast('אין מייל הורה בכרטיס — הוסיפו מייל כדי להנפיק קוד','err'); return; }
