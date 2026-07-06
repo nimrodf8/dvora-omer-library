@@ -411,6 +411,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <label class="fld" style="margin:0"><span>כיתה</span><select class="inp" id="studClass"><option value="">כל הכיתות</option></select></label>
       <label class="fld" style="margin:0"><span>הצג</span><select class="inp" id="studFilter">
         <option value="active">פעילים</option><option value="past">תלמידי עבר (בוגרים / לא פעילים)</option><option value="all">הכל</option></select></label>
+      <label class="fld" style="margin:0"><span>מיון</span><select class="inp" id="studSortBy"><option value="first">לפי שם פרטי</option><option value="last">לפי שם משפחה</option></select></label>
     </div>
     <div id="studentsList"></div>
   </section>
@@ -1503,6 +1504,7 @@ function markLost(bookId,itemId,fromScan){const b=DB.books.find(x=>x.id===bookId
 /* ============ STUDENTS ============ */
 $('#newStudentBtn').addEventListener('click',()=>newStudent());
 $('#studSearch').addEventListener('input',renderStudents);$('#studFilter').addEventListener('change',renderStudents);
+if($('#studSortBy'))$('#studSortBy').addEventListener('change',renderStudents);
 function resetStudentsSearch(){ const s=$('#studSearch'); if(s)s.value=''; ['#studFilter','#studClass'].forEach(x=>{const el=$(x);if(el)el.selectedIndex=0;}); const c=$('#studSearchClear'); if(c)c.classList.remove('show'); }
 (function(){ const inp=$('#studSearch'), btn=$('#studSearchClear'); if(inp&&btn){ const upd=()=>btn.classList.toggle('show',!!inp.value); inp.addEventListener('input',upd); btn.addEventListener('click',()=>{ inp.value=''; upd(); renderStudents(); inp.focus(); }); upd(); } })();
 $('#studClass').addEventListener('change',renderStudents);
@@ -1513,7 +1515,7 @@ function studentRow(s){
   const sib=siblingsOf(s).length;
   const tag=s.isTeacher?'<span class="tag" style="background:var(--orange-l);border-color:#f6d4b0;color:var(--orange-d)">מורה</span>':s.graduated?'<span class="tag lost">בוגר/עבר חט״ב</span>':(!s.active?'<span class="tag" style="background:#eee;border-color:#ddd;color:#777">לא פעיל</span>':'');
   const signBadge=s.isTeacher?'':(s.termsSigned?'<span class="tag" style="background:#e7f6ec;border-color:#bfe6cc;color:#2e7d46">תקנון ✓</span>':'<span class="tag" style="background:#fff3e0;border-color:#ffe0b2;color:#b5651d">ללא תקנון</span>');
-  return `<div class="litem"><div class="cover" style="font-size:18px;cursor:pointer" onclick="studentPage('${s.id}')">${esc(s.firstName[0]||'')}</div><div class="meta"><b style="cursor:pointer" onclick="studentPage('${s.id}')">${esc(s.firstName+' '+s.lastName)}</b><small>${tag?tag+' · ':''}${signBadge?signBadge+' · ':''}הורה: ${esc(s.parentName||'—')}${s.parentPhone?(canSeeParentContact()?' · '+esc(s.parentPhone):' · ☎︎✓'):''}${sib?' · 👨‍👩‍👧 '+sib+(sib>1?' אחים':' אח/אחות'):''}${open?' · '+open+' ספרים פתוחים':''}</small></div><div class="actions"><button class="btn ghost sm" onclick="studentPage('${s.id}')">תיק</button><button class="btn ghost sm" onclick="newStudent(null,'${s.id}')">עריכה</button></div></div>`;
+  return `<div class="litem"><div class="cover" style="font-size:18px;cursor:pointer" onclick="studentPage('${s.id}')">${esc((($('#studSortBy')&&$('#studSortBy').value)==='last'?(s.lastName||s.firstName):s.firstName)[0]||'')}</div><div class="meta"><b style="cursor:pointer" onclick="studentPage('${s.id}')">${esc(s.firstName+' '+s.lastName)}</b><small>${tag?tag+' · ':''}${signBadge?signBadge+' · ':''}הורה: ${esc(s.parentName||'—')}${s.parentPhone?(canSeeParentContact()?' · '+esc(s.parentPhone):' · ☎︎✓'):''}${sib?' · 👨‍👩‍👧 '+sib+(sib>1?' אחים':' אח/אחות'):''}${open?' · '+open+' ספרים פתוחים':''}</small></div><div class="actions"><button class="btn ghost sm" onclick="studentPage('${s.id}')">תיק</button><button class="btn ghost sm" onclick="newStudent(null,'${s.id}')">עריכה</button></div></div>`;
 }
 function renderStudents(){
   fillStudClass();
@@ -1522,7 +1524,8 @@ function renderStudents(){
   if(f==='active')list=list.filter(s=>s.active&&!s.graduated); if(f==='past')list=list.filter(s=>s.graduated||!s.active);
   if(fc)list=list.filter(s=>(s.grade+'|'+s.classLabel)===fc);
   if(q)list=list.filter(s=>[s.firstName,s.lastName,gradeHeb(s.grade)+s.classLabel,s.parentName].join(' ').toLowerCase().includes(q));
-  list.sort((a,b)=>a.grade-b.grade||cmp(a.classLabel,b.classLabel)||(a.isTeacher-b.isTeacher)||cmp(a.lastName,b.lastName)||cmp(a.firstName,b.firstName));
+  const _sortBy=($('#studSortBy')&&$('#studSortBy').value)||'first';
+  list.sort((a,b)=>a.grade-b.grade||cmp(a.classLabel,b.classLabel)||(a.isTeacher-b.isTeacher)||(_sortBy==='last'?(cmp(a.lastName,b.lastName)||cmp(a.firstName,b.firstName)):(cmp(a.firstName,b.firstName)||cmp(a.lastName,b.lastName))));
   // group by class
   const groups={};list.forEach(s=>{const k=s.grade+'|'+s.classLabel;(groups[k]=groups[k]||[]).push(s);});
   const keys=Object.keys(groups).sort((a,b)=>{const[ga,la]=a.split('|'),[gb,lb]=b.split('|');return (+ga)-(+gb)||cmp(la,lb);});
@@ -2295,10 +2298,24 @@ async function renderUsers(){
     return `<div class="litem"><div class="meta"><b>${esc(u.email||'—')}</b>${me?' <span class="tag">אני</span>':''}<small>${u.role==='admin'?'מנהל/ת':'ספרן/ית'} · כניסה אחרונה: ${last}</small></div><div class="actions">
       <button class="btn ghost sm" onclick="userSetRole('${u.id}','${u.role==='admin'?'librarian':'admin'}')">${u.role==='admin'?'הפוך לספרן/ית':'הפוך למנהל/ת'}</button>
       <button class="btn ghost sm" onclick="userResetPw('${u.id}','${esc(u.email||'')}')">איפוס סיסמה</button>
+      <button class="btn ghost sm" onclick="userResendLogin('${u.id}','${esc(u.email||'')}')">📧 שלח פרטי התחברות</button>
       ${me?'':`<button class="btn danger sm" onclick="userDelete('${u.id}','${esc(u.email||'')}')">מחיקה</button>`}
     </div></div>`;
   }).join('')+'</div>';
 }
+async function sendLoginEmail(email,password){
+  const link=location.origin+location.pathname;
+  const msg=`שלום,\nנפתח עבורך חשבון במערכת ניהול ספריית בית הספר ע"ש דבורה עומר.\n\nכניסה למערכת: ${link}\nאימייל: ${email}\nסיסמה: ${password}\n\nמומלץ להתחבר ולעדכן סיסמה אישית. אם לא אתם ביקשתם — התעלמו מהודעה זו.\n\nבברכה, צוות ספריית דבורה עומר`;
+  await cloudSendNotification({to:[email],subject:'פרטי התחברות — מערכת ספריית דבורה עומר',message:msg,type:'generic'});
+}
+function _genPass(){ return 'Lib'+Math.floor(1000+Math.random()*9000)+String.fromCharCode(97+Math.floor(Math.random()*26)); }
+window.userResendLogin=function(id,email){
+  confirmAction({title:'שליחת פרטי התחברות',message:`לשלוח ל-${email} סיסמה חדשה + קישור למערכת? הסיסמה הקודמת תוחלף (לא ניתן לשלוח את הקודמת).`,okLabel:'צור ושלח'},async()=>{
+    const np=_genPass();
+    try{ await callUserFn({action:'resetPassword',id,password:np}); await sendLoginEmail(email,np); logAct('data',`שליחת פרטי התחברות חוזרת: ${email}`); toast('נשלחו פרטי התחברות חדשים למייל ✓','ok'); }
+    catch(e){ toast('השליחה נכשלה: '+e.message,'err'); }
+  });
+};
 window.userSetRole=function(id,role){
   confirmAction({title:'שינוי תפקיד',message:`לשנות את התפקיד ל${role==='admin'?'מנהל/ת':'ספרן/ית'}? (ייכנס לתוקף בהתחברות הבאה של המשתמש)`,okLabel:'שנה תפקיד'},async()=>{
     try{ await callUserFn({action:'setRole',id,role}); logAct('data',`שינוי תפקיד משתמש ל-${role}`); toast('התפקיד עודכן','ok'); renderUsers(); }
@@ -2325,7 +2342,10 @@ $('#nuCreate')&&$('#nuCreate').addEventListener('click',async()=>{
   if(!email||!pass){toast('מלאו אימייל וסיסמה','err');return;}
   if(pass.length<6){toast('הסיסמה חייבת לפחות 6 תווים','err');return;}
   const btn=$('#nuCreate'); btn.disabled=true; btn.textContent='מקים…';
-  try{ await callUserFn({action:'create',email,password:pass,role}); logAct('data',`הקמת משתמש: ${email} (${role})`); toast('המשתמש נוצר ✓','ok'); $('#nuEmail').value='';$('#nuPass').value=''; renderUsers(); }
+  try{ await callUserFn({action:'create',email,password:pass,role}); logAct('data',`הקמת משתמש: ${email} (${role})`);
+    let mailed=false; try{ await sendLoginEmail(email,pass); mailed=true; }catch(e){}
+    toast(mailed?'המשתמש נוצר ופרטי ההתחברות נשלחו למייל ✓':'המשתמש נוצר ✓ (שליחת המייל נכשלה — השתמשו ב"שלח פרטי התחברות")', mailed?'ok':'err');
+    $('#nuEmail').value='';$('#nuPass').value=''; renderUsers(); }
   catch(e){ toast('הקמה נכשלה: '+e.message,'err'); }
   finally{ btn.disabled=false; btn.textContent='➕ הקם'; }
 });
@@ -2653,7 +2673,7 @@ function renderReports(){
   let copies=0,out=0,lost=0; DB.books.forEach(b=>itemsOf(b).forEach(it=>{copies++;if(it.status==='out')out++;if(it.status==='lost')lost++;}));
   const over60=defs[0].rows.length, overdue=defs[1].rows.length;
   const studs=DB.students.filter(s=>s.active&&!s.isTeacher).length;
-  const unsigned=DB.students.filter(s=>!s.isTeacher&&!s.graduated&&!s.termsSigned).length;
+  const unsigned=DB.students.filter(s=>s.active&&!s.isTeacher&&!s.graduated&&!s.termsSigned).length;
   const stats=[
     {v:DB.books.length,l:'כותרים'},{v:copies,l:'עותקים'},{v:out,l:'מושאלים כעת'},
     {v:overdue,l:'באיחור',warn:overdue>0},{v:over60,l:'מעל חודשיים',warn:over60>0},
@@ -3039,7 +3059,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 115';
+const APP_VERSION='גרסה 29.6.2026 · 121';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3491,13 +3511,22 @@ function ppRenderLogin(msg){
     <button class="pp-btn" id="ppLoginBtn">כניסה לאזור האישי</button>
     <div class="pp-links">
       <a id="ppReset">שכחתם את הקוד? שִלחו לי קוד חדש למייל</a>
-      <a id="ppForgotMail">לא זוכרים איזה מייל רשמתם? פנו לספרייה</a>
+      <a id="ppForgotMail">לא זוכרים איזה מייל רשמתם? פנו לספרייה <span style="color:#8A8178;font-weight:400;font-size:12.5px">(פתיחת Gmail מהירה — בטלפון)</span></a>
     </div>
   </div></div>`;
   document.getElementById('ppLoginBtn').addEventListener('click',ppLogin);
   document.getElementById('ppCode').addEventListener('keydown',e=>{if(e.key==='Enter')ppLogin();});
   document.getElementById('ppReset').addEventListener('click',ppReset);
-  document.getElementById('ppForgotMail').addEventListener('click',()=>{location.href='mailto:'+((DB.settings&&DB.settings.supportEmail)||'dvoraomerlib@gmail.com')+'?subject='+encodeURIComponent('שחזור מייל לאזור ההורים')+'&body='+encodeURIComponent('שלום, איני זוכר/ת באיזו כתובת מייל נרשמתי לאזור ההורים. שם ההורה: ______ , שם הילד/ה והכיתה: ______ . אשמח שתעדכנו אותי. תודה!');});
+  document.getElementById('ppForgotMail').addEventListener('click',()=>{
+    const lib=((DB.settings&&DB.settings.supportEmail)||'dvoraomerlib@gmail.com');
+    const err=document.getElementById('ppErr'); err.style.color='#0A6E70';
+    err.innerHTML=`פנו לספרייה בכתובת <b>${_ppEsc(lib)}</b> וציינו את שם הילד/ה והכיתה כדי לשחזר את המייל הרשום.
+      <span style="display:flex;gap:6px;justify-content:center;margin-top:8px">
+      <button type="button" class="pp-btn" style="width:auto;padding:7px 12px;font-size:13px" id="ppMailOpen">פתיחת אפליקציית מייל</button>
+      <button type="button" class="pp-btn apricot" style="width:auto;padding:7px 12px;font-size:13px" id="ppMailCopy">העתקת כתובת הספרייה</button></span>`;
+    document.getElementById('ppMailOpen').onclick=()=>{ try{location.href='mailto:'+lib+'?subject='+encodeURIComponent('שחזור מייל לאזור ההורים')+'&body='+encodeURIComponent('שלום, איני זוכר/ת באיזו כתובת מייל נרשמתי לאזור ההורים. שם ההורה: ______ , שם הילד/ה והכיתה: ______ . אשמח שתעדכנו אותי. תודה!');}catch(e){} };
+    document.getElementById('ppMailCopy').onclick=()=>{ try{navigator.clipboard.writeText(lib);}catch(e){} const b=document.getElementById('ppMailCopy'); b.textContent='הועתק ✓'; };
+  });
 }
 async function ppLogin(){
   const email=(document.getElementById('ppEmail').value||'').trim().toLowerCase();
