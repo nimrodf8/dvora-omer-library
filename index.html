@@ -762,18 +762,18 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 
 <div id="parentPage" class="hidden"></div>
 <style>
-#parentPage{position:fixed;inset:0;z-index:100;overflow:auto;background:#FBF7F0;color:#2A2620;font-family:'Rubik',sans-serif;
-  background-image:radial-gradient(circle at 12% 8%,#fff 0,transparent 42%),radial-gradient(circle at 92% 0%,#F7EFE1 0,transparent 40%)}
+#parentPage{position:fixed;inset:0;z-index:100;overflow:auto;background:#f4f7f8;color:#1d2a30;font-family:'Rubik',sans-serif;
+  background-image:radial-gradient(circle at 12% 6%,#ffffff 0,transparent 45%),radial-gradient(circle at 90% 0%,#e7f4f4 0,transparent 42%)}
 #parentPage .pp-wrap{max-width:940px;margin:0 auto;padding:0 18px}
 #parentPage .pp-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-#parentPage .pp-card{background:#fff;width:100%;max-width:420px;border-radius:22px;box-shadow:0 6px 22px rgba(70,55,30,.09);border:1px solid #E7DECE;padding:34px 30px;text-align:center;position:relative;overflow:hidden}
+#parentPage .pp-card{background:#fff;width:100%;max-width:420px;border-radius:16px;box-shadow:0 6px 22px rgba(20,58,74,.10);border:1px solid #e2eaec;padding:34px 30px;text-align:center;position:relative;overflow:hidden}
 #parentPage .pp-card:before{content:"";position:absolute;inset-inline:0;top:0;height:6px;background:linear-gradient(90deg,#0D8B8D,#E8853B,#5E9E52)}
-#parentPage .pp-crest{width:60px;height:60px;border-radius:16px;margin:6px auto 12px;display:flex;align-items:center;justify-content:center;background:#E4F0EF;font-size:30px;border:1px solid #E7DECE}
+#parentPage .pp-crest{display:flex;align-items:center;justify-content:center;gap:12px;margin:0 auto 14px}#parentPage .pp-crest img{height:52px;width:auto;object-fit:contain}#parentPage .pp-crest .pp-lib{height:60px}
 #parentPage h1{margin:0 0 2px;font-size:25px;font-weight:800;color:#0A6E70;font-family:inherit}
-#parentPage .pp-sub{color:#8A8178;margin:0 0 22px;font-size:15px}
+#parentPage .pp-sub{color:#62757d;margin:0 0 22px;font-size:15px}
 #parentPage .pp-fld{text-align:start;margin:0 0 14px}
 #parentPage .pp-fld label{display:block;font-weight:700;font-size:14px;margin:0 0 5px}
-#parentPage .pp-fld input{width:100%;padding:12px 14px;border:1.5px solid #E7DECE;border-radius:12px;font-size:16px;font-family:inherit;background:#fff}
+#parentPage .pp-fld input{width:100%;padding:12px 14px;border:1.5px solid #e2eaec;border-radius:12px;font-size:16px;font-family:inherit;background:#fff}
 #parentPage .pp-fld input:focus{outline:none;border-color:#0D8B8D}
 #parentPage .pp-code{letter-spacing:.5em;text-align:center;font-weight:700;font-size:22px}
 #parentPage .pp-btn{border:none;border-radius:12px;padding:13px 18px;font-size:16px;font-weight:700;background:#0D8B8D;color:#fff;width:100%}
@@ -786,50 +786,50 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 #parentPage .pp-top{background:#0A6E70;color:#fff;position:sticky;top:0;z-index:20}
 #parentPage .pp-top .pp-wrap{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;gap:12px}
 #parentPage .pp-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
-#parentPage .pp-brand .dot{width:34px;height:34px;border-radius:10px;background:#ffffff22;display:flex;align-items:center;justify-content:center;font-size:18px}
+#parentPage .pp-brand img{height:30px;width:auto;object-fit:contain;background:#fff;border-radius:8px;padding:3px}
 #parentPage .pp-logout{background:#ffffff1f;color:#fff;border:none;border-radius:9px;padding:7px 12px;font-size:13.5px;font-weight:600;cursor:pointer}
 #parentPage .pp-hero{padding:26px 0 8px}
 #parentPage .pp-hero h2{margin:0 0 4px;font-size:26px;font-weight:800}
-#parentPage .pp-hero p{margin:0;color:#8A8178}
+#parentPage .pp-hero p{margin:0;color:#62757d}
 #parentPage .pp-activity{margin:16px 0 4px;background:linear-gradient(100deg,#E8853B,#F0A85E);color:#fff;border-radius:16px;padding:14px 18px;display:flex;gap:12px;align-items:center}
 #parentPage .pp-tabs{display:flex;gap:8px;margin:22px 0 20px;flex-wrap:wrap}
-#parentPage .pp-tab{background:#fff;border:1.5px solid #E7DECE;border-radius:999px;padding:9px 18px;font-weight:700;font-size:15px;color:#8A8178;cursor:pointer}
+#parentPage .pp-tab{background:#fff;border:1.5px solid #e2eaec;border-radius:999px;padding:9px 18px;font-weight:700;font-size:15px;color:#62757d;cursor:pointer}
 #parentPage .pp-tab.on{background:#0D8B8D;color:#fff;border-color:#0D8B8D}
-#parentPage .pp-kid{background:#fff;border:1px solid #E7DECE;border-radius:18px;padding:18px 20px;margin-bottom:18px}
+#parentPage .pp-kid{background:#fff;border:1px solid #e2eaec;border-radius:18px;padding:18px 20px;margin-bottom:18px}
 #parentPage .pp-kid-head{display:flex;align-items:center;gap:14px;margin-bottom:6px}
 #parentPage .pp-av{width:46px;height:46px;border-radius:13px;background:#E4F0EF;color:#0A6E70;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px}
 #parentPage .pp-kid-head h3{margin:0;font-size:21px;font-weight:700}
-#parentPage .pp-cls{color:#8A8178;font-size:14px}
-#parentPage .pp-lbl{font-size:12.5px;font-weight:700;color:#8A8178;margin:16px 0 8px;display:flex;align-items:center;gap:8px}
-#parentPage .pp-lbl:after{content:"";flex:1;height:1px;background:#E7DECE}
-#parentPage .pp-loan{display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px dashed #E7DECE}
+#parentPage .pp-cls{color:#62757d;font-size:14px}
+#parentPage .pp-lbl{font-size:12.5px;font-weight:700;color:#62757d;margin:16px 0 8px;display:flex;align-items:center;gap:8px}
+#parentPage .pp-lbl:after{content:"";flex:1;height:1px;background:#e2eaec}
+#parentPage .pp-loan{display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px dashed #e2eaec}
 #parentPage .pp-loan:last-child{border-bottom:none}
 #parentPage .pp-spine{width:30px;height:44px;border-radius:3px 5px 5px 3px;flex:none;box-shadow:inset -3px 0 0 rgba(0,0,0,.13)}
 #parentPage .pp-loan .info{flex:1;min-width:0}
 #parentPage .pp-loan .info .t{font-weight:700}
-#parentPage .pp-loan .info .m{font-size:13px;color:#8A8178}
+#parentPage .pp-loan .info .m{font-size:13px;color:#62757d}
 #parentPage .pp-pill{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap}
 #parentPage .pp-pill.ok{background:#E7F1E3;color:#5E9E52}
 #parentPage .pp-pill.warn{background:#FBEEDD;color:#C96A24}
 #parentPage .pp-pill.late{background:#F7E1DC;color:#C0492F}
-#parentPage .pp-pill.ret{background:#F3ECE0;color:#8A8178}
+#parentPage .pp-pill.ret{background:#eef2f4;color:#62757d}
 #parentPage .pp-histbtn{background:none;border:none;color:#0A6E70;font-weight:700;font-size:14px;padding:6px 0;cursor:pointer}
-#parentPage .pp-empty{color:#8A8178;font-size:14.5px;padding:6px 0}
+#parentPage .pp-empty{color:#62757d;font-size:14.5px;padding:6px 0}
 #parentPage .pp-search{position:relative;margin-bottom:16px}
-#parentPage .pp-search input{width:100%;padding:13px 44px 13px 16px;border:1.5px solid #E7DECE;border-radius:14px;font-size:16px;font-family:inherit;background:#fff}
+#parentPage .pp-search input{width:100%;padding:13px 44px 13px 16px;border:1.5px solid #e2eaec;border-radius:14px;font-size:16px;font-family:inherit;background:#fff}
 #parentPage .pp-search input:focus{outline:none;border-color:#0D8B8D}
-#parentPage .pp-search .mag{position:absolute;inset-inline-end:15px;top:50%;transform:translateY(-50%);color:#8A8178}
+#parentPage .pp-search .mag{position:absolute;inset-inline-end:15px;top:50%;transform:translateY(-50%);color:#62757d}
 #parentPage .pp-note{background:#E4F0EF;border-radius:12px;padding:10px 14px;font-size:14px;color:#0A6E70;margin-bottom:16px}
 #parentPage .pp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
-#parentPage .pp-book{background:#fff;border:1px solid #E7DECE;border-radius:14px;padding:14px;display:flex;gap:13px}
+#parentPage .pp-book{background:#fff;border:1px solid #e2eaec;border-radius:14px;padding:14px;display:flex;gap:13px}
 #parentPage .pp-book .cover{width:44px;height:62px;border-radius:4px 6px 6px 4px;flex:none;box-shadow:inset -3px 0 0 rgba(0,0,0,.13)}
 #parentPage .pp-book .bt{font-weight:700;font-size:15.5px;line-height:1.25}
-#parentPage .pp-book .ba{font-size:13px;color:#8A8178;margin:2px 0 8px}
-#parentPage .pp-panel{background:#fff;border:1px solid #E7DECE;border-radius:18px;padding:22px;max-width:560px}
+#parentPage .pp-book .ba{font-size:13px;color:#62757d;margin:2px 0 8px}
+#parentPage .pp-panel{background:#fff;border:1px solid #e2eaec;border-radius:18px;padding:22px;max-width:560px}
 #parentPage .pp-panel h3{margin:0 0 4px;font-size:20px}
-#parentPage .pp-lead{color:#8A8178;margin:0 0 18px;font-size:14.5px}
+#parentPage .pp-lead{color:#62757d;margin:0 0 18px;font-size:14.5px}
 #parentPage .pp-pending{background:#FBEEDD;color:#C96A24;border-radius:12px;padding:11px 14px;font-size:14px;font-weight:600;margin-top:14px}
-#parentPage .pp-foot{color:#8A8178;text-align:center;padding:30px 0 40px;font-size:13px}
+#parentPage .pp-foot{color:#62757d;text-align:center;padding:30px 0 40px;font-size:13px}
 </style>
 
 <script>
@@ -3145,7 +3145,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 126';
+const APP_VERSION='גרסה 29.6.2026 · 127';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3588,7 +3588,7 @@ function showParentPortal(){
 function ppRenderLogin(msg){
   const el=document.getElementById('parentPage');
   el.innerHTML=`<div class="pp-login"><div class="pp-card">
-    <div class="pp-crest">📚</div>
+    <div class="pp-crest"><img id="ppSchoolLogo" alt="לוגו בית הספר"><img id="ppLibLogo" class="pp-lib" alt="לוגו ספריית דבורה עומר"></div>
     <h1>אזור ההורים</h1>
     <p class="pp-sub">ספריית בית הספר ע״ש דבורה עומר</p>
     <div class="pp-fld"><label>כתובת המייל שמסרתם לספרייה</label><input id="ppEmail" type="email" placeholder="name@example.com"></div>
@@ -3601,6 +3601,7 @@ function ppRenderLogin(msg){
     </div>
   </div></div>`;
   document.getElementById('ppLoginBtn').addEventListener('click',ppLogin);
+  (function(){const a=document.getElementById('ppSchoolLogo');if(a)a.src=SCHOOL_LOGO;const b=document.getElementById('ppLibLogo');if(b)b.src=LIB_LOGO;})();
   document.getElementById('ppCode').addEventListener('keydown',e=>{if(e.key==='Enter')ppLogin();});
   document.getElementById('ppReset').addEventListener('click',ppReset);
   document.getElementById('ppForgotMail').addEventListener('click',()=>{
@@ -3644,7 +3645,7 @@ function ppRenderPortal(){
   const act=d.activity?`<div class="pp-activity"><span style="font-size:22px">🔔</span><div>${_ppEsc(d.activity)}</div></div>`:'';
   el.innerHTML=`
     <div class="pp-top"><div class="pp-wrap">
-      <div class="pp-brand"><span class="dot">📚</span> ספריית דבורה עומר</div>
+      <div class="pp-brand"><img id="ppHdrLogo" alt="ספריית דבורה עומר"> ספריית דבורה עומר</div>
       <div style="display:flex;align-items:center;gap:12px"><span style="font-size:14px;opacity:.9">${_ppEsc(d.familyName||'')}</span><button class="pp-logout" id="ppLogout">יציאה</button></div>
     </div></div>
     <div class="pp-wrap">
@@ -3686,6 +3687,7 @@ function ppRenderPortal(){
       <div class="pp-foot">ספריית בית הספר ע״ש דבורה עומר · אזור ההורים · לפניות: ${_ppEsc((DB.settings&&DB.settings.supportEmail)||'dvoraomerlib@gmail.com')}</div>
     </div>`;
   document.getElementById('ppLogout').addEventListener('click',ppLogout);
+  (function(){const h=document.getElementById('ppHdrLogo');if(h)h.src=LIB_LOGO;})();
   el.querySelectorAll('.pp-tabs .pp-tab').forEach(t=>t.addEventListener('click',()=>{
     el.querySelectorAll('.pp-tabs .pp-tab').forEach(x=>x.classList.remove('on')); t.classList.add('on');
     ['family','catalog','info'].forEach(n=>document.getElementById('ppT-'+n).classList.toggle('hidden',n!==t.dataset.t));
