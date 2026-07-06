@@ -1671,7 +1671,7 @@ function studentPage(id){
     ${(function(){ const dev=isDevUser();
       const ph=s.parentPhone?(dev?esc(s.parentPhone):'<span style="color:#2e9a4f">✓ הוזן</span>'):'—';
       const ml=(s.parentEmail||s.parentEmail2)?(dev?[s.parentEmail,s.parentEmail2].filter(Boolean).map(esc).join(' · '):'<span style="color:#2e9a4f">✓ הוזן</span>'):'—';
-      const note=dev?'':' <span class="muted" style="font-size:12px">· פרטים מלאים גלויים למנהל המפתח בלבד</span>';
+      const note='';
       return `<div class="kv"><b>טלפון הורה</b><span>${ph}</span></div><div class="kv"><b>מייל הורה</b><span>${ml}${note}</span></div>`;
     })()}
     ${s.isTeacher?'':`<div class="kv"><b>תקנון</b><span>${s.termsSigned?`<span style="color:#2e9a4f">✓ נחתם${s.termsSignedAt?' · '+new Date(s.termsSignedAt).toLocaleDateString('he-IL'):''}${s.termsSignedBy?' · '+esc(s.termsSignedBy):''}</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',false)">בטל פתיחת תיק</button>`:`<span style="color:#b5651d">טרם נחתם — התיק סגור להשאלה</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',true)">סמן כחתום ידנית</button>`}</span></div>
@@ -2943,7 +2943,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 107';
+const APP_VERSION='גרסה 29.6.2026 · 108';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
