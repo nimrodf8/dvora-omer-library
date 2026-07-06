@@ -786,7 +786,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 #parentPage .pp-top{background:#0A6E70;color:#fff;position:sticky;top:0;z-index:20}
 #parentPage .pp-top .pp-wrap{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;gap:12px}
 #parentPage .pp-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
-#parentPage .pp-brand img{height:30px;width:auto;object-fit:contain;background:#fff;border-radius:8px;padding:3px}
+#parentPage .pp-brand img{height:42px;width:auto;object-fit:contain;background:#fff;border-radius:8px;padding:3px}
 #parentPage .pp-logout{background:#ffffff1f;color:#fff;border:none;border-radius:9px;padding:7px 12px;font-size:13.5px;font-weight:600;cursor:pointer}
 #parentPage .pp-hero{padding:26px 0 8px}
 #parentPage .pp-hero h2{margin:0 0 4px;font-size:26px;font-weight:800}
@@ -3145,7 +3145,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 128';
+const APP_VERSION='גרסה 29.6.2026 · 129';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3687,7 +3687,7 @@ function ppRenderPortal(){
       <div class="pp-foot">ספריית בית הספר ע״ש דבורה עומר · אזור ההורים · לפניות: ${_ppEsc((DB.settings&&DB.settings.supportEmail)||'dvoraomerlib@gmail.com')}</div>
     </div>`;
   document.getElementById('ppLogout').addEventListener('click',ppLogout);
-  (function(){const h=document.getElementById('ppHdrLogo');if(h)h.src=LIB_LOGO;})();
+  (function(){const h=document.getElementById('ppHdrLogo');if(h)h.src=SCHOOL_LOGO;})();
   el.querySelectorAll('.pp-tabs .pp-tab').forEach(t=>t.addEventListener('click',()=>{
     el.querySelectorAll('.pp-tabs .pp-tab').forEach(x=>x.classList.remove('on')); t.classList.add('on');
     ['family','catalog','info'].forEach(n=>document.getElementById('ppT-'+n).classList.toggle('hidden',n!==t.dataset.t));
