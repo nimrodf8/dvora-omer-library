@@ -2739,7 +2739,7 @@ function renderGuide(){
 
     <div class="gv-card"><h3>7 · תלמידים</h3>
       <ul><li>${L('students','תלמידים')} — כרטיס אישי, ספרים פתוחים והיסטוריה.</li>
-      <li>פרטי ההורים מוצגים כ"✓ הוזן" לשמירת פרטיות (מלא — למנהל/ת).</li>
+      <li>פרטי ההורים מוצגים כ"✓ הוזן" לשמירת פרטיות.</li>
       <li>מיון: לפי שם פרטי (ברירת מחדל) או שם משפחה — בורר "מיון" בראש העמוד.</li>
       <li>${L('classes','כיתות')} — רשימת הכיתות והמחנכים/ות. ${L('map','מפת התמצאות')} — היכן כל קטגוריה.</li></ul>
     </div>
@@ -3145,7 +3145,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 123';
+const APP_VERSION='גרסה 29.6.2026 · 124';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
