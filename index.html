@@ -3145,7 +3145,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 124';
+const APP_VERSION='גרסה 29.6.2026 · 126';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3574,7 +3574,7 @@ const _ppCOLORS=['#0D8B8D','#E8853B','#5E9E52','#7C6BAF','#C0492F','#3B7EA8','#B
 function _ppHash(s){let h=0;s=String(s||'');for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h;}
 function _ppColor(s){return _ppCOLORS[_ppHash(s)%_ppCOLORS.length];}
 function _ppEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-let _ppData=null, _ppAuth=null;
+let _ppData=null, _ppAuth=null, _ppCatFilter='avail';
 async function ppCall(action,body){
   const res=await fetch(`${SUPA_URL}/functions/v1/parent-portal`,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`},body:JSON.stringify(Object.assign({action},body))});
   let j={}; try{j=await res.json();}catch(e){}
@@ -3639,6 +3639,7 @@ async function ppReset(){
 }
 function ppLogout(){ _ppData=null; _ppAuth=null; ppRenderLogin(); }
 function ppRenderPortal(){
+  _ppCatFilter='avail';
   const d=_ppData, el=document.getElementById('parentPage');
   const act=d.activity?`<div class="pp-activity"><span style="font-size:22px">🔔</span><div>${_ppEsc(d.activity)}</div></div>`:'';
   el.innerHTML=`
@@ -3655,7 +3656,12 @@ function ppRenderPortal(){
       </div>
       <section id="ppT-family"></section>
       <section id="ppT-catalog" class="hidden">
-        <div class="pp-note">👀 לצפייה בלבד — ההשאלה מתבצעת בספרייה בבית הספר. כאן אפשר לראות מה זמין כרגע.</div>
+        <div class="pp-note">👀 לצפייה בלבד — ההשאלה מתבצעת בספרייה בבית הספר.</div>
+        <div class="pp-catfilter" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="pp-tab on" data-f="avail">✔ זמינים</button>
+          <button class="pp-tab" data-f="out">מושאלים</button>
+          <button class="pp-tab" data-f="all">הכל</button>
+        </div>
         <div class="pp-search"><input id="ppCatQ" placeholder="חיפוש לפי שם ספר או סופר…"><span class="mag">🔍</span></div>
         <div class="pp-grid" id="ppCatGrid"></div>
       </section>
@@ -3680,13 +3686,17 @@ function ppRenderPortal(){
       <div class="pp-foot">ספריית בית הספר ע״ש דבורה עומר · אזור ההורים · לפניות: ${_ppEsc((DB.settings&&DB.settings.supportEmail)||'dvoraomerlib@gmail.com')}</div>
     </div>`;
   document.getElementById('ppLogout').addEventListener('click',ppLogout);
-  el.querySelectorAll('.pp-tab').forEach(t=>t.addEventListener('click',()=>{
-    el.querySelectorAll('.pp-tab').forEach(x=>x.classList.remove('on')); t.classList.add('on');
+  el.querySelectorAll('.pp-tabs .pp-tab').forEach(t=>t.addEventListener('click',()=>{
+    el.querySelectorAll('.pp-tabs .pp-tab').forEach(x=>x.classList.remove('on')); t.classList.add('on');
     ['family','catalog','info'].forEach(n=>document.getElementById('ppT-'+n).classList.toggle('hidden',n!==t.dataset.t));
     el.scrollTop=0;
   }));
   ppRenderFamily(); ppRenderCatalog();
   document.getElementById('ppCatQ').addEventListener('input',ppRenderCatalog);
+  el.querySelectorAll('.pp-catfilter .pp-tab').forEach(b=>b.addEventListener('click',()=>{
+    el.querySelectorAll('.pp-catfilter .pp-tab').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    _ppCatFilter=b.dataset.f; ppRenderCatalog();
+  }));
   document.getElementById('ppInfoSave').addEventListener('click',ppSubmitInfo);
   document.getElementById('ppCodeSave').addEventListener('click',ppChangeCode);
 }
@@ -3709,9 +3719,10 @@ function ppRenderFamily(){
     const cur=(k.current||[]).map(l=>{
       const late=l.left<0, warn=l.left>=0&&l.left<=5;
       const pill=late?`<span class="pp-pill late">באיחור ${-l.left} ימים</span>`:warn?`<span class="pp-pill warn">עוד ${l.left} ימים</span>`:`<span class="pp-pill ok">עוד ${l.left} ימים</span>`;
-      return `<div class="pp-loan"><span class="pp-spine" style="background:${_ppColor(l.t)}"></span><div class="info"><div class="t">${_ppEsc(l.t)}</div><div class="m">${_ppEsc(l.a||'')} · הושאל ${_ppEsc(l.borrow)} · להחזרה עד ${_ppEsc(l.due)}</div></div>${pill}</div>`;
+      const sp=l.cover?`background-image:url('${_ppEsc(l.cover)}');background-size:cover;background-position:center`:`background:${_ppColor(l.t)}`;
+      return `<div class="pp-loan"><span class="pp-spine" style="${sp}"></span><div class="info"><div class="t">${_ppEsc(l.t)}</div><div class="m">${_ppEsc(l.a||'')} · הושאל ${_ppEsc(l.borrow)} · להחזרה עד ${_ppEsc(l.due)}</div></div>${pill}</div>`;
     }).join('') || '<div class="pp-empty">אין ספרים מושאלים כרגע 👍</div>';
-    const hist=(k.history||[]).map(h=>`<div class="pp-loan"><span class="pp-spine" style="background:${_ppColor(h.t)};opacity:.55"></span><div class="info"><div class="t">${_ppEsc(h.t)}</div><div class="m">${_ppEsc(h.a||'')} · הושאל ${_ppEsc(h.borrow)} · הוחזר ${_ppEsc(h.ret)}</div></div><span class="pp-pill ret">הוחזר</span></div>`).join('');
+    const hist=(k.history||[]).map(h=>{const sp=h.cover?`background-image:url('${_ppEsc(h.cover)}');background-size:cover;background-position:center`:`background:${_ppColor(h.t)};opacity:.55`;return `<div class="pp-loan"><span class="pp-spine" style="${sp}"></span><div class="info"><div class="t">${_ppEsc(h.t)}</div><div class="m">${_ppEsc(h.a||'')} · הושאל ${_ppEsc(h.borrow)} · הוחזר ${_ppEsc(h.ret)}</div></div><span class="pp-pill ret">הוחזר</span></div>`;}).join('');
     const row=document.createElement('div'); row.className='pp-kid';
     row.innerHTML=`<div class="pp-kid-head"><div class="pp-av">${_ppEsc((k.name||'')[0]||'')}</div><div><h3>${_ppEsc(k.name)}</h3><div class="pp-cls">כיתה ${_ppEsc(k.cls||'')}${k.teacher?' · מחנך/ת '+_ppEsc(k.teacher):''}</div></div></div>
       <div class="pp-lbl">📕 מושאל כעת</div>${cur}
@@ -3724,8 +3735,10 @@ function ppRenderFamily(){
 }
 function ppRenderCatalog(){
   const q=(document.getElementById('ppCatQ').value||'').trim();
-  const rows=(_ppData.catalog||[]).filter(b=>!q||(b.t&&b.t.includes(q))||(b.a&&b.a.includes(q)));
-  document.getElementById('ppCatGrid').innerHTML=rows.map(b=>`<div class="pp-book"><span class="cover" style="background:${_ppColor(b.t)}"></span><div><div class="bt">${_ppEsc(b.t)}</div><div class="ba">${_ppEsc(b.a||'')}</div>${b.avail?'<span class="pp-pill ok">✔ זמין להשאלה</span>':'<span class="pp-pill late">מושאל כרגע</span>'}</div></div>`).join('')||'<div class="pp-empty">לא נמצאו ספרים תואמים.</div>';
+  let rows=(_ppData.catalog||[]).filter(b=>!q||(b.t&&b.t.includes(q))||(b.a&&b.a.includes(q)));
+  if(_ppCatFilter==='avail')rows=rows.filter(b=>b.avail);
+  else if(_ppCatFilter==='out')rows=rows.filter(b=>!b.avail);
+  document.getElementById('ppCatGrid').innerHTML=rows.map(b=>`<div class="pp-book">${b.cover?`<span class="cover" style="background-image:url('${_ppEsc(b.cover)}');background-size:cover;background-position:center"></span>`:`<span class="cover" style="background:${_ppColor(b.t)}"></span>`}<div><div class="bt">${_ppEsc(b.t)}</div><div class="ba">${_ppEsc(b.a||'')}</div>${b.avail?'<span class="pp-pill ok">✔ זמין להשאלה</span>':'<span class="pp-pill late">מושאל כרגע</span>'}</div></div>`).join('')||'<div class="pp-empty">לא נמצאו ספרים תואמים.</div>';
 }
 async function ppSubmitInfo(){
   const changes={name:(document.getElementById('ppName').value||'').trim(),phone:(document.getElementById('ppPhone').value||'').trim(),email:(document.getElementById('ppMail').value||'').trim()};
