@@ -3219,7 +3219,6 @@ async function injectDocxQR(zip,pngB64){
   const docName='word/document.xml';
   const docFile=zip.file(docName); if(!docFile) return false;
   let doc=await docFile.async('string');
-  if(!_docHasQR(doc)) return false;
   const rId='rIdQR8123';
   zip.file('word/media/imageQR.png',pngB64,{base64:true});
   const relName='word/_rels/document.xml.rels';
@@ -3228,7 +3227,17 @@ async function injectDocxQR(zip,pngB64){
   zip.file(relName,rels);
   const ctName='[Content_Types].xml';
   if(zip.file(ctName)){ let ct=await zip.file(ctName).async('string'); if(!/Extension="png"/i.test(ct)){ ct=ct.replace('</Types>','<Default Extension="png" ContentType="image/png"/></Types>'); zip.file(ctName,ct); } }
-  doc=_injectQRIntoXml(doc,rId);
+  if(_docHasQR(doc)){
+    doc=_injectQRIntoXml(doc,rId);   // יש {QR} בתבנית — ממקמים שם
+  } else {
+    // אין {QR} — מוסיפים QR קבוע בסוף המסמך (לפני סגירת הסקשן)
+    const drawing=_qrDrawingXml(rId);
+    const block='<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r>'+drawing+'</w:r></w:p>'
+      +'<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">לחתימה דיגיטלית — סרקו את קוד ה‑QR ובחרו את שם ילדכם/ם</w:t></w:r></w:p>';
+    const idx=doc.lastIndexOf('<w:sectPr');
+    if(idx>=0) doc=doc.slice(0,idx)+block+doc.slice(idx);
+    else doc=doc.replace('</w:body>',block+'</w:body>');
+  }
   zip.file(docName,doc);
   return true;
 }
@@ -3236,7 +3245,7 @@ function renderFormTplStatus(){
   const el=$('#formTplStatus'); if(!el)return;
   const d=DB.settings.termsFormDoc;
   const pb=$('#printTerms'); if(pb) pb.textContent=(d&&d.data)?'⬇ הורדת טופס להדפסה (Word)':'🖨 הדפסת טופס';
-  if(d&&d.data){ el.innerHTML=`📄 תבנית עיצוב פעילה: <b>${esc(d.name||'טופס.docx')}</b> — כפתור "הדפסת טופס" יוריד קובץ זה. <div class="muted" style="margin-top:6px">אפשר להשתמש בתבנית ב‑<code>{שנה}</code> (יוחלף בשנת הלימודים) וב‑<code>{QR}</code> (יוחלף בקוד QR לחתימה דיגיטלית — כתבו <code>{QR}</code> במקום הרצוי, לרוב בראש הטופס).</div> <button class="btn ghost sm" id="rmFormTpl" style="margin-top:6px">הסר תבנית</button>`;
+  if(d&&d.data){ el.innerHTML=`📄 תבנית עיצוב פעילה: <b>${esc(d.name||'טופס.docx')}</b> — כפתור "הדפסת טופס" יוריד קובץ זה. <div class="muted" style="margin-top:6px">קוד <code>{שנה}</code> יוחלף בשנת הלימודים. <b>קוד QR לחתימה דיגיטלית מתווסף אוטומטית</b> — בסוף המסמך, או במקום שבו כתבתם <code>{QR}</code> בגוף התבנית.</div> <button class="btn ghost sm" id="rmFormTpl" style="margin-top:6px">הסר תבנית</button>`;
     const rm=$('#rmFormTpl'); if(rm)rm.onclick=()=>confirmAction({title:'הסרת תבנית עיצוב',message:'להסיר את תבנית העיצוב? "הדפסת טופס" יחזור להדפסת הנוסח הרגיל.',okLabel:'הסר'},()=>{ delete DB.settings.termsFormDoc; cloudForceNextSave=true; save(); logAct('data','הסרת תבנית עיצוב לטופס תקנון'); toast('התבנית הוסרה','ok'); renderFormTplStatus(); }); }
   else { el.innerHTML='אין תבנית עיצוב — "הדפסת טופס" מדפיס את הנוסח הרגיל. אפשר להעלות קובץ Word מעוצב (.docx) דרך "קבע תבנית עיצוב".'; }
 }
@@ -3266,8 +3275,7 @@ $('#printTerms').addEventListener('click',async ()=>{
     try{
       const blob=await fillDocxYear(tpl.data,yr,qrPng);
       const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),5000);
-      if(qrPng && window._lastQrInjected===false){ toast('הטופס הורד — אך לא נמצא ‎{QR}‎ בגוף התבנית, לכן לא הוטמע קוד. הוסיפו ‎{QR}‎ בגוף המסמך.','err'); }
-      else toast(`הורד טופס לשנת ${yr} — פִתחו ב-Word והדפיסו`,'ok');
+      toast(`הורד טופס לשנת ${yr} עם קוד QR — פִתחו ב-Word והדפיסו`,'ok');
     }catch(err){
       const a=document.createElement('a'); a.href=tpl.data; a.download=name; document.body.appendChild(a); a.click(); a.remove();
       toast('הורד הטופס (לא בוצע עדכון שנה אוטומטי)','err');
@@ -3343,7 +3351,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 7.7.2026 · 151';
+const APP_VERSION='גרסה 7.7.2026 · 152';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
