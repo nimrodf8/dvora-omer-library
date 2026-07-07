@@ -448,7 +448,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
         <label class="fld" style="margin:0"><span>כיתה (אות)</span><input class="inp" id="clLabel" placeholder="1, 2, 3 או א/ב/ג"></label>
         <label class="fld" style="margin:0"><span>שם המחנך/ת</span><input class="inp" id="clTeacher" placeholder="שם מלא"></label>
       </div>
-      <label class="fld" style="margin:6px 0 0;max-width:340px"><span>מייל המחנך/ת (לא חובה — לשליחת דוח איחורים)</span><input class="inp" id="clEmail" type="email" placeholder="teacher@example.com"></label>
+      <label class="fld" style="margin:6px 0 0;max-width:340px"><span>מייל המחנך/ת (לא חובה — לשליחת דוח איחורים)</span><input class="inp" id="clTeacherEmail" type="email" placeholder="teacher@example.com"></label>
       <button class="btn sm" id="addClass" style="margin-top:6px">+ הוסף כיתה</button>
     </div>
     <div class="list" id="classList"></div>
@@ -2013,10 +2013,10 @@ $('#upStudentsFile')&&$('#upStudentsFile').addEventListener('change',ev=>{
   r.readAsText(f); ev.target.value='';
 });
 $('#addClass').addEventListener('click',()=>{
-  const g=+$('#clGrade').value,l=$('#clLabel').value.trim(),t=$('#clTeacher').value.trim(),em=($('#clEmail')?$('#clEmail').value.trim():'');
+  const g=+$('#clGrade').value,l=$('#clLabel').value.trim(),t=$('#clTeacher').value.trim(),em=($('#clTeacherEmail')?$('#clTeacherEmail').value.trim():'');
   if(!l||!t){toast('מלאו כיתה ומורה','err');return;}
   const ex=DB.classes.find(c=>c.grade==g&&c.label==l);if(ex){ex.teacher=t;ex.email=em;}else DB.classes.push({id:uid(),grade:g,label:l,teacher:t,email:em});
-  $('#clLabel').value='';$('#clTeacher').value='';if($('#clEmail'))$('#clEmail').value='';save();renderClasses();toast('נשמר','ok');
+  $('#clLabel').value='';$('#clTeacher').value='';if($('#clTeacherEmail'))$('#clTeacherEmail').value='';save();renderClasses();toast('נשמר','ok');
 });
 $('#dlGrade1Tpl')&&$('#dlGrade1Tpl').addEventListener('click',()=>{
   // שורות דוגמה (שכבה 1) — למחיקה לפני הייבוא
@@ -3343,7 +3343,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 7.7.2026 · 150';
+const APP_VERSION='גרסה 7.7.2026 · 151';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
