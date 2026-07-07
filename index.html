@@ -751,8 +751,8 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
     <div class="cloud-title">ספריית ביה״ס דבורה עומר · כפר סבא</div>
     <h3>התחברות למסד המשותף</h3>
     <p class="muted" style="margin:0 0 14px">התחברות ספרנית. כל המכשירים המחוברים רואים את אותו מידע בזמן אמת.</p>
-    <label class="fld"><span>אימייל</span><input id="clEmail" class="inp" type="email" autocomplete="username"></label>
-    <label class="fld"><span>סיסמה</span><input id="clPass" class="inp" type="password" autocomplete="current-password"></label>
+    <label class="fld"><span>אימייל</span><input id="clEmail" class="inp" type="email" autocomplete="off"></label>
+    <label class="fld"><span>סיסמה</span><input id="clPass" class="inp" type="password" autocomplete="new-password"></label>
     <div id="clErr" class="cl-err"></div>
     <button class="btn" id="clLogin" style="width:100%; margin-top:6px">התחברות</button>
   </div>
@@ -3141,7 +3141,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 135';
+const APP_VERSION='גרסה 29.6.2026 · 136';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3369,6 +3369,7 @@ function cloudSyncConflict(remote){
 }
 async function cloudAfterLogin(silent){
   cloudHideLogin();   // המשתמש מאומת — פתיחת האפליקציה
+  if(typeof startIdleTimer==='function')startIdleTimer();
   try{
     await cloudFetchRole();
     const {data:remote, ts:remoteTs}=await cloudLoadMeta();
@@ -3530,9 +3531,29 @@ async function cloudDoLogin(email,pw){  const {data,error}=await supa.auth.signI
   cloudUser=data.user; cloudOn=true; return data.user;
 }
 window.cloudSignOut=async function(){  try{ if(supa)await supa.auth.signOut(); }catch(e){}
+  _clearIdle();
   cloudOn=false; cloudUser=null; cloudRole=null; if(cloudChan){try{supa.removeChannel(cloudChan);}catch(e){} cloudChan=null;}
   cloudStatusRender(); cloudShowLogin();
 };
+/* ---- ניתוק אוטומטי לאחר 45 דק' חוסר פעילות (אזהרה 30 שנ' לפני) ---- */
+const IDLE_MS=45*60*1000, IDLE_WARN_MS=30*1000;
+let _idleWarnT=null,_idleOutT=null,_idleCountT=null,_idleLast=0,_idleBound=false;
+function _clearIdle(){ clearTimeout(_idleWarnT); clearTimeout(_idleOutT); clearInterval(_idleCountT); _idleWarnT=_idleOutT=_idleCountT=null; const w=document.getElementById('idleWarn'); if(w)w.remove(); }
+function startIdleTimer(){ if(!cloudOn)return; _clearIdle(); _idleWarnT=setTimeout(showIdleWarning, Math.max(0,IDLE_MS-IDLE_WARN_MS));
+  if(!_idleBound){ _idleBound=true; ['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(ev=>document.addEventListener(ev,_onIdleActivity,{passive:true})); } }
+function _onIdleActivity(){ if(!cloudOn)return; const now=Date.now(); if(now-_idleLast<4000)return; _idleLast=now; startIdleTimer(); }
+function _idleAutoLogout(){ _clearIdle(); try{logAct('login','ניתוק אוטומטי מחוסר פעילות');save();}catch(e){} if(typeof cloudSignOut==='function')cloudSignOut(); }
+function showIdleWarning(){ if(!cloudOn)return; let left=30;
+  const ov=document.createElement('div'); ov.id='idleWarn'; ov.className='cloud-overlay'; ov.style.zIndex='300';
+  ov.innerHTML=`<div class="cloud-card" style="max-width:380px;text-align:center">
+    <h3 style="margin:0 0 8px;color:var(--teal-d)">עומדים לנתק אתכם</h3>
+    <p class="muted" style="margin:0 0 14px">מפאת חוסר פעילות תנותקו מהמערכת בעוד <b id="idleCount">30</b> שניות.</p>
+    <button class="btn" id="idleStay" style="width:100%">להישאר מחובר/ת</button></div>`;
+  document.body.appendChild(ov);
+  document.getElementById('idleStay').addEventListener('click',()=>{ _idleLast=Date.now(); startIdleTimer(); });
+  _idleCountT=setInterval(()=>{ left--; const c=document.getElementById('idleCount'); if(c)c.textContent=left; if(left<=0)_idleAutoLogout(); },1000);
+  _idleOutT=setTimeout(_idleAutoLogout, IDLE_WARN_MS+800);
+}
 window.cloudChangePassword=function(){
   if(!cloudOn||!supa||!cloudUser){ toast('שינוי סיסמה זמין רק כשמחוברים לענן','err'); return; }
   modal(`<div class="mhead"><h3>שינוי סיסמה</h3><button class="x" onclick="closeModal()">×</button></div>
