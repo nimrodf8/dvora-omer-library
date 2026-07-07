@@ -788,7 +788,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 #parentPage .pp-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
 #parentPage .pp-card{background:#fff;width:100%;max-width:420px;border-radius:16px;box-shadow:0 6px 22px rgba(20,58,74,.10);border:1px solid #e2eaec;padding:34px 30px;text-align:center;position:relative;overflow:hidden}
 #parentPage .pp-card:before{content:"";position:absolute;inset-inline:0;top:0;height:6px;background:linear-gradient(90deg,#0D8B8D,#E8853B,#5E9E52)}
-#parentPage .pp-crest{display:flex;align-items:center;justify-content:center;margin:0 auto 16px}#parentPage .pp-crest img{height:92px;width:auto;object-fit:contain}
+#parentPage .pp-crest{display:flex;align-items:center;justify-content:center;margin:0 auto 18px;background:#fff;border:1px solid #e2eaec;border-radius:16px;padding:14px 18px;box-shadow:0 2px 8px rgba(20,58,74,.06)}#parentPage .pp-crest img{height:150px;width:auto;object-fit:contain}
 #parentPage h1{margin:0 0 2px;font-size:25px;font-weight:800;color:#0A6E70;font-family:inherit}
 #parentPage .pp-sub{color:#62757d;margin:0 0 22px;font-size:15px}
 #parentPage .pp-fld{text-align:start;margin:0 0 14px}
@@ -3291,7 +3291,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 7.7.2026 · 140';
+const APP_VERSION='גרסה 7.7.2026 · 141';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3778,7 +3778,7 @@ function ppRenderLogin(msg){
     </div>
   </div></div>`;
   document.getElementById('ppLoginBtn').addEventListener('click',ppLogin);
-  (function(){const a=document.getElementById('ppSchoolLogo');if(a)a.src=SCHOOL_LOGO;const b=document.getElementById('ppLibLogo');if(b)b.src=LIB_LOGO;})();
+  (function(){const a=document.getElementById('ppSchoolLogo');if(a)a.src=LIB_LOGO;const b=document.getElementById('ppLibLogo');if(b)b.src=LIB_LOGO;})();
   document.getElementById('ppCode').addEventListener('keydown',e=>{if(e.key==='Enter')ppLogin();});
   document.getElementById('ppReset').addEventListener('click',ppReset);
   document.getElementById('ppForgotMail').addEventListener('click',()=>{
