@@ -3172,7 +3172,7 @@ function _fillDocPlaceholders(xml,val){
     return par.replace(/(<w:t[^>]*>)([\s\S]*?)(<\/w:t>)/g,function(mm,open,txt,close){ idx++; return idx===1 ? open+_escXml(replaced)+close : open+close; });
   });
 }
-async function fillDocxYear(dataUrl,val){
+async function fillDocxYear(dataUrl,val,qrPngB64){
   await loadJSZip();
   const b=dataUrl.split(',')[1];
   const zip=await window.JSZip.loadAsync(b,{base64:true});
@@ -3181,12 +3181,49 @@ async function fillDocxYear(dataUrl,val){
       let x=await zip.file(name).async('string'); x=_fillDocPlaceholders(x,val); zip.file(name,x);
     }
   }
+  if(qrPngB64){ try{ await injectDocxQR(zip,qrPngB64); }catch(e){} }
   return await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+}
+// ---- הזרקת QR לתוך תבנית Word במקום ה-placeholder ‎{QR} ----
+function _qrDrawingXml(rId){
+  const s=1600200; // ~4.2 ס"מ (EMU)
+  return '<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="'+s+'" cy="'+s+'"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="4801" name="QR"/><wp:cNvGraphicFramePr/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="4801" name="QR"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="'+rId+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+s+'" cy="'+s+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>';
+}
+function _injectQRIntoXml(xml,rId){
+  const drawing=_qrDrawingXml(rId);
+  return xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g,function(par){
+    let full=''; const tRe=/(<w:t[^>]*>)([\s\S]*?)(<\/w:t>)/g; let m;
+    while((m=tRe.exec(par))) full+=m[2];
+    if(full.indexOf('{QR}')<0) return par;
+    // מרכזים את כל טקסט הפסקה ל-w:t הראשון כדי ש-{QR} יהיה רציף
+    let idx=0;
+    let collapsed=par.replace(/(<w:t[^>]*>)([\s\S]*?)(<\/w:t>)/g,function(mm,open,txt,close){ idx++; return idx===1 ? '<w:t xml:space="preserve">'+_escXml(full)+close : open+close; });
+    // מפצלים את ה-run ומחליפים את {QR} בציור
+    collapsed=collapsed.split('{QR}').join('</w:t></w:r><w:r>'+drawing+'</w:r><w:r><w:t xml:space="preserve">');
+    return collapsed;
+  });
+}
+async function injectDocxQR(zip,pngB64){
+  const docName='word/document.xml';
+  const docFile=zip.file(docName); if(!docFile) return false;
+  let doc=await docFile.async('string');
+  if(doc.indexOf('{QR}')<0) return false;
+  const rId='rIdQR8123';
+  zip.file('word/media/imageQR.png',pngB64,{base64:true});
+  const relName='word/_rels/document.xml.rels';
+  let rels=zip.file(relName)? await zip.file(relName).async('string') : '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
+  if(rels.indexOf(rId)<0) rels=rels.replace('</Relationships>','<Relationship Id="'+rId+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/imageQR.png"/></Relationships>');
+  zip.file(relName,rels);
+  const ctName='[Content_Types].xml';
+  if(zip.file(ctName)){ let ct=await zip.file(ctName).async('string'); if(!/Extension="png"/i.test(ct)){ ct=ct.replace('</Types>','<Default Extension="png" ContentType="image/png"/></Types>'); zip.file(ctName,ct); } }
+  doc=_injectQRIntoXml(doc,rId);
+  zip.file(docName,doc);
+  return true;
 }
 function renderFormTplStatus(){
   const el=$('#formTplStatus'); if(!el)return;
   const d=DB.settings.termsFormDoc;
-  if(d&&d.data){ el.innerHTML=`📄 תבנית עיצוב פעילה: <b>${esc(d.name||'טופס.docx')}</b> — כפתור "הדפסת טופס" יוריד קובץ זה. <button class="btn ghost sm" id="rmFormTpl">הסר תבנית</button>`;
+  if(d&&d.data){ el.innerHTML=`📄 תבנית עיצוב פעילה: <b>${esc(d.name||'טופס.docx')}</b> — כפתור "הדפסת טופס" יוריד קובץ זה. <div class="muted" style="margin-top:6px">אפשר להשתמש בתבנית ב‑<code>{שנה}</code> (יוחלף בשנת הלימודים) וב‑<code>{QR}</code> (יוחלף בקוד QR לחתימה דיגיטלית — כתבו <code>{QR}</code> במקום הרצוי, לרוב בראש הטופס).</div> <button class="btn ghost sm" id="rmFormTpl" style="margin-top:6px">הסר תבנית</button>`;
     const rm=$('#rmFormTpl'); if(rm)rm.onclick=()=>confirmAction({title:'הסרת תבנית עיצוב',message:'להסיר את תבנית העיצוב? "הדפסת טופס" יחזור להדפסת הנוסח הרגיל.',okLabel:'הסר'},()=>{ delete DB.settings.termsFormDoc; cloudForceNextSave=true; save(); logAct('data','הסרת תבנית עיצוב לטופס תקנון'); toast('התבנית הוסרה','ok'); renderFormTplStatus(); }); }
   else { el.innerHTML='אין תבנית עיצוב — "הדפסת טופס" מדפיס את הנוסח הרגיל. אפשר להעלות קובץ Word מעוצב (.docx) דרך "קבע תבנית עיצוב".'; }
 }
@@ -3212,8 +3249,9 @@ $('#printTerms').addEventListener('click',async ()=>{
   const tpl=DB.settings.termsFormDoc;
   if(tpl&&tpl.data){
     const yr=currentSchoolYearHeb(); const name=tpl.name||'טופס-תקנון.docx';
+    let qrPng=''; try{ if(window.QRCode&&QRCode.toDataURL){ const du=await QRCode.toDataURL(genericLink(),{margin:1,width:600,errorCorrectionLevel:'M'}); qrPng=du.split(',')[1]; } }catch(e){}
     try{
-      const blob=await fillDocxYear(tpl.data,yr);
+      const blob=await fillDocxYear(tpl.data,yr,qrPng);
       const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),5000);
       toast(`הורד טופס לשנת ${yr} — פִתחו ב-Word והדפיסו`,'ok');
     }catch(err){
@@ -3291,7 +3329,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 7.7.2026 · 141';
+const APP_VERSION='גרסה 7.7.2026 · 142';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
