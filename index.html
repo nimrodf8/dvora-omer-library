@@ -1628,7 +1628,10 @@ function renderFamilyBox(s){
 window._sibUnlink=function(sibId,selfId){if(!confirm('לבטל את שיוך האח/אחות? (פרטי ההורה יישארו כפי שהם)'))return;unlinkSibling(sibId);const self=DB.students.find(x=>x.id===selfId);if(self){renderFamilyBox(self);refreshParentFields(self);}renderStudents();toast('בוטל השיוך','ok');};
 window._toggleSigned=function(id,on){
   const s=DB.students.find(x=>x.id===id);if(!s)return;
-  if(on){ markSigned(s,s.parentName||''); logAct('sign_manual',`סימון תקנון כנחתם: ${s.firstName} ${s.lastName}`); save(); toast('התיק נפתח להשאלה','ok'); }
+  if(on){
+    if(!isDevUser()){ toast('סימון חתימה ידנית זמין למנהל המפתח בלבד','err'); return; }
+    if(!(s.parentPhone||'').trim() && !(s.parentEmail||'').trim()){ toast('לפתיחת תיק יש להזין טלפון או מייל הורה בכרטיס התלמיד/ה','err'); return; }
+    markSigned(s,s.parentName||''); logAct('sign_manual',`סימון תקנון כנחתם: ${s.firstName} ${s.lastName}`); save(); toast('התיק נפתח להשאלה','ok'); }
   else { s.termsSigned=false;s.termsSignedAt=null;s.termsSignedBy=''; logAct('sign_manual',`ביטול חתימת תקנון: ${s.firstName} ${s.lastName}`); save(); toast('פתיחת התיק בוטלה','ok'); }
   studentPage(id); renderStudents();
 };
@@ -1784,7 +1787,7 @@ function studentPage(id){
       const note='';
       return `<div class="kv"><b>טלפון הורה</b><span>${ph}</span></div><div class="kv"><b>מייל הורה</b><span>${ml}${note}</span></div>`;
     })()}
-    ${s.isTeacher?'':`<div class="kv"><b>תקנון</b><span>${s.termsSigned?`<span style="color:#2e9a4f">✓ נחתם${s.termsSignedAt?' · '+new Date(s.termsSignedAt).toLocaleDateString('he-IL'):''}${s.termsSignedBy?' · '+esc(s.termsSignedBy):''}</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',false)">בטל פתיחת תיק</button>`:`<span style="color:#b5651d">טרם נחתם — התיק סגור להשאלה</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',true)">סמן כחתום ידנית</button>`}</span></div>
+    ${s.isTeacher?'':`<div class="kv"><b>תקנון</b><span>${s.termsSigned?`<span style="color:#2e9a4f">✓ נחתם${s.termsSignedAt?' · '+new Date(s.termsSignedAt).toLocaleDateString('he-IL'):''}${s.termsSignedBy?' · '+esc(s.termsSignedBy):''}</span> <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',false)">בטל פתיחת תיק</button>`:`<span style="color:#b5651d">טרם נחתם — התיק סגור להשאלה</span>${isDevUser()?` <button class="btn ghost sm" onclick="_toggleSigned('${s.id}',true)">סמן כחתום ידנית</button>`:''}`}</span></div>
     <div class="kv"><b>חתימת הורה</b><span><button class="btn sm" onclick="_sendSignMenu('${s.id}')">✍ שליחת תקנון לחתימה</button>${s.termsSigned?' <span class="muted">כבר נחתם — אפשר לשלוח שוב</span>':''}</span></div>
     ${cloudRole==='admin'?`<div class="kv"><b>אזור ההורים</b><span id="pcodeShow_${s.id}" style="font-weight:800;letter-spacing:.12em;color:var(--teal-d)">…</span> <button class="btn ghost sm" onclick="parentCodeManage('${s.id}')">🔑 ניהול קוד</button></div>`:''}`}
     ${s.notifyConsent?'<div class="kv"><b>הודעות</b><span style="color:#2e9a4f">✓ ההורה אישר קבלת הודעות על השאלה ותזכורות החזרה</span></div>':''}
@@ -1858,7 +1861,7 @@ function newStudent(cb,id){
     <div class="muted" id="sTeacher" style="margin:-6px 0 12px"></div>
     <label class="fld"><span>שם הורה</span><input class="inp" id="sPName" value="${esc(s.parentName)}"></label>
     ${canSeeParentContact()?'':'<p class="muted" style="margin:2px 0 8px;font-size:12.5px">🔒 פרטי הקשר שמורים ומשמשים לשליחת הודעות. הם גלויים למנהל המפתח בלבד. השאירו ריק לשמירת הפרטים הקיימים, או הקלידו ערך חדש כדי לעדכן.</p>'}
-    <div class="grid two"><label class="fld"><span>טלפון הורה *</span><input class="inp" id="sPPhone" value="${canSeeParentContact()?esc(s.parentPhone):''}" inputmode="tel" placeholder="${canSeeParentContact()?'050-0000000':(s.parentPhone?'שמור — ריק לשמירה':'050-0000000')}"></label><label class="fld"><span>אימייל הורה *</span><input class="inp" id="sPMail" type="email" value="${canSeeParentContact()?esc(s.parentEmail):''}" placeholder="${canSeeParentContact()?'name@example.com':(s.parentEmail?'שמור — ריק לשמירה':'name@example.com')}"></label></div>
+    <div class="grid two"><label class="fld"><span>טלפון הורה</span><input class="inp" id="sPPhone" value="${canSeeParentContact()?esc(s.parentPhone):''}" inputmode="tel" placeholder="${canSeeParentContact()?'050-0000000':(s.parentPhone?'שמור — ריק לשמירה':'050-0000000')}"></label><label class="fld"><span>אימייל הורה</span><input class="inp" id="sPMail" type="email" value="${canSeeParentContact()?esc(s.parentEmail):''}" placeholder="${canSeeParentContact()?'name@example.com':(s.parentEmail?'שמור — ריק לשמירה':'name@example.com')}"></label></div>
     <label class="fld"><span>אימייל הורה נוסף (לא חובה)</span><input class="inp" id="sPMail2" type="email" value="${canSeeParentContact()?esc(s.parentEmail2||''):''}" placeholder="${canSeeParentContact()?'הורה שני — name@example.com':(s.parentEmail2?'שמור — ריק לשמירה':'הורה שני — name@example.com')}"></label>
     ${s.isTeacher?'':'<div class="muted" style="margin:-6px 0 12px">טלפון ומייל הורה הם שדות חובה (נדרשים לשליחת התראות).</div>'}
     <div class="row" style="gap:20px; margin:2px 0 12px">
@@ -1872,22 +1875,13 @@ function newStudent(cb,id){
   $('#sGrade').addEventListener('change',upd);$('#sClass').addEventListener('input',upd);upd();
   if(id)renderFamilyBox(s);
   $('#sSave').addEventListener('click',()=>{
-    const f=$('#sFirst').value.trim();if(!f){toast('חסר שם','err');return;}
+    const f=$('#sFirst').value.trim();if(!f){toast('חסר שם פרטי','err');$('#sFirst').focus();return;}
+    if(!$('#sLast').value.trim()){toast('חסר שם משפחה','err');$('#sLast').focus();return;}
+    if(!$('#sClass').value.trim()){toast('חסרה כיתה','err');$('#sClass').focus();return;}
     let ph=$('#sPPhone').value.trim(), em=$('#sPMail').value.trim();
     if(!canSeeParentContact()){ if(!ph)ph=s.parentPhone||''; if(!em)em=s.parentEmail||''; }
     const emailValid=x=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x);
-    const willActive = $('#sActive') ? $('#sActive').checked : (s.active!==false);
-    const willGrad   = $('#sGrad')   ? $('#sGrad').checked   : !!s.graduated;
-    const openCnt    = id ? studentOpenItems(s.id).length : 0;
-    const inactiveLike = (!willActive) || willGrad;
-    const requireContact = !s.isTeacher && !(inactiveLike && openCnt===0);
-    if(requireContact){
-      if(!ph){toast('חובה להזין טלפון הורה','err');$('#sPPhone').focus();return;}
-      if(!em){toast('חובה להזין אימייל הורה','err');$('#sPMail').focus();return;}
-      if(!emailValid(em)){toast('כתובת מייל הורה אינה תקינה','err');$('#sPMail').focus();return;}
-    } else if(em && !emailValid(em)){
-      toast('כתובת מייל הורה אינה תקינה','err');$('#sPMail').focus();return;
-    }
+    if(em && !emailValid(em)){ toast('כתובת מייל הורה אינה תקינה','err');$('#sPMail').focus();return; }
     const em2=($('#sPMail2')?$('#sPMail2').value.trim():'') || (!canSeeParentContact()?(s.parentEmail2||''):'');
     if(em2 && !emailValid(em2)){toast('כתובת המייל הנוסף אינה תקינה','err');$('#sPMail2').focus();return;}
     Object.assign(s,{firstName:f,lastName:$('#sLast').value.trim(),grade:+$('#sGrade').value,classLabel:$('#sClass').value.trim(),parentName:$('#sPName').value.trim(),parentPhone:ph,parentEmail:em,parentEmail2:em2});
@@ -3147,7 +3141,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 29.6.2026 · 131';
+const APP_VERSION='גרסה 29.6.2026 · 135';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
