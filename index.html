@@ -1575,9 +1575,14 @@ function renderStudents(){
   el.innerHTML=keys.map(k=>{
     const[g,l]=k.split('|');const t=teacherFor(+g,l);
     const rows=groups[k].map(studentRow).join('');
-    return `<div class="section"><div class="cls-head"><span class="cls-name">📚 כיתה ${gradeHeb(+g)+l}</span><span class="cls-meta">${groups[k].length} תלמידים${t?' · מחנכת '+esc(t):''}</span></div><div class="list">${rows}</div></div>`;
+    // מתקפל: פתוח אם נפתח ידנית, או בזמן חיפוש/סינון כיתה (כדי לא להסתיר תוצאות)
+    const open=(q||fc)?true:!!_openCls[k];
+    return `<div class="section"><div class="cls-head" style="cursor:pointer;user-select:none" onclick="toggleCls('${k.replace(/'/g,"\\'")}')" title="${open?'לחצו לקיפול':'לחצו לפתיחה'}"><span class="cls-name">${open?'▾':'◂'} 📚 כיתה ${gradeHeb(+g)+l}</span><span class="cls-meta">${groups[k].length} תלמידים${t?' · מחנכת '+esc(t):''}</span></div><div class="list" style="${open?'':'display:none'}">${rows}</div></div>`;
   }).join('');
 }
+// מצב פתיחה/קיפול של כיתות בעמוד תלמידים (נשמר לאורך הסשן)
+const _openCls={};
+window.toggleCls=function(k){ _openCls[k]=!_openCls[k]; renderStudents(); };
 /* ============ FAMILY / SIBLINGS ============ */
 function familyMembers(fid){return fid?DB.students.filter(x=>x.familyId===fid):[];}
 function siblingsOf(s){return s&&s.familyId?DB.students.filter(x=>x.familyId===s.familyId&&x.id!==s.id):[];}
@@ -3409,7 +3414,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 8.7.2026 · 160';
+const APP_VERSION='גרסה 8.7.2026 · 161';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
