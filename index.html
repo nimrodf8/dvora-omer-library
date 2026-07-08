@@ -7,9 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --teal:#0d8b8d; --teal-d:#0a6d6f; --teal-l:#e7f4f4; --teal-xl:#f2f9f9;
@@ -3367,7 +3367,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 7.7.2026 · 154';
+const APP_VERSION='גרסה 7.7.2026 · 155';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -4089,10 +4089,17 @@ window.parentUpdateReject=async function(rid){
 
 const _signParam=(function(){try{return new URLSearchParams(location.search).get('sign');}catch(e){return null;}})();
 const _parentParam=(function(){try{return new URLSearchParams(location.search).get('parent');}catch(e){return null;}})();
-if(_signParam){ showSignPage(_signParam); }              // עמוד חתימת הורים (ציבורי, האפליקציה מוסתרת)
-else if(_parentParam){ showParentPortal(); }              // אזור ההורים (ציבורי, דרך Edge Function)
-else if(CLOUD_ENABLED && window.supabase){ cloudInit(); } // כניסה חובה — האתר נעול עד התחברות
-else { cloudShowLogin(); }                                 // ללא ענן אין גישה (fail-closed)
+function _bootApp(){
+  try{
+    if(_signParam){ showSignPage(_signParam); return; }        // עמוד חתימת הורים (ציבורי)
+    if(_parentParam){ showParentPortal(); return; }            // אזור ההורים (ציבורי)
+    if(CLOUD_ENABLED && window.supabase){ cloudInit(); return; } // כניסה חובה — נעול עד התחברות
+    cloudShowLogin();                                          // ללא ענן — מסך התחברות (לא מסך לבן)
+  }catch(e){ try{ cloudShowLogin(); }catch(_){} }
+}
+// defer scripts run before DOMContentLoaded — נמתין להם כדי ש-supabase יהיה זמין, ולעולם לא נישאר במסך לבן
+if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded',_bootApp); }
+else { _bootApp(); }
 </script>
 </body>
 </html>
