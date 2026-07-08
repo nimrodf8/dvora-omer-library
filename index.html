@@ -343,7 +343,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
       <button data-view="catalog" class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/></svg> קטלוג</button>
       <button data-view="reminders" class="nav-item"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg> תזכורות</button>
       <button data-view="students" class="nav-item"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.5a3 3 0 0 1 0 5.8M16.5 19a5.5 5.5 0 0 0-2-4.2"/></svg> תלמידים</button>
-      <button data-view="classes" class="nav-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="1.5"/><path d="M3 17l3 3M21 17l-3 3M8 9h8M8 12.5h5"/></svg> כיתות ומורים</button>
+      <button data-view="classes" class="nav-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="1.5"/><path d="M3 17l3 3M21 17l-3 3M8 9h8M8 12.5h5"/></svg> כיתות ומורים<span class="nav-badge hidden" id="classesBadge"></span></button>
       <button data-view="map" class="nav-item"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg> מפת התמצאות</button>
       <button data-view="reports" class="nav-item"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg> דוחות</button>
       <button data-view="terms" class="nav-item"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg> תקנון</button>
@@ -2047,9 +2047,18 @@ $('#impGrade1')&&$('#impGrade1').addEventListener('click',()=>$('#upStudentsFile
 $('#scanTestClear')&&$('#scanTestClear').addEventListener('click',()=>{ const t=$('#scanTest'),o=$('#scanTestOut'); if(t){t.value='';t.focus();} if(o)o.textContent='נוקה. סרקו שוב לבדיקה.'; });
 function renderClasses(){
   const list=DB.classes.slice().sort((a,b)=>a.grade-b.grade||cmp(a.label,b.label));
-  $('#classList').innerHTML=list.map(c=>`<div class="litem"><div class="meta"><b>${gradeHeb(c.grade)+c.label}</b><small>מחנך/ת: ${esc(c.teacher||'—')}${c.email?' · '+esc(c.email):''}</small></div><div class="actions"><button class="btn ghost sm" onclick="editClass('${c.id}')">ערוך</button><button class="btn danger sm" onclick="delClass('${c.id}')">מחק</button></div></div>`).join('')||'<p class="muted">לא הוגדרו כיתות.</p>';
+  const pend=list.filter(c=>c.teacherPending).length;
+  const head=pend?`<div class="banner" style="margin-bottom:12px">📋 לאחר מעבר השנה — ${pend} כיתות ממתינות לאישור המחנך/ת. אשרו את מי שממשיך עם הכיתה, וערכו את מי שלא. <button class="btn sm" onclick="approveAllClasses()">✓ אשר את כל המורים</button></div>`:'';
+  $('#classList').innerHTML=head+(list.map(c=>{
+    const pending=!!c.teacherPending;
+    const approveBtn=pending?`<button class="btn sm" onclick="approveClassTeacher('${c.id}')">✓ אישור</button>`:'';
+    const tag=pending?` <span class="tag" style="background:var(--orange-l);border-color:#f6d4b0;color:var(--orange-d)">ממתין לאישור</span>`:'';
+    return `<div class="litem"${pending?' style="background:#fff8ef"':''}><div class="meta"><b>${gradeHeb(c.grade)+c.label}</b>${tag}<small>מחנך/ת: ${esc(c.teacher||'—')}${c.email?' · '+esc(c.email):''}</small></div><div class="actions">${approveBtn}<button class="btn ghost sm" onclick="editClass('${c.id}')">ערוך</button><button class="btn danger sm" onclick="delClass('${c.id}')">מחק</button></div></div>`;
+  }).join('')||'<p class="muted">לא הוגדרו כיתות.</p>');
   const ri=$('#rolloverInfo'); if(ri)ri.textContent=`📅 מעבר השנה — קידום כל התלמידים שכבה אחת מעלה והעברת כיתות ו׳ לתלמידי עבר — מוגדר ל־${rolloverDateHeb()} בכל שנה.`;
 }
+window.approveClassTeacher=function(id){ const c=DB.classes.find(x=>x.id===id); if(!c)return; delete c.teacherPending; cloudForceNextSave=true; save(); logAct('class',`אישור מחנך/ת לכיתה ${gradeHeb(c.grade)+c.label}: ${c.teacher||'—'}`); renderClasses(); if(typeof updatePendingBadge==='function')updatePendingBadge(); toast('המחנך/ת אושר/ה','ok'); };
+window.approveAllClasses=function(){ let n=0; DB.classes.forEach(c=>{ if(c.teacherPending){ delete c.teacherPending; n++; } }); if(!n)return; cloudForceNextSave=true; save(); logAct('class',`אישור כל המורים לאחר מעבר שנה (${n} כיתות)`); renderClasses(); if(typeof updatePendingBadge==='function')updatePendingBadge(); toast(`אושרו ${n} מחנכים/ות`,'ok'); };
 function editClass(id){
   const c=DB.classes.find(x=>x.id===id);if(!c)return;const oldT=c.teacher||'',oldG=c.grade,oldL=c.label;
   const gradeOpt=GRADES_HEB.map((h,i)=>i?`<option value="${i}" ${c.grade==i?'selected':''}>${h}</option>`:'').join('');
@@ -2063,11 +2072,11 @@ function editClass(id){
   $('#ecSave').addEventListener('click',()=>{
     const g=+$('#ecGrade').value,l=$('#ecLabel').value.trim(),t=$('#ecTeacher').value.trim();
     if(!l){toast('חסר מספר כיתה','err');return;}
-    c.grade=g;c.label=l;c.teacher=t;c.email=($('#ecEmail')?$('#ecEmail').value.trim():(c.email||''));
+    c.grade=g;c.label=l;c.teacher=t;c.email=($('#ecEmail')?$('#ecEmail').value.trim():(c.email||'')); delete c.teacherPending;
     // sync the teacher-borrower record (created from the class teacher), if any
     DB.students.filter(s=>s.isTeacher&&s.firstName===oldT&&s.grade===oldG&&s.classLabel===oldL).forEach(s=>{s.firstName=t||oldT;s.grade=g;s.classLabel=l;});
     logAct('class',`עריכת כיתה: ${gradeHeb(g)+l} · מחנך/ת ${t||'—'}`);
-    save();closeModal();renderClasses();toast('הכיתה עודכנה','ok');
+    save();closeModal();renderClasses();if(typeof updatePendingBadge==='function')updatePendingBadge();toast('הכיתה עודכנה','ok');
   });
 }
 
@@ -2183,22 +2192,29 @@ function checkRollover(){
   if(cloudOn && cloudRole!=='admin'){banner.classList.add('hidden');return;}   // מעבר שנה — למנהל/ת בלבד
   const n=DB.students.filter(s=>s.active&&!s.graduated&&!s.isTeacher).length;
   banner.classList.remove('hidden');
-  banner.innerHTML=`<b>📅 מעבר שנה (${y+1}).</b> כיתות ו׳ יסומנו כ"בוגרים" (יעברו לתלמידי עבר), וכל שאר ${n} התלמידים יקודמו שכבה אחת מעלה. לאחר מכן יש להזין את כיתות א׳ החדשות. <button class="btn sm" id="doRoll">בצע קידום שכבה</button> <button class="btn ghost sm" id="skipRoll">דחה</button>`;
+  banner.innerHTML=`<b>📅 מעבר שנה (${y+1}).</b> כיתות ו׳ יסומנו כ"בוגרים" (יעברו לתלמידי עבר), שאר ${n} התלמידים יקודמו שכבה, והמורים/כיתות יעלו יחד איתם (חריגים — לעדכן ב"כיתות ומורים"). <button class="btn sm" id="doRoll">בצע קידום שכבה</button> <button class="btn ghost sm" id="skipRoll">דחה</button>`;
   $('#doRoll').addEventListener('click',()=>runRollover());
   $('#skipRoll').addEventListener('click',()=>banner.classList.add('hidden'));
 }
 // ביצוע מעבר השנה — משותף לרצועה ולכפתור בכלים למפתח. מסמן lastRollover כדי שלא יופיע שוב עד התאריך הבא.
 function runRollover(){
   const y=rolloverYear();
-  confirmAction({title:'קידום שכבה שנתי',message:`לבצע מעבר שנה? כיתות ו׳ יסומנו כבוגרים (יישמרו בתלמידי עבר), וכל שאר התלמידים יקודמו שכבה. פעולה זו חד-פעמית ומשנה את כל בסיס הנתונים — נשמר גיבוי אוטומטי לפני הביצוע.`,danger:true,admin:true,confirmType:'מעבר שנה',okLabel:'בצע קידום'},async()=>{
+  confirmAction({title:'קידום שכבה שנתי',message:`לבצע מעבר שנה?\n• כיתות ו׳ (תלמידים) יסומנו כבוגרים ויישמרו בתלמידי עבר.\n• כל שאר התלמידים יקודמו שכבה אחת מעלה.\n• המורים והכיתות יעלו יחד עם התלמידים (ג׳1→ד׳1); כיתת ו׳ מתחילה מחזור חדש (א׳).\n• מורים שאינם ממשיכים עם הכיתה — עדכנו ידנית ב"כיתות ומורים".\nפעולה חד-פעמית המשנה את בסיס הנתונים. נשמר גיבוי אוטומטי לפני הביצוע.`,danger:true,admin:true,confirmType:'מעבר שנה',okLabel:'בצע קידום'},async()=>{
     try{ localBackup('pre-rollover'); if(typeof cloudBackupNow==='function')await cloudBackupNow('לפני קידום שכבה',true); }catch(e){}
     let bumped=0,grad=0;
     DB.students.forEach(s=>{if(!s.active||s.graduated||s.isTeacher)return;if(s.grade>=6){s.graduated=true;s.active=false;s.leftAt=Date.now();grad++;}else{s.grade++;bumped++;}});
-    DB.settings.lastRollover=y; logAct('data',`קידום שכבה שנתי: ${bumped} קודמו · ${grad} סיימו ו׳`); cloudForceNextSave=true; save();
+    // המורים והכיתות עולים יחד עם התלמידים: מחנך/ת ג׳1 → ד׳1. כיתת ו׳ מתחילה מחזור חדש (א׳). חריגים — נערכים ידנית ב"כיתות ומורים".
+    let clsUp=0;
+    DB.classes.forEach(c=>{ const g=+c.grade; if(g>=1&&g<=6){ c.grade=(g===6)?1:g+1; c.teacherPending=true; clsUp++; } });
+    DB.students.forEach(t=>{ if(t.isTeacher){ const g=+t.grade; if(g>=1&&g<=6){ t.grade=(g===6)?1:g+1; } } });
+    DB.settings.lastRollover=y; logAct('data',`קידום שכבה שנתי: ${bumped} תלמידים קודמו · ${grad} סיימו ו׳ · ${clsUp} כיתות/מורים עלו`); cloudForceNextSave=true; save();
     const b=$('#rolloverBanner'); if(b)b.classList.add('hidden');
     if(typeof renderStudents==='function')renderStudents();
+    if(typeof renderClasses==='function')renderClasses();
     if(typeof renderRolloverStatus==='function')renderRolloverStatus();
-    toast(`קודמו ${bumped} תלמידים · ${grad} עברו לתלמידי עבר`,'ok');
+    if(typeof updatePendingBadge==='function')updatePendingBadge();
+    toast(`קודמו ${bumped} תלמידים · ${grad} עברו לתלמידי עבר · ${clsUp} כיתות/מורים עלו שכבה`,'ok');
+    setTimeout(()=>toast('בדקו ב"כיתות ומורים" ועדכנו מורים שאינם ממשיכים עם הכיתה','ok'),2600);
   });
 }
 function renderRolloverStatus(){
@@ -3393,7 +3409,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 8.7.2026 · 156';
+const APP_VERSION='גרסה 8.7.2026 · 159';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3472,11 +3488,20 @@ function cloudShowLogin(){ document.body.classList.add('locked'); const o=docume
 function cloudHideLogin(){ document.body.classList.remove('locked'); const o=document.getElementById('cloudLogin'); if(o)o.classList.add('hidden'); }
 function cloudReRender(){ paintCount(); try{go(CUR||'shelf');}catch(e){renderShelf();} if(typeof updatePendingBadge==='function')updatePendingBadge(); }
 async function updatePendingBadge(){
-  const el=document.getElementById('settingsBadge'); if(!el)return;
+  const el=document.getElementById('settingsBadge');
+  const cb=document.getElementById('classesBadge');
   const gb=document.getElementById('dataGroupBadge');
-  if(!cloudOn||!supa||cloudRole!=='admin'){ el.classList.add('hidden'); if(gb)gb.classList.add('hidden'); return; }
-  try{ const {data,error}=await supa.from('parent_updates').select('id').eq('status','pending'); if(error)throw error; const n=(data||[]).length; if(n>0){ el.textContent=n; el.classList.remove('hidden'); if(gb){gb.textContent=n>1?('עדכוני הורים ממתינים · '+n):'עדכון הורים ממתין';gb.classList.remove('hidden');} } else { el.classList.add('hidden'); if(gb)gb.classList.add('hidden'); } }
-  catch(e){ el.classList.add('hidden'); if(gb)gb.classList.add('hidden'); }
+  const isAdmin=(cloudRole==='admin');
+  const setB=(node,n)=>{ if(!node)return; if(isAdmin&&n>0){node.textContent=n;node.classList.remove('hidden');}else node.classList.add('hidden'); };
+  // חיווי מקומי — כיתות שממתינות לאישור מחנך/ת (אחרי מעבר שנה)
+  let clsPend=0; try{ clsPend=(DB.classes||[]).filter(c=>c.teacherPending).length; }catch(e){}
+  setB(cb, clsPend);
+  if(!isAdmin){ setB(el,0); if(gb)gb.classList.add('hidden'); return; }
+  // חיווי ענן — עדכוני הורים ממתינים
+  let pu=0;
+  try{ if(cloudOn&&supa){ const {data,error}=await supa.from('parent_updates').select('id').eq('status','pending'); if(!error) pu=(data||[]).length; } }catch(e){}
+  setB(el, pu);
+  if(gb){ if(pu>0){gb.textContent=pu>1?('עדכוני הורים ממתינים · '+pu):'עדכון הורים ממתין';gb.classList.remove('hidden');}else gb.classList.add('hidden'); }
 }
 
 async function cloudLoad(){
