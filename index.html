@@ -3409,7 +3409,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 8.7.2026 · 159';
+const APP_VERSION='גרסה 8.7.2026 · 160';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -4140,17 +4140,23 @@ window.parentUpdateReject=async function(rid){
 
 const _signParam=(function(){try{return new URLSearchParams(location.search).get('sign');}catch(e){return null;}})();
 const _parentParam=(function(){try{return new URLSearchParams(location.search).get('parent');}catch(e){return null;}})();
+let _booted=false;
 function _bootApp(){
+  if(_booted)return; _booted=true;
   try{
     if(_signParam){ showSignPage(_signParam); return; }        // עמוד חתימת הורים (ציבורי)
     if(_parentParam){ showParentPortal(); return; }            // אזור ההורים (ציבורי)
     if(CLOUD_ENABLED && window.supabase){ cloudInit(); return; } // כניסה חובה — נעול עד התחברות
-    cloudShowLogin();                                          // ללא ענן — מסך התחברות (לא מסך לבן)
+    // supabase עדיין לא נטען (CDN איטי/חסום) — מציגים התחברות מיד, ומנסים שוב ברקע עד שיגיע
+    cloudShowLogin();
+    let tries=0; const iv=setInterval(()=>{ tries++; if(window.supabase){ clearInterval(iv); try{cloudInit();}catch(e){} } else if(tries>40){ clearInterval(iv); } },500);
   }catch(e){ try{ cloudShowLogin(); }catch(_){} }
 }
-// defer scripts run before DOMContentLoaded — נמתין להם כדי ש-supabase יהיה זמין, ולעולם לא נישאר במסך לבן
+// defer scripts רצים לפני DOMContentLoaded — נמתין להם, אבל לא לנצח:
 if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded',_bootApp); }
 else { _bootApp(); }
+// שעון-מגן: אם סקריפט CDN נתקע ומעכב את DOMContentLoaded (רשת חוסמת) — מאתחלים בכוח אחרי 3 שניות. לעולם לא מסך לבן.
+setTimeout(_bootApp,3000);
 </script>
 </body>
 </html>
