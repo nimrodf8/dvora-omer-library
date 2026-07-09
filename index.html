@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 163</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 164</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1269,7 +1269,7 @@ function editBook(id){
     </div>
 
     <label class="fld"><span>הערות</span><textarea class="inp" id="fNotes">${esc(b.notes)}</textarea></label>
-    <div class="row" style="margin-top:6px"><button class="btn" id="fSave">שמירה</button>${id?`<button type="button" class="btn ghost" onclick="printBookLabels('${id}',1)">🖨 מדבקות ברקוד</button>`:''}<button class="btn ghost" onclick="closeModal()">ביטול</button></div>
+    <div class="row" style="margin-top:6px"><button class="btn" id="fSave">שמירה</button>${id?`<button type="button" class="btn ghost" id="fPrintLabels">🖨 מדבקות ברקוד</button>`:''}<button class="btn ghost" onclick="closeModal()">ביטול</button></div>
     <datalist id="dlAuthors">${[...new Set(DB.books.map(x=>x.author).filter(Boolean))].map(a=>`<option>${esc(a)}</option>`).join('')}</datalist>
     <datalist id="dlSeries">${[...new Set(DB.books.map(x=>x.series).filter(Boolean))].map(a=>`<option>${esc(a)}</option>`).join('')}</datalist>
     <datalist id="dlPubs">${[...new Set(DB.books.map(x=>x.publisher).filter(Boolean))].map(a=>`<option>${esc(a)}</option>`).join('')}</datalist>
@@ -1317,6 +1317,10 @@ function editBook(id){
     r.readAsDataURL(f);
   });
   $('#fDanaLookup')&&$('#fDanaLookup').addEventListener('click',()=>lookupBook($('#fDana').value.trim()||$('#fTitle').value.trim()));
+  if($('#fPrintLabels'))$('#fPrintLabels').addEventListener('click',()=>{
+    syncInputs(); // מדפיס את הברקודים כפי שמוצגים בטופס כרגע — כולל כאלה שטרם נשמרו
+    printLabelsForItems(($('#fTitle').value.trim()||b.title||'ספר'),formItems,1);
+  });
   $('#fSave').addEventListener('click',()=>{
     const t=$('#fTitle').value.trim();if(!t){toast('חסר שם ספר','err');return;}
     syncInputs();
@@ -2143,16 +2147,19 @@ function openLabelPrint(labelsHTML,heading){
   </body></html>`);
   w.document.close();
 }
-function printBookLabels(bookId,perCount){
-  const b=DB.books.find(x=>x.id===bookId); if(!b){toast('הספר לא נמצא','err');return;}
-  const withBc=itemsOf(b).filter(it=>it.barcode&&String(it.barcode).trim());
+function printLabelsForItems(title,items,perCount){
+  const withBc=(items||[]).filter(it=>it.barcode&&String(it.barcode).trim());
   if(!withBc.length){toast('אין ברקודים לספר זה — צרו ברקוד לעותקים תחילה','err');return;}
   const rep=Math.max(1,Math.min(10,perCount||1));
   let html='';
   withBc.forEach(it=>{ const svg=_barcodeSVG(it.barcode); for(let i=0;i<rep;i++){
-    html+=`<div class="lbl"><div class="top">ספריית ביה״ס דבורה עומר · כפר סבא</div><div class="ttl">${_ppEsc(b.title)}</div>${svg}<div class="num">${_ppEsc(it.barcode)}</div></div>`;
+    html+=`<div class="lbl"><div class="top">ספריית ביה״ס דבורה עומר · כפר סבא</div><div class="ttl">${_ppEsc(title)}</div>${svg}<div class="num">${_ppEsc(it.barcode)}</div></div>`;
   }});
-  openLabelPrint(html,'מדבקות · '+b.title);
+  openLabelPrint(html,'מדבקות · '+title);
+}
+function printBookLabels(bookId,perCount){
+  const b=DB.books.find(x=>x.id===bookId); if(!b){toast('הספר לא נמצא','err');return;}
+  printLabelsForItems(b.title,itemsOf(b),perCount);
 }
 window.printBookLabels=printBookLabels;
 
@@ -3433,7 +3440,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 9.7.2026 · 163';
+const APP_VERSION='גרסה 9.7.2026 · 164';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
