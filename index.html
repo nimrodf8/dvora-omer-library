@@ -4,6 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ספריית דבורה עומר · כפר סבא</title>
+<script>
+/* מגן אתחול: תופס כל שגיאת JS ומציג אותה על המסך במקום מסך לבן. תחביר ישן בכוונה. */
+window.__bootErrors=[];
+window.addEventListener('error',function(e){
+  try{
+    var msg=(e&&e.message?e.message:'שגיאה לא ידועה')+(e&&e.lineno?(' (שורה '+e.lineno+')'):'');
+    window.__bootErrors.push(msg);
+    var el=document.getElementById('bootShield');
+    if(el){ el.style.display='block'; var d=document.getElementById('bootShieldErr'); if(d){ d.textContent='שגיאה: '+msg; d.style.display='block'; } }
+  }catch(x){}
+},true);
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -323,6 +335,12 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 </style>
 </head>
 <body class="locked">
+<!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
+<div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
+  📚 ספריית דבורה עומר · <b>גרסה 162</b> · טוען את המערכת…
+  <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
+  <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
+</div>
 
 <header class="topbar">
   <div class="brand" id="brandHome" style="cursor:pointer" title="חזרה לעמוד הראשי" role="button" tabindex="0">
@@ -3414,7 +3432,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 8.7.2026 · 161';
+const APP_VERSION='גרסה 8.7.2026 · 162';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -4148,6 +4166,7 @@ const _parentParam=(function(){try{return new URLSearchParams(location.search).g
 let _booted=false;
 function _bootApp(){
   if(_booted)return; _booted=true;
+  try{ const sh=document.getElementById('bootShield'); if(sh && !(window.__bootErrors&&window.__bootErrors.length)) sh.parentNode.removeChild(sh); }catch(e){}
   try{
     if(_signParam){ showSignPage(_signParam); return; }        // עמוד חתימת הורים (ציבורי)
     if(_parentParam){ showParentPortal(); return; }            // אזור ההורים (ציבורי)
