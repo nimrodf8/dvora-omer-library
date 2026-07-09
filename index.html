@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 164</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 165</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1576,7 +1576,7 @@ function fillStudClass(){const sel=$('#studClass');if(!sel||sel.options.length>1
 function studentRow(s){
   const open=studentOpenItems(s.id).length;
   const sib=siblingsOf(s).length;
-  const tag=s.isTeacher?'<span class="tag" style="background:var(--orange-l);border-color:#f6d4b0;color:var(--orange-d)">מורה</span>':s.graduated?'<span class="tag lost">בוגר/עבר חט״ב</span>':(!s.active?'<span class="tag" style="background:#eee;border-color:#ddd;color:#777">לא פעיל</span>':'');
+  const tag=s.isTeacher?('<span class="tag" style="background:var(--orange-l);border-color:#f6d4b0;color:var(--orange-d)">'+(s.staffRole==='other'?'מתנדב/ת · צוות':s.staffRole==='unassigned'?'מורה ללא שיוך':'מורה')+'</span>'+(s.staffNote?' <span class="tag" style="background:#eef5f5;border-color:#d5e7e7;color:#4a6a6a">'+esc(s.staffNote)+'</span>':'')):s.graduated?'<span class="tag lost">בוגר/עבר חט״ב</span>':(!s.active?'<span class="tag" style="background:#eee;border-color:#ddd;color:#777">לא פעיל</span>':'');
   const signBadge=s.isTeacher?'':(s.termsSigned?'<span class="tag" style="background:#e7f6ec;border-color:#bfe6cc;color:#2e7d46">תקנון ✓</span>':'<span class="tag" style="background:#fff3e0;border-color:#ffe0b2;color:#b5651d">ללא תקנון</span>');
   return `<div class="litem"><div class="cover" style="font-size:18px;cursor:pointer" onclick="studentPage('${s.id}')">${esc((($('#studSortBy')&&$('#studSortBy').value)==='last'?(s.lastName||s.firstName):s.firstName)[0]||'')}</div><div class="meta"><b style="cursor:pointer" onclick="studentPage('${s.id}')">${esc(s.firstName+' '+s.lastName)}</b><small>${tag?tag+' · ':''}${signBadge?signBadge+' · ':''}הורה: ${esc(s.parentName||'—')}${s.parentPhone?(canSeeParentContact()?' · '+esc(s.parentPhone):' · ☎︎✓'):''}${sib?' · 👨‍👩‍👧 '+sib+(sib>1?' אחים':' אח/אחות'):''}${open?' · '+open+' ספרים פתוחים':''}</small></div><div class="actions"><button class="btn ghost sm" onclick="studentPage('${s.id}')">תיק</button><button class="btn ghost sm" onclick="newStudent(null,'${s.id}')">עריכה</button></div></div>`;
 }
@@ -1589,17 +1589,24 @@ function renderStudents(){
   if(q)list=list.filter(s=>[s.firstName,s.lastName,gradeHeb(s.grade)+s.classLabel,s.parentName].join(' ').toLowerCase().includes(q));
   const _sortBy=($('#studSortBy')&&$('#studSortBy').value)||'first';
   list.sort((a,b)=>a.grade-b.grade||cmp(a.classLabel,b.classLabel)||(a.isTeacher-b.isTeacher)||(_sortBy==='last'?(cmp(a.lastName,b.lastName)||cmp(a.firstName,b.firstName)):(cmp(a.firstName,b.firstName)||cmp(a.lastName,b.lastName))));
-  // group by class
-  const groups={};list.forEach(s=>{const k=s.grade+'|'+s.classLabel;(groups[k]=groups[k]||[]).push(s);});
-  const keys=Object.keys(groups).sort((a,b)=>{const[ga,la]=a.split('|'),[gb,lb]=b.split('|');return (+ga)-(+gb)||cmp(la,lb);});
+  // group by class; מורים ללא שיוך ומתנדבים — קבוצות נפרדות בסוף
+  const groups={};list.forEach(s=>{const k=(s.isTeacher&&s.staffRole&&s.staffRole!=='class')?('Z|'+s.staffRole):(s.grade+'|'+s.classLabel);(groups[k]=groups[k]||[]).push(s);});
+  const keys=Object.keys(groups).sort((a,b)=>{
+    const za=a.startsWith('Z|'),zb=b.startsWith('Z|');
+    if(za!==zb)return za?1:-1;
+    if(za&&zb)return cmp(a,b);
+    const[ga,la]=a.split('|'),[gb,lb]=b.split('|');return (+ga)-(+gb)||cmp(la,lb);
+  });
   const el=$('#studentsList');
   if(!list.length){el.innerHTML='<p class="muted">אין תלמידים להצגה.</p>';return;}
   el.innerHTML=keys.map(k=>{
-    const[g,l]=k.split('|');const t=teacherFor(+g,l);
     const rows=groups[k].map(studentRow).join('');
-    // מתקפל: פתוח אם נפתח ידנית, או בזמן חיפוש/סינון כיתה (כדי לא להסתיר תוצאות)
     const open=(q||fc)?true:!!_openCls[k];
-    return `<div class="section"><div class="cls-head" style="cursor:pointer;user-select:none" onclick="toggleCls('${k.replace(/'/g,"\\'")}')" title="${open?'לחצו לקיפול':'לחצו לפתיחה'}"><span class="cls-name">${open?'▾':'◂'} 📚 כיתה ${gradeHeb(+g)+l}</span><span class="cls-meta">${groups[k].length} תלמידים${t?' · מחנכת '+esc(t):''}</span></div><div class="list" style="${open?'':'display:none'}">${rows}</div></div>`;
+    let name,meta;
+    if(k==='Z|unassigned'){ name='🧑‍🏫 מורים ללא שיוך'; meta=groups[k].length+' רשומות'; }
+    else if(k==='Z|other'){ name='🤝 מתנדבים/ות ואנשי צוות'; meta=groups[k].length+' רשומות'; }
+    else { const[g,l]=k.split('|');const t=teacherFor(+g,l); name='📚 כיתה '+gradeHeb(+g)+l; meta=groups[k].length+' תלמידים'+(t?' · מחנכת '+esc(t):''); }
+    return `<div class="section"><div class="cls-head" style="cursor:pointer;user-select:none" onclick="toggleCls('${k.replace(/'/g,"\\'")}')" title="${open?'לחצו לקיפול':'לחצו לפתיחה'}"><span class="cls-name">${open?'▾':'◂'} ${name}</span><span class="cls-meta">${meta}</span></div><div class="list" style="${open?'':'display:none'}">${rows}</div></div>`;
   }).join('');
 }
 // מצב פתיחה/קיפול של כיתות בעמוד תלמידים (נשמר לאורך הסשן)
@@ -1905,6 +1912,8 @@ function newStudent(cb,id){
   <div class="mbody">
     <div class="grid two"><label class="fld"><span>שם פרטי *</span><input class="inp" id="sFirst" value="${esc(s.firstName)}"></label><label class="fld"><span>שם משפחה</span><input class="inp" id="sLast" value="${esc(s.lastName)}"></label></div>
     <div class="grid two"><label class="fld"><span>שכבה</span><select class="inp" id="sGrade">${gradeOpt}</select></label><label class="fld"><span>כיתה</span><input class="inp" id="sClass" value="${esc(s.classLabel)}"></label></div>
+    ${s.isTeacher?`<div class="grid two"><label class="fld"><span>שיוך</span><select class="inp" id="sStaffRole"><option value="class">מחנך/ת כיתה</option><option value="unassigned">מורה ללא שיוך</option><option value="other">מתנדב/ת · איש צוות אחר</option></select></label><label class="fld"><span>הערה (לא חובה)</span><input class="inp" id="sStaffNote" value="${esc(s.staffNote||'')}" placeholder="לדוגמה: ספרנית מתנדבת, סייעת"></label></div>
+    <div class="muted" style="margin:-6px 0 12px">שיוך "מורה ללא שיוך" או "מתנדב/ת" מוציא את הרשומה מרשימת הכיתה — ההשאלות נשמרות כרגיל.</div>`:''}
     <div class="muted" id="sTeacher" style="margin:-6px 0 12px"></div>
     <label class="fld"><span>שם הורה</span><input class="inp" id="sPName" value="${esc(s.parentName)}"></label>
     ${canSeeParentContact()?'':'<p class="muted" style="margin:2px 0 8px;font-size:12.5px">🔒 פרטי הקשר שמורים ומשמשים לשליחת הודעות. הם גלויים למנהל המפתח בלבד. השאירו ריק לשמירת הפרטים הקיימים, או הקלידו ערך חדש כדי לעדכן.</p>'}
@@ -1920,11 +1929,14 @@ function newStudent(cb,id){
   </div>`);
   const upd=()=>{const t=teacherFor($('#sGrade').value,$('#sClass').value.trim());$('#sTeacher').textContent=t?'מחנך/ת: '+t:'אין מורה מוגדר לכיתה זו — הוסיפו בהגדרות.';};
   $('#sGrade').addEventListener('change',upd);$('#sClass').addEventListener('input',upd);upd();
+  if($('#sStaffRole')){ $('#sStaffRole').value=s.staffRole||'class'; }
   if(id)renderFamilyBox(s);
   $('#sSave').addEventListener('click',()=>{
     const f=$('#sFirst').value.trim();if(!f){toast('חסר שם פרטי','err');$('#sFirst').focus();return;}
     if(!$('#sLast').value.trim()){toast('חסר שם משפחה','err');$('#sLast').focus();return;}
-    if(!$('#sClass').value.trim()){toast('חסרה כיתה','err');$('#sClass').focus();return;}
+    const _role=($('#sStaffRole')?$('#sStaffRole').value:'class');
+    const _needClass=!(s.isTeacher && _role!=='class');
+    if(_needClass && !$('#sClass').value.trim()){toast('חסרה כיתה','err');$('#sClass').focus();return;}
     let ph=$('#sPPhone').value.trim(), em=$('#sPMail').value.trim();
     if(!canSeeParentContact()){ if(!ph)ph=s.parentPhone||''; if(!em)em=s.parentEmail||''; }
     const emailValid=x=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x);
@@ -1932,6 +1944,7 @@ function newStudent(cb,id){
     const em2=($('#sPMail2')?$('#sPMail2').value.trim():'') || (!canSeeParentContact()?(s.parentEmail2||''):'');
     if(em2 && !emailValid(em2)){toast('כתובת המייל הנוסף אינה תקינה','err');$('#sPMail2').focus();return;}
     Object.assign(s,{firstName:f,lastName:$('#sLast').value.trim(),grade:+$('#sGrade').value,classLabel:$('#sClass').value.trim(),parentName:$('#sPName').value.trim(),parentPhone:ph,parentEmail:em,parentEmail2:em2});
+    if(s.isTeacher){ s.staffRole=_role; s.staffNote=($('#sStaffNote')?$('#sStaffNote').value.trim():(s.staffNote||'')); }
     const wasInactive = id ? ((s.active===false)||s.graduated) : false;
     const wasActiveBefore = id ? (s.active!==false && !s.graduated) : true;
     if($('#sActive'))s.active=$('#sActive').checked;
@@ -2237,7 +2250,7 @@ function runRollover(){
     // המורים והכיתות עולים יחד עם התלמידים: מחנך/ת ג׳1 → ד׳1. כיתת ו׳ מתחילה מחזור חדש (א׳). חריגים — נערכים ידנית ב"כיתות ומורים".
     let clsUp=0;
     DB.classes.forEach(c=>{ const g=+c.grade; if(g>=1&&g<=6){ c.grade=(g===6)?1:g+1; c.teacherPending=true; clsUp++; } });
-    DB.students.forEach(t=>{ if(t.isTeacher){ const g=+t.grade; if(g>=1&&g<=6){ t.grade=(g===6)?1:g+1; } } });
+    DB.students.forEach(t=>{ if(t.isTeacher){ if(t.staffRole&&t.staffRole!=='class')return; const g=+t.grade; if(g>=1&&g<=6){ t.grade=(g===6)?1:g+1; } } });
     DB.settings.lastRollover=y; logAct('data',`קידום שכבה שנתי: ${bumped} תלמידים קודמו · ${grad} סיימו ו׳ · ${clsUp} כיתות/מורים עלו`); cloudForceNextSave=true; save();
     const b=$('#rolloverBanner'); if(b)b.classList.add('hidden');
     if(typeof renderStudents==='function')renderStudents();
@@ -3440,7 +3453,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 9.7.2026 · 164';
+const APP_VERSION='גרסה 9.7.2026 · 165';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
