@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 162</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 163</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -2212,7 +2212,8 @@ function checkRollover(){
   const y=rolloverYear();const banner=$('#rolloverBanner');
   if(!banner)return;
   if((DB.settings.lastRollover||0)>=y){banner.classList.add('hidden');return;}   // בוצע השנה — מוסתר עד התאריך הבא
-  if(cloudOn && cloudRole!=='admin'){banner.classList.add('hidden');return;}   // מעבר שנה — למנהל/ת בלבד
+  let _co=false,_cr=null; try{_co=cloudOn;_cr=cloudRole;}catch(e){banner.classList.add('hidden');return;} // הגנה מקריאה לפני אתחול הענן
+  if(_co && _cr!=='admin'){banner.classList.add('hidden');return;}   // מעבר שנה — למנהל/ת בלבד
   const n=DB.students.filter(s=>s.active&&!s.graduated&&!s.isTeacher).length;
   banner.classList.remove('hidden');
   banner.innerHTML=`<b>📅 מעבר שנה (${y+1}).</b> כיתות ו׳ יסומנו כ"בוגרים" (יעברו לתלמידי עבר), שאר ${n} התלמידים יקודמו שכבה, והמורים/כיתות יעלו יחד איתם (חריגים — לעדכן ב"כיתות ומורים"). <button class="btn sm" id="doRoll">בצע קידום שכבה</button> <button class="btn ghost sm" id="skipRoll">דחה</button>`;
@@ -3431,8 +3432,8 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 
 /* ============ init ============ */
 migrate();
-paintCount();checkRollover();renderShelf();
-const APP_VERSION='גרסה 8.7.2026 · 162';
+paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
+const APP_VERSION='גרסה 9.7.2026 · 163';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3509,7 +3510,7 @@ function setupTabGuard(){
 }
 function cloudShowLogin(){ document.body.classList.add('locked'); const o=document.getElementById('cloudLogin'); if(o)o.classList.remove('hidden'); cloudStatusRender(); }
 function cloudHideLogin(){ document.body.classList.remove('locked'); const o=document.getElementById('cloudLogin'); if(o)o.classList.add('hidden'); }
-function cloudReRender(){ paintCount(); try{go(CUR||'shelf');}catch(e){renderShelf();} if(typeof updatePendingBadge==='function')updatePendingBadge(); }
+function cloudReRender(){ paintCount(); try{go(CUR||'shelf');}catch(e){renderShelf();} if(typeof updatePendingBadge==='function')updatePendingBadge(); try{checkRollover();}catch(e){} }
 async function updatePendingBadge(){
   const el=document.getElementById('settingsBadge');
   const cb=document.getElementById('classesBadge');
