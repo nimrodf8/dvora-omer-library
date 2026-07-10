@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 169</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 170</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1696,7 +1696,7 @@ window._sibUnlink=function(sibId,selfId){if(!confirm('לבטל את שיוך ה�
 window._toggleSigned=function(id,on){
   const s=DB.students.find(x=>x.id===id);if(!s)return;
   if(on){
-    if(!isDevUser()){ toast('סימון חתימה ידנית זמין למנהל המפתח בלבד','err'); return; }
+    if(!isDevUser()){ toast('אין לך הרשאה לסימון חתימה ידנית','err'); return; }
     if(!(s.parentPhone||'').trim() && !(s.parentEmail||'').trim()){ toast('לפתיחת תיק יש להזין טלפון או מייל הורה בכרטיס התלמיד/ה','err'); return; }
     markSigned(s,s.parentName||''); logAct('sign_manual',`סימון תקנון כנחתם: ${s.firstName} ${s.lastName}`); save(); toast('התיק נפתח להשאלה','ok'); }
   else { s.termsSigned=false;s.termsSignedAt=null;s.termsSignedBy=''; logAct('sign_manual',`ביטול חתימת תקנון: ${s.firstName} ${s.lastName}`); save(); toast('פתיחת התיק בוטלה','ok'); }
@@ -1929,7 +1929,7 @@ function newStudent(cb,id){
     <div class="muted" style="margin:-6px 0 12px">שיוך "מורה ללא שיוך" או "מתנדב/ת" מוציא את הרשומה מרשימת הכיתה — ההשאלות נשמרות כרגיל.</div>`:''}
     <div class="muted" id="sTeacher" style="margin:-6px 0 12px"></div>
     <label class="fld"><span>שם הורה</span><input class="inp" id="sPName" value="${esc(s.parentName)}"></label>
-    ${canSeeParentContact()?'':'<p class="muted" style="margin:2px 0 8px;font-size:12.5px">🔒 פרטי הקשר שמורים ומשמשים לשליחת הודעות. הם גלויים למנהל המפתח בלבד. השאירו ריק לשמירת הפרטים הקיימים, או הקלידו ערך חדש כדי לעדכן.</p>'}
+    ${canSeeParentContact()?'':'<p class="muted" style="margin:2px 0 8px;font-size:12.5px">🔒 פרטי הקשר שמורים ומשמשים לשליחת הודעות. הם אינם מוצגים בהרשאה זו. השאירו ריק לשמירת הפרטים הקיימים, או הקלידו ערך חדש כדי לעדכן.</p>'}
     <div class="grid two"><label class="fld"><span>טלפון הורה</span><input class="inp" id="sPPhone" value="${canSeeParentContact()?esc(s.parentPhone):''}" inputmode="tel" placeholder="${canSeeParentContact()?'050-0000000':(s.parentPhone?'שמור — ריק לשמירה':'050-0000000')}"></label><label class="fld"><span>אימייל הורה</span><input class="inp" id="sPMail" type="email" value="${canSeeParentContact()?esc(s.parentEmail):''}" placeholder="${canSeeParentContact()?'name@example.com':(s.parentEmail?'שמור — ריק לשמירה':'name@example.com')}"></label></div>
     <label class="fld"><span>אימייל הורה נוסף (לא חובה)</span><input class="inp" id="sPMail2" type="email" value="${canSeeParentContact()?esc(s.parentEmail2||''):''}" placeholder="${canSeeParentContact()?'הורה שני — name@example.com':(s.parentEmail2?'שמור — ריק לשמירה':'הורה שני — name@example.com')}"></label>
     ${s.isTeacher?'':'<div class="muted" style="margin:-6px 0 12px">טלפון ומייל הורה הם שדות חובה (נדרשים לשליחת התראות).</div>'}
@@ -2400,7 +2400,7 @@ if($('#sendTestMail'))$('#sendTestMail').addEventListener('click',async()=>{
     else out.innerHTML='<span style="color:#b5651d">תגובה לא צפויה מהשרת</span>';
   }catch(e){
     let m=e.message||String(e);
-    if(/email not configured/.test(m)) m='חסר מפתח RESEND_API_KEY בהגדרות הסודות של Supabase';
+    if(/email not configured/.test(m)) m='חסר RESEND_API_KEY בהגדרות הסודות של Supabase';
     else if(/resend-failed/.test(m)) m='Resend דחה את הבקשה — בדרך כלל הדומיין עדיין לא מאומת (Verified). נסו שוב לאחר האימות';
     out.innerHTML='<span style="color:#b3261e">שגיאה: '+esc(m)+'</span>';
   }
@@ -2900,7 +2900,7 @@ function renderGuide(){
     <div class="gv-card"><h3>6 · תקנון וחתימת הורים</h3>
       <p><b>תלמיד/ה יכול/ה להשאיל רק אחרי חתימת הורה על התקנון.</b></p>
       <ul><li>שליחה לחתימה דיגיטלית — בכרטיס התלמיד/ה: "שליחת תקנון לחתימה".</li>
-      <li>חתמו על נייר? בכרטיס — "סמן כחתום ידנית".</li>
+      ${typeof isDevUser==='function'&&isDevUser()?'<li>חתמו על נייר? בכרטיס — "סמן כחתום ידנית".</li>':''}
       <li>הדפסת טופס — ${L('terms','תקנון')} ← "הדפסת טופס". בטופס המודפס יש <b>קוד QR</b> — ההורה סורק, בוחר את שם הילד/ה וחותם מהטלפון.</li></ul>
     </div>
 
@@ -2914,11 +2914,11 @@ function renderGuide(){
     </div>
 
     <div class="gv-card"><h3>8 · מעבר שנה (למנהל/ת)</h3>
-      <ul><li>בתאריך שנקבע (בהגדרות ← כלים למפתח) מופיעה בעמוד הבית רצועת <b>📅 מעבר שנה</b> — למנהל/ת בלבד.</li>
+      <ul><li>בתאריך שנקבע${typeof isDevUser==='function'&&isDevUser()?' (בהגדרות ← כלים למפתח)':''} מופיעה בעמוד הבית רצועת <b>📅 מעבר שנה</b> — למנהל/ת בלבד.</li>
       <li>לחיצה על "בצע קידום שכבה": תלמידי ו׳ עוברים לתלמידי עבר, שאר התלמידים עולים שכבה, והמורים/כיתות עולים יחד איתם (ו׳ מתחילה מחזור חדש כ־א׳). נשמר גיבוי אוטומטי לפני.</li>
       <li>אחרי הקידום, כל כיתה מסומנת <b>"ממתין לאישור"</b> ב${L('classes','כיתות ומורים')} — אשרו מורים שממשיכים (✓ אישור / ✓ אשר את כל המורים) וערכו את מי שלא.</li>
       <li><b>חיווי אדום</b> בתפריט הצד (על "כיתות ומורים" ו"הגדרות") מציג למנהל/ת כמה פעולות ממתינות — אישורי מורים ועדכוני הורים.</li>
-      <li>אפשר גם להריץ ידנית: הגדרות ← כלים למפתח ← "⬆ הרץ קידום שכבה עכשיו". אחרי ביצוע, הרצועה לא תופיע שוב עד התאריך הבא.</li></ul>
+      ${typeof isDevUser==='function'&&isDevUser()?'<li>אפשר גם להריץ ידנית: הגדרות ← כלים למפתח ← "⬆ הרץ קידום שכבה עכשיו". אחרי ביצוע, הרצועה לא תופיע שוב עד התאריך הבא.</li>':''}</ul>
     </div>
 
     <div class="gv-card"><h3>9 · דוחות</h3>
@@ -3480,7 +3480,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 9.7.2026 · 169';
+const APP_VERSION='גרסה 9.7.2026 · 170';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
@@ -3652,7 +3652,7 @@ function applyRoleUI(){
   if(!isAdmin && CUR==='settings')go('shelf');
   applyDevOnly();
 }
-const DEV_EMAILS=['nimrodf8@gmail.com'];
+const DEV_EMAILS=['nimrodf8@gmail.com','nimrod8@gmail.com'];
 const DEV_IDS=['136e50b8-cc73-443d-8fc5-b83a8193884c'];
 function isDevUser(){ return !!(cloudUser && (DEV_IDS.includes(cloudUser.id) || DEV_EMAILS.includes((cloudUser.email||'').toLowerCase()))); }
 function canSeeParentContact(){ return !!(DB.settings&&DB.settings.showParentContact) || isDevUser(); }
