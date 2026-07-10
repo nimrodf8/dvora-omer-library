@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 165</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 168</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -932,6 +932,13 @@ function migrate(){ (DB.books||[]).forEach(ensureItems);
   if(typeof s.showParentContact!=='boolean')s.showParentContact=false;
   if(!/^\d{2}-\d{2}$/.test(s.rolloverDate||''))s.rolloverDate='07-31';
   if(typeof s.allowParentWa!=='boolean')s.allowParentWa=false;
+  // ריפוי אוטומטי לרשומות מורים: (א) מורה בלי דגל active — מסומן פעיל כדי שיופיע ברשימה; (ב) מחנך/ת שמוגדר/ת בכיתה אך אין לו/ה רשומת השאלה — נוצרת אוטומטית
+  (DB.students||[]).forEach(t=>{ if(t.isTeacher && t.active===undefined) t.active=true; });
+  (DB.classes||[]).forEach(c=>{
+    if(!c.teacher||!String(c.teacher).trim())return;
+    const has=(DB.students||[]).some(t=>t.isTeacher&&t.firstName===c.teacher&&String(t.grade)==String(c.grade)&&String(t.classLabel)==String(c.label));
+    if(!has)DB.students.push({id:uid(),firstName:c.teacher,lastName:'(מורה)',grade:+c.grade,classLabel:c.label,parentName:'',parentPhone:'',parentEmail:'',active:true,graduated:false,isTeacher:true,createdAt:Date.now()});
+  });
   if(!s.emailFooter)s.emailFooter='בברכה,\nצוות ספריית ביה״ס דבורה עומר · כפר סבא\n\nלשאלות, בקשות או עדכון פרטים ניתן לפנות אלינו במייל: dvoraomerlib@gmail.com\n(הודעה זו נשלחה מכתובת שאינה מקבלת תשובות — נא לפנות לכתובת המייל שלמעלה.)';
   if(s.supportEmail==null)s.supportEmail='dvoraomerlib@gmail.com';
   if(!Array.isArray(DB.activity))DB.activity=[];
@@ -945,11 +952,17 @@ function logAct(action,detail){
   if(DB.activity.length>1000)DB.activity=DB.activity.slice(-1000);
 }
 function actLabel(a){return {login:'התחברות',checkout:'השאלה',return:'החזרה',lost:'אבוד',sign_sent:'שליחת תקנון',sign_recv:'חתימה התקבלה',sign_manual:'חתימה ידנית',student:'תלמידים',book:'ספרים',del_book:'מחיקת ספר',class:'כיתות',del_class:'מחיקת כיתה',data:'נתונים'}[a]||a;}
+// משתמשים שפעילותם מוסתרת מהתצוגה בלבד (הרישום נשמר במסד כרגיל).
+// חריג: כשהצופה המחובר הוא nimrod8@gmail.com — הכל מוצג.
+const ACT_HIDDEN_USERS=['nimrod@hoteliers.co.il','nimrodf8@gmail.com'];
+const ACT_VIEWER_SEES_ALL='nimrod8@gmail.com';
+function actViewerSeesAll(){ try{ return String((cloudUser&&cloudUser.email)||'').trim().toLowerCase()===ACT_VIEWER_SEES_ALL; }catch(e){ return false; } }
+function actVisible(e){ if(actViewerSeesAll())return true; return !ACT_HIDDEN_USERS.includes(String(e.user||'').trim().toLowerCase()); }
 function renderActivity(){
   const box=document.getElementById('activityLog'); if(!box)return;
   if(cloudOn && cloudRole!=='admin'){ box.innerHTML='<p class="muted">צפייה ביומן הפעילות מותרת למנהל/ת בלבד.</p>'; return; }
   const f=document.getElementById('actFilter')?document.getElementById('actFilter').value:'';
-  let list=(DB.activity||[]).slice().reverse();
+  let list=(DB.activity||[]).filter(actVisible).slice().reverse();
   if(f)list=list.filter(e=>e.action===f||(f==='book'&&e.action==='del_book')||(f==='class'&&e.action==='del_class'));
   if(!list.length){box.innerHTML='<p class="muted">אין רישומים עדיין.</p>';return;}
   box.innerHTML='<table class="rep-table"><thead><tr><th>תאריך ושעה</th><th>משתמש</th><th>פעולה</th><th>פרטים</th></tr></thead><tbody>'+
@@ -2057,6 +2070,9 @@ $('#addClass').addEventListener('click',()=>{
   const g=+$('#clGrade').value,l=$('#clLabel').value.trim(),t=$('#clTeacher').value.trim(),em=($('#clTeacherEmail')?$('#clTeacherEmail').value.trim():'');
   if(!l||!t){toast('מלאו כיתה ומורה','err');return;}
   const ex=DB.classes.find(c=>c.grade==g&&c.label==l);if(ex){ex.teacher=t;ex.email=em;}else DB.classes.push({id:uid(),grade:g,label:l,teacher:t,email:em});
+  // ודא רשומת השאלה למורה (מופיע בעמוד תלמידים וניתן להשאיל לו)
+  if(t && !DB.students.some(x=>x.isTeacher&&x.firstName===t&&String(x.grade)==String(g)&&String(x.classLabel)==String(l)))
+    DB.students.push({id:uid(),firstName:t,lastName:'(מורה)',grade:g,classLabel:l,parentName:'',parentPhone:'',parentEmail:'',active:true,graduated:false,isTeacher:true,createdAt:Date.now()});
   $('#clLabel').value='';$('#clTeacher').value='';if($('#clTeacherEmail'))$('#clTeacherEmail').value='';save();renderClasses();toast('נשמר','ok');
 });
 $('#dlGrade1Tpl')&&$('#dlGrade1Tpl').addEventListener('click',()=>{
@@ -2521,7 +2537,7 @@ $('#nuCreate')&&$('#nuCreate').addEventListener('click',async()=>{
 $('#actFilter')&&$('#actFilter').addEventListener('change',renderActivity);
 $('#actExport')&&$('#actExport').addEventListener('click',()=>{
   if(cloudOn&&cloudRole!=='admin'){toast('מותר למנהל/ת בלבד','err');return;}
-  const rows=[['תאריך ושעה','משתמש','תפקיד','פעולה','פרטים']].concat((DB.activity||[]).slice().reverse().map(e=>[new Date(e.ts).toLocaleString('he-IL'),e.user||'',e.role||'',actLabel(e.action),e.detail||'']));
+  const rows=[['תאריך ושעה','משתמש','תפקיד','פעולה','פרטים']].concat((DB.activity||[]).filter(actVisible).slice().reverse().map(e=>[new Date(e.ts).toLocaleString('he-IL'),e.user||'',e.role||'',actLabel(e.action),e.detail||'']));
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'יומן פעילות'); XLSX.writeFile(wb,'יומן_פעילות.xlsx');
   toast('היומן יוצא לאקסל','ok');
 });
@@ -3453,7 +3469,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 9.7.2026 · 165';
+const APP_VERSION='גרסה 9.7.2026 · 168';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
