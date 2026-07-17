@@ -58,7 +58,7 @@ function candidates(q: string): string[] {
     }
   }
   // דאנאקוד שהוקלד ידנית עם מקף (1245-103) — גם המספר הרציף
-  if (/^\d{3,5}-\d{1,7}$/.test(q.trim())) { add(q.trim()); add(q.trim().replace("-", "")); }
+  if (/^\d{2,5}-\d{1,7}$/.test(q.trim())) { add(q.trim()); add(q.trim().replace("-", "")); }
   // מסת"ב-13 → מסת"ב-10 (לספרים ישנים שמופיעים במאגר רק בצורה הישנה)
   if (digits.length === 13 && /^978/.test(digits)) {
     const core = digits.slice(3, 12);
@@ -216,7 +216,7 @@ async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
     const mid = digits.slice(4, 11).replace(/^0+/, "");
     if (pub && mid) { term = pub + "-" + mid; isDana = true; }
   }
-  if (!isDana && /^\d{3,5}-\d{1,7}$/.test(q.trim())) isDana = true;   // דאנאקוד שהוקלד ידנית עם מקף
+  if (!isDana && /^\d{2,5}-\d{1,7}$/.test(q.trim())) isDana = true;   // דאנאקוד שהוקלד ידנית עם מקף
   const SERPER = Deno.env.get("SERPER_API_KEY") || "";
   let items: { title: string; snippet: string; link: string }[] = [];
   if (SERPER) {
@@ -402,7 +402,7 @@ Deno.serve(async (req) => {
 
     // מצב בדיקה עצמית: הפונקציה בודקת את הסודות שהיא מחזיקה ומחזירה את תשובות המקורות
     if (body.selftest) {
-      const out: any = { selftest: true, fn: "v23", nli_key: !!NLI };
+      const out: any = { selftest: true, fn: "v24", nli_key: !!NLI };
       const CK = Deno.env.get("GOOGLE_CSE_KEY") || "";
       const CX = Deno.env.get("GOOGLE_CSE_ID") || "";
       out.cse_key_present = !!CK; out.cse_key_prefix = CK ? CK.slice(0, 8) + "…" + CK.slice(-4) + " (" + CK.length + " תווים)" : "";
@@ -437,8 +437,8 @@ Deno.serve(async (req) => {
     const HAS_WEB = !!(Deno.env.get("SERPER_API_KEY") || (CSE_KEY && CSE_ID));
     if (!result && HAS_WEB) { try { result = await lookupWebSearch(q, CSE_KEY, CSE_ID); } catch (e) { tri("WebSearch שגיאה: " + String(e)); } }
     const CSE_ON = !!(Deno.env.get("SERPER_API_KEY") || (Deno.env.get("GOOGLE_CSE_KEY") && Deno.env.get("GOOGLE_CSE_ID")));
-    if (!result) return json({ found: false, fn: "v23", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
-    (result as any).fn = "v23";
+    if (!result) return json({ found: false, fn: "v24", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
+    (result as any).fn = "v24";
     const se = extractSeries((result as any).title || "");
     if (se.series) { (result as any).series = se.series; (result as any).seriesIndex = se.seriesIndex; }
     // ספר שנמצא בלי כריכה — ניסיון אחרון: חיפוש תמונה לפי השם
