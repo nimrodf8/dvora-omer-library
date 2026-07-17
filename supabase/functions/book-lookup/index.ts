@@ -217,7 +217,7 @@ async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
     if (pub && mid) term = pub + "-" + mid;
   }
   const SERPER = Deno.env.get("SERPER_API_KEY") || "";
-  let items: { title: string; snippet: string }[] = [];
+  let items: { title: string; snippet: string; link: string }[] = [];
   if (SERPER) {
     // Serper.dev — תוצאות גוגל אמיתיות, 2,500 חינם
     const r = await fetch("https://google.serper.dev/search", {
@@ -228,7 +228,7 @@ async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
     if (!r.ok) { let t = ""; try { t = (await r.text()).slice(0, 160).replace(/\s+/g, " "); } catch (_) {}
       tri(`WebSearch(Serper) "${term}" → http ${r.status}${t ? " · " + t : ""}`); return null; }
     const data = await r.json();
-    items = (data.organic || []).map((it: any) => ({ title: it.title || "", snippet: it.snippet || "" }));
+    items = (data.organic || []).map((it: any) => ({ title: it.title || "", snippet: it.snippet || "", link: it.link || "" }));
     tri(`WebSearch(Serper) "${term}" → ${items.length} תוצאות`);
   } else if (cseKey && cseCx) {
     const url = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(cseKey)}&cx=${encodeURIComponent(cseCx)}&q=${encodeURIComponent('"' + term + '" ספר')}&num=3`;
@@ -236,7 +236,7 @@ async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
     if (!r.ok) { let t = ""; try { t = (await r.text()).slice(0, 160).replace(/\s+/g, " "); } catch (_) {}
       tri(`WebSearch(Google) "${term}" → http ${r.status}${t ? " · " + t : ""}`); return null; }
     const data = await r.json();
-    items = (data.items || []).map((it: any) => ({ title: it.title || "", snippet: it.snippet || "" }));
+    items = (data.items || []).map((it: any) => ({ title: it.title || "", snippet: it.snippet || "", link: it.link || "" }));
     tri(`WebSearch(Google) "${term}" → ${items.length} תוצאות`);
   } else { tri("WebSearch → אין ספק מוגדר"); return null; }
 
@@ -256,6 +256,10 @@ async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
     if (!title || title.length < 2) continue;
     // מסנן כותרות שאינן ספרים: גיליונות אקסל, קטלוגים, רשימות מלאי וכו' ("גיליון1" = Sheet1)
     if (/^(גיליון|גליון|sheet|עמוד|page|קטלוג|טבלה|רשימת|רשימה|מלאי|מחירון|catalog|inventory|excel|xls)/i.test(title)) { tri(`WebSearch → כותרת לא-ספרית ("${title.slice(0, 20)}"), נפסלה`); continue; }
+    // מסנן מודעות ולוחות יד-שנייה: מודעת רכב עם "ספר טיפולים" עברה את החיפוש. דומיינים + סימני מודעה בכותרת.
+    const _lnk = ((it as any).link || "").toLowerCase();
+    if (/yad2\.|facebook\.|instagram\.|tiktok\.|olx\.|ebay\.|aliexpress|winwin\.|homeless\.co/.test(_lnk)) { tri(`WebSearch → דומיין לוח מודעות, נפסל`); continue; }
+    if (title.length > 45 || /[✅✔☎📞₪🔥❗]|למכירה|\bיד\s*0?\d\b|ק"מ|קילומטר|טסט|תשלומים|טיפולים/.test(title)) { tri(`WebSearch → כותרת נראית כמו מודעה ("${title.slice(0, 20)}…"), נפסלה`); continue; }
     tri(`WebSearch → מנסה שם: "${title}"`);
     let d: any = null;
     const NLIKEY = Deno.env.get("NLI_API_KEY") || "";
@@ -395,7 +399,7 @@ Deno.serve(async (req) => {
 
     // מצב בדיקה עצמית: הפונקציה בודקת את הסודות שהיא מחזיקה ומחזירה את תשובות המקורות
     if (body.selftest) {
-      const out: any = { selftest: true, fn: "v20", nli_key: !!NLI };
+      const out: any = { selftest: true, fn: "v21", nli_key: !!NLI };
       const CK = Deno.env.get("GOOGLE_CSE_KEY") || "";
       const CX = Deno.env.get("GOOGLE_CSE_ID") || "";
       out.cse_key_present = !!CK; out.cse_key_prefix = CK ? CK.slice(0, 8) + "…" + CK.slice(-4) + " (" + CK.length + " תווים)" : "";
@@ -430,8 +434,8 @@ Deno.serve(async (req) => {
     const HAS_WEB = !!(Deno.env.get("SERPER_API_KEY") || (CSE_KEY && CSE_ID));
     if (!result && HAS_WEB) { try { result = await lookupWebSearch(q, CSE_KEY, CSE_ID); } catch (e) { tri("WebSearch שגיאה: " + String(e)); } }
     const CSE_ON = !!(Deno.env.get("SERPER_API_KEY") || (Deno.env.get("GOOGLE_CSE_KEY") && Deno.env.get("GOOGLE_CSE_ID")));
-    if (!result) return json({ found: false, fn: "v20", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
-    (result as any).fn = "v20";
+    if (!result) return json({ found: false, fn: "v21", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
+    (result as any).fn = "v21";
     const se = extractSeries((result as any).title || "");
     if (se.series) { (result as any).series = se.series; (result as any).seriesIndex = se.seriesIndex; }
     // ספר שנמצא בלי כריכה — ניסיון אחרון: חיפוש תמונה לפי השם
