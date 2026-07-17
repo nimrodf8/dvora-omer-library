@@ -210,12 +210,13 @@ async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
   let digits = q.replace(/[^0-9Xx]/g, "");
   // השלמת אפס מוביל שנבלע בסריקה — כמו ב-candidates
   if ((digits.length === 10 || digits.length === 11) && !/^97[89]/.test(digits) && !isValidIsbn(digits)) digits = digits.padStart(12, "0");
-  let term = q;
+  let term = q, isDana = false;
   if (digits.length === 12 && !/^97[89]/.test(digits)) {
     const pub = digits.slice(0, 4).replace(/^0+/, "");
     const mid = digits.slice(4, 11).replace(/^0+/, "");
-    if (pub && mid) term = pub + "-" + mid;
+    if (pub && mid) { term = pub + "-" + mid; isDana = true; }
   }
+  if (!isDana && /^\d{3,5}-\d{1,7}$/.test(q.trim())) isDana = true;   // דאנאקוד שהוקלד ידנית עם מקף
   const SERPER = Deno.env.get("SERPER_API_KEY") || "";
   let items: { title: string; snippet: string; link: string }[] = [];
   if (SERPER) {
@@ -260,6 +261,8 @@ async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
     const _lnk = ((it as any).link || "").toLowerCase();
     if (/yad2\.|facebook\.|instagram\.|tiktok\.|olx\.|ebay\.|aliexpress|winwin\.|homeless\.co/.test(_lnk)) { tri(`WebSearch → דומיין לוח מודעות, נפסל`); continue; }
     if (title.length > 45 || /[✅✔☎📞₪🔥❗]|למכירה|\bיד\s*0?\d\b|ק"מ|קילומטר|טסט|תשלומים|טיפולים/.test(title)) { tri(`WebSearch → כותרת נראית כמו מודעה ("${title.slice(0, 20)}…"), נפסלה`); continue; }
+    // דאנאקוד = מזהה ישראלי לספר עברי; כותרת בלי אף אות עברית היא תעתיק פונטי מאתר לועזי — נפסלת
+    if (isDana && !/[\u0590-\u05FF]/.test(title)) { tri(`WebSearch → כותרת לועזית לדאנאקוד ישראלי ("${title.slice(0, 25)}"), נפסלה`); continue; }
     tri(`WebSearch → מנסה שם: "${title}"`);
     let d: any = null;
     const NLIKEY = Deno.env.get("NLI_API_KEY") || "";
@@ -399,7 +402,7 @@ Deno.serve(async (req) => {
 
     // מצב בדיקה עצמית: הפונקציה בודקת את הסודות שהיא מחזיקה ומחזירה את תשובות המקורות
     if (body.selftest) {
-      const out: any = { selftest: true, fn: "v22", nli_key: !!NLI };
+      const out: any = { selftest: true, fn: "v23", nli_key: !!NLI };
       const CK = Deno.env.get("GOOGLE_CSE_KEY") || "";
       const CX = Deno.env.get("GOOGLE_CSE_ID") || "";
       out.cse_key_present = !!CK; out.cse_key_prefix = CK ? CK.slice(0, 8) + "…" + CK.slice(-4) + " (" + CK.length + " תווים)" : "";
@@ -434,8 +437,8 @@ Deno.serve(async (req) => {
     const HAS_WEB = !!(Deno.env.get("SERPER_API_KEY") || (CSE_KEY && CSE_ID));
     if (!result && HAS_WEB) { try { result = await lookupWebSearch(q, CSE_KEY, CSE_ID); } catch (e) { tri("WebSearch שגיאה: " + String(e)); } }
     const CSE_ON = !!(Deno.env.get("SERPER_API_KEY") || (Deno.env.get("GOOGLE_CSE_KEY") && Deno.env.get("GOOGLE_CSE_ID")));
-    if (!result) return json({ found: false, fn: "v22", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
-    (result as any).fn = "v22";
+    if (!result) return json({ found: false, fn: "v23", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
+    (result as any).fn = "v23";
     const se = extractSeries((result as any).title || "");
     if (se.series) { (result as any).series = se.series; (result as any).seriesIndex = se.seriesIndex; }
     // ספר שנמצא בלי כריכה — ניסיון אחרון: חיפוש תמונה לפי השם

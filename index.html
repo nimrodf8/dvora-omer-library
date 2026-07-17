@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 187</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 188</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1136,6 +1136,20 @@ function _domColor(img){
   return '#'+((1<<24)+(r<<16)+(g<<8)+bl).toString(16).slice(1);
 }
 function _domPaint(b){ document.querySelectorAll(`.spine[data-id="${b.id}"]`).forEach(el=>el.style.setProperty('--c',b.spineC)); }
+// חיפוש כריכה לפי שם הספר — לספרים שנקלטו בלי תמונה. ממלא את שדה הכריכה בטופס; השמירה נשארת בידי הספרן.
+window.findCoverByTitle=async function(){
+  const t=($('#fTitle')&&$('#fTitle').value.trim())||'';
+  if(!t){toast('הקלידו קודם שם ספר','err');return;}
+  if(!cloudOn||!supa){toast('חיפוש כריכה דורש חיבור לענן','err');return;}
+  toast('מחפש כריכה…');
+  try{
+    const {data:{session}}=await supa.auth.getSession();
+    const res=await fetch(`${SUPA_URL}/functions/v1/book-lookup`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},body:JSON.stringify({q:t})});
+    const d=res.ok?await res.json():null;
+    if(d&&d.cover){ const el=$('#fCover'); if(el){el.value=d.cover;} toast('נמצאה כריכה — בדקו ולחצו שמירה','ok'); }
+    else toast('לא נמצאה כריכה מתאימה לשם הזה','err');
+  }catch(e){ toast('שגיאה בחיפוש הכריכה','err'); }
+};
 function makeFiller(i){
   const h=150+((i*37+13)%38), w=38+((i*23+7)%22);
   const pal=['#0d8b8d','#5a4a32','#7d6128','#b5651d','#3b6e6f','#8a5a16','#46627a','#6b8e23','#9a2d20','#2f6f5e','#7a4f9a','#c9a14a','#34679a','#7d8a3a'];
@@ -1331,7 +1345,7 @@ function editBook(id){
     </div>
     <label class="fld"><span>מיקום במדף 📍</span><select class="inp" id="fLocation"><option value=""></option>${b.location&&!/^(?:[1-9]|[1-9][0-9]|100)$/.test(String(b.location))?`<option value="${esc(b.location)}" selected>${esc(b.location)}</option>`:''}${Array.from({length:100},(_,i)=>i+1).map(n=>`<option value="${n}" ${String(b.location)===String(n)?'selected':''}>${n}</option>`).join('')}</select></label>
     <label class="fld"><span>כריכה — קישור או העלאה</span>
-      <div class="row"><input class="inp" id="fCover" value="${esc(b.cover)}" placeholder="https://…" style="flex:1"><input type="file" id="fCoverUp" accept="image/*" class="hidden"><button class="btn ghost sm" onclick="$('#fCoverUp').click()">העלה תמונה</button></div></label>
+      <div class="row"><input class="inp" id="fCover" value="${esc(b.cover)}" placeholder="https://…" style="flex:1"><input type="file" id="fCoverUp" accept="image/*" class="hidden"><button class="btn ghost sm" onclick="$('#fCoverUp').click()">העלה תמונה</button><button class="btn ghost sm" onclick="findCoverByTitle()">🔍 חפש כריכה</button></div></label>
 
     <div class="card no-print" style="margin:4px 0 12px;background:rgba(201,161,74,.06)">
       <div class="row" style="justify-content:space-between"><span style="color:#cbb386;font-weight:600">📷 עותקים וברקודים</span><button class="btn ghost sm" id="cpAdd">+ הוסף עותק</button></div>
@@ -3788,7 +3802,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 17.7.2026 · 187';
+const APP_VERSION='גרסה 17.7.2026 · 188';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
