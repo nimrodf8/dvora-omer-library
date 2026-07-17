@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 183</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 184</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1209,6 +1209,16 @@ if($('#bulkScanBtn'))$('#bulkScanBtn').addEventListener('click',()=>openBulkScan
 ['#catSearch','#catSort','#catLang','#catGenre','#catAge','#catAvail'].forEach(s=>$(s)&&$(s).addEventListener('input',renderCatalog));
 function resetCatalogSearch(){ const s=$('#catSearch'); if(s)s.value=''; ['#catSort','#catLang','#catGenre','#catAge','#catAvail'].forEach(x=>{const el=$(x);if(el)el.selectedIndex=0;}); const c=$('#catSearchClear'); if(c)c.classList.remove('show'); }
 (function(){ const inp=$('#catSearch'), btn=$('#catSearchClear'); if(inp&&btn){ const upd=()=>btn.classList.toggle('show',!!inp.value); inp.addEventListener('input',upd); btn.addEventListener('click',()=>{ inp.value=''; upd(); renderCatalog(); inp.focus(); }); upd(); } })();
+// שדות מפתח חסרים בכרטיס ספר — משמש לתגית ⚠ בקטלוג ולדוח "ספרים להשלמת פרטים"
+function bookMissingFields(b){
+  const miss=[];
+  if(!(b.author||'').trim())miss.push('מחבר');
+  if(!(b.publisher||'').trim())miss.push('הוצאה');
+  if(!String(b.year||'').trim())miss.push('שנה');
+  if(!b.ageBand)miss.push('גיל');
+  if(!b.genre)miss.push('ז\'אנר');
+  return miss;
+}
 function renderCatalog(){
   const q=$('#catSearch').value.trim().toLowerCase();
   const sort=($('#catSort')&&$('#catSort').value)||'title';
@@ -1238,7 +1248,9 @@ function renderCatalog(){
       return `${who}${bd?' · הושאל '+bd:''}${dd?' · עד '+dd:''}`;
     }).join('\n');
     const st=`<span class="tag">${a}/${n} זמין</span>${o?` <span class="tag out" style="cursor:help" title="${esc(outInfo)}">${o} מושאל</span>`:''}${l?' <span class="tag lost">'+l+' אבוד</span>':''}`;
-    return `<div class="litem">${cov}<div class="meta"><b style="cursor:pointer" onclick="bookDetail('${b.id}')">${esc(b.title)}</b><small>${esc(b.author||'—')} · ${esc(b.genre||'—')} · ${esc(b.language||'')}${b.location?' · 📍 '+esc(b.location):''}</small></div><div class="actions">${st}<button class="btn ghost sm" onclick="editBook('${b.id}')">עריכה</button><button class="btn danger sm" onclick="delBook('${b.id}')">מחיקה</button></div></div>`;
+    const miss=bookMissingFields(b);
+    const thinTag=(miss.includes('מחבר')||miss.includes('הוצאה'))?` <span class="tag" style="background:#fde8d7;color:#b5651d;cursor:pointer" title="חסרים: ${esc(miss.join(', '))} — לחצו להשלמה" onclick="editBook('${b.id}')">⚠ חסרים פרטים</span>`:'';
+    return `<div class="litem">${cov}<div class="meta"><b style="cursor:pointer" onclick="bookDetail('${b.id}')">${esc(b.title)}</b>${thinTag}<small>${esc(b.author||'—')} · ${esc(b.genre||'—')} · ${esc(b.language||'')}${b.location?' · 📍 '+esc(b.location):''}</small></div><div class="actions">${st}<button class="btn ghost sm" onclick="editBook('${b.id}')">עריכה</button><button class="btn danger sm" onclick="delBook('${b.id}')">מחיקה</button></div></div>`;
   }).join('')||`<p class="muted">${(q||fl||fg||fa||fav)?'אין תוצאות לסינון הנוכחי.':'אין ספרים. לחצו על "ספר חדש".'}</p>`;
 }
 function delBook(id){const b=DB.books.find(x=>x.id===id);confirmAction({title:'מחיקת ספר',message:`למחוק את "${b?b.title:''}" וכל העותקים שלו? ניתן לשחזר מההגדרות.`,danger:true,admin:true,okLabel:'מחק ספר'},()=>{logAct('del_book',`מחיקת ספר: ${b?b.title:''}`);if(b){DB.deletedBooks=DB.deletedBooks||[];DB.deletedBooks.push({book:JSON.parse(JSON.stringify(b)),deletedAt:Date.now(),by:actActor()});if(DB.deletedBooks.length>50)DB.deletedBooks=DB.deletedBooks.slice(-50);}DB.books=DB.books.filter(x=>x.id!==id);save();renderCatalog();toast('הספר נמחק — ניתן לשחזר מההגדרות');});}
@@ -2898,6 +2910,8 @@ function reportDefs(){
     {key:'popular', title:'הספרים המושאלים ביותר', icon:'⭐', headers:['ספר','מס׳ השאלות'], rows:pop},
     {key:'genre', title:'מלאי לפי קטגוריה', icon:'🗂', headers:['קטגוריה','כותרים','עותקים'], rows:byGenre},
     {key:'lost', title:'ספרים שאבדו', icon:'❌', headers:['ספר','ברקוד','תלמיד אחרון','כיתה'], rows:lost},
+    {key:'thin', title:'ספרים להשלמת פרטים', icon:'📝', headers:['ספר','מה חסר','ברקוד','מיקום'],
+      rows:DB.books.map(b=>{const miss=bookMissingFields(b);if(!miss.length)return null;const it0=itemsOf(b)[0];return [b.title||'',miss.join(', '),(it0&&it0.barcode)||'',b.location||''];}).filter(Boolean).sort((a,b)=>cmp(a[0],b[0]))},
     {key:'signed', title:'סטטוס חתימת תקנון', icon:'✍️', headers:['תלמיד/ה','כיתה','הורה','חתם/ה','תאריך'], rows:signRows},
     {key:'left', title:'בוגרים / עזבו', icon:'🎓', headers:['תלמיד/ה','כיתה אחרונה','סטטוס','תאריך עזיבה'], rows:leftRows()},
   ];
@@ -3192,10 +3206,33 @@ function renderOverdueByClass(){
       <div class="ovbc-list">${rows}</div>
       <div class="row no-print" style="gap:8px;margin-top:8px">${mailBtn}<button class="btn ghost sm" onclick="copyClassOverdue('${g.key}')">📋 העתקה (WhatsApp)</button></div></div>`;
   }).join('');
-  return `<div class="card rep-card"><div class="rep-head"><div><h3>⏰ איחורים לפי כיתה — לטיפול המחנך/ת</h3></div></div>
+  return `<div class="card rep-card"><div class="rep-head"><div><h3>⏰ איחורים לפי כיתה — לטיפול המחנך/ת</h3></div><div class="row no-print"><button class="btn ghost sm" onclick="printOverdueByClass()">📄 שמירה כ‑PDF</button></div></div>
     <p class="muted" style="margin:0 0 10px">רשימת ספרים שטרם הוחזרו, מקובצת לפי כיתה. אפשר לשלוח למחנך/ת במייל (אם הוזן) או להעתיק ולשלוח ב‑WhatsApp.</p>
     ${blocks}</div>`;
 }
+// שמירת סעיף האיחורים לפי כיתה כ‑PDF: חלון הדפסה עצמאי — בוחרים "שמירה כ‑PDF" ביעד ההדפסה
+window.printOverdueByClass=function(){
+  const groups=overdueByClassGroups();
+  if(!groups.length){toast('אין איחורים להדפסה','err');return;}
+  const today=new Date().toLocaleDateString('he-IL');
+  const blocks=groups.map(g=>`<div class="cls"><div class="h"><b>${esc(g.clsName)}</b> · מחנך/ת ${esc(g.teacher||'—')} · <span class="c">${g.items.length} ספרים באיחור</span></div>
+    ${g.items.map(it=>`<div class="r"><span class="s">${esc(it.student)}</span><span class="b">${esc(it.title)}</span><span class="d">באיחור ${it.late} י׳ (מאז ${esc(it.due)})</span></div>`).join('')}</div>`).join('');
+  const w=window.open('','_blank'); if(!w){toast('חלון ההדפסה נחסם — אשרו חלונות קופצים','err');return;}
+  w.document.write(`<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>איחורים לפי כיתה — ספריית דבורה עומר</title>
+  <style>body{font-family:'Rubik',Arial,sans-serif;color:#1b2733;line-height:1.6;max-width:760px;margin:24px auto;padding:0 20px}
+  h3{text-align:center;color:#0a6e70;margin:0 0 2px}.sub{text-align:center;color:#667;margin:0 0 18px;font-size:13px}
+  .cls{border:1px solid #d9d3c7;border-radius:10px;padding:10px 14px;margin:0 0 12px;page-break-inside:avoid}
+  .h{margin:0 0 8px}.h .c{color:#b5651d}
+  .r{display:flex;gap:10px;padding:3px 0;border-top:1px dashed #e3ddd0;font-size:14px}
+  .r .s{min-width:160px;font-weight:600}.r .b{flex:1}.r .d{color:#b5651d;white-space:nowrap}
+  .ftr{margin-top:18px;text-align:center;color:#889;font-size:12px}</style></head><body>
+  <h3>⏰ איחורים לפי כיתה — לטיפול המחנך/ת</h3>
+  <div class="sub">ספריית דבורה עומר · נכון ל‑${today}</div>
+  ${blocks}
+  <div class="ftr">הופק מתוך מערכת ספריית דבורה עומר</div>
+  <script>window.onload=function(){setTimeout(function(){window.print();},250);}<\/script></body></html>`);
+  w.document.close();
+};
 window.copyClassOverdue=function(key){
   const g=_ovbc[key]; if(!g)return;
   try{ navigator.clipboard.writeText(_ovbcText(g)); toast('הרשימה הועתקה — הדביקו ב‑WhatsApp/מייל','ok'); }
@@ -3216,10 +3253,12 @@ function renderReports(){
   const over60=defs[0].rows.length, overdue=defs[1].rows.length;
   const studs=DB.students.filter(s=>s.active&&!s.isTeacher).length;
   const unsigned=DB.students.filter(s=>s.active&&!s.isTeacher&&!s.graduated&&!s.termsSigned).length;
+  const thinCnt=DB.books.filter(b=>bookMissingFields(b).length).length;
   const stats=[
     {v:DB.books.length,l:'כותרים'},{v:copies,l:'עותקים'},{v:out,l:'מושאלים כעת'},
     {v:overdue,l:'באיחור',warn:overdue>0},{v:over60,l:'מעל חודשיים',warn:over60>0},
-    {v:lost,l:'אבודים',warn:lost>0},{v:studs,l:'תלמידים'},{v:unsigned,l:'טרם חתמו תקנון',warn:unsigned>0}
+    {v:lost,l:'אבודים',warn:lost>0},{v:studs,l:'תלמידים'},{v:unsigned,l:'טרם חתמו תקנון',warn:unsigned>0},
+    {v:thinCnt,l:'להשלמת פרטים',warn:thinCnt>0}
   ];
   const p=$('#reportsPanel');
   let html=`<div class="stat-grid">`+stats.map(s=>`<div class="stat${s.warn?' warn':''}"><div class="v">${s.v}</div><div class="l">${s.l}</div></div>`).join('')+`</div>`;
@@ -3704,7 +3743,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 17.7.2026 · 183';
+const APP_VERSION='גרסה 17.7.2026 · 184';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();

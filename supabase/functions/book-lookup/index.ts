@@ -247,15 +247,20 @@ async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
     if (d && !titleSimilar(title, d.title || "")) { tri(`WebSearch → העשרת NLI נפסלה (כותר לא דומה: "${(d.title || "").slice(0, 40)}")`); d = null; }
     if (!d) { try { d = await lookupGoogle(title); } catch (_) {} }
     if (d && !titleSimilar(title, d.title || "")) { tri(`WebSearch → העשרת GoogleBooks נפסלה (כותר לא דומה)`); d = null; }
-    const _age = extractAge((it.title || "") + " " + (it.snippet || ""));
+    const _blob = (it.title || "") + " " + (it.snippet || "");
+    const _age = extractAge(_blob);
+    const _lf = extractLabeledFields(_blob);
+    if (_lf.author || _lf.publisher || _lf.year) tri(`WebSearch → שדות מהתקציר: ${[_lf.author && "מחבר✓", _lf.publisher && "הוצאה✓", _lf.year && "שנה✓"].filter(Boolean).join(" ")}`);
     if (d) {
       d.title = title;  // השם שנמצא באינטרנט הוא השם המוצג — המאגר רק משלים מחבר/הוצאה/שנה/כריכה
-      d.author = cleanNliAuthor(d.author || "");
+      d.author = cleanNliAuthor(d.author || "") || _lf.author;
+      if (!d.publisher) d.publisher = _lf.publisher;
+      if (!d.year) d.year = _lf.year;
       d.source = (d.source || "") + " (דרך חיפוש אינטרנט)";
       if (_age && !(d as any).age) (d as any).age = _age;
       return d;
     }
-    return { found: true, source: "חיפוש אינטרנט", title, author: "", publisher: "", year: "", language: "עברית", isbn: "", cover: "", age: _age };
+    return { found: true, source: "חיפוש אינטרנט", title, author: _lf.author, publisher: _lf.publisher, year: _lf.year, language: "עברית", isbn: "", cover: "", age: _age };
   }
   return null;
 }
@@ -277,6 +282,27 @@ function extractAge(text: string): string {
   if (m) return m[1] + "+";
   return "";
 }
+// חילוץ שדות מתויגים מכותרת/תקציר של תוצאת חיפוש (אתרי חנויות):
+// "מק"ט: 38-1473 מחבר: וולט דיסני מתרגם: יונתן פיין הוצאה לאור: ידיעות אחרונות שנת הדפסה: 2012"
+// משמש כ-fallback כשההעשרה מהספרייה הלאומית/Google Books נכשלה — עדיף שדות מהתקציר מאשר כרטיס ריק.
+const _LBL = 'מחבר(?:ים|ת)?|סופר(?:ת)?|מאייר(?:ת)?|מתרגם(?:ת)?|עורך|עורכת|הוצאה לאור|הוצאה|מוציא לאור|שנת הדפסה|שנת הוצאה|שנת פרסום|מק"?ט|דאנא?קוד|עמודים|כריכה|שפה|גיל(?:אי|אים)?|סדרה|מהדורה|מחיר|משקל|קטגוריה|ISBN|מסת"?ב';
+function fieldAfterLabel(text: string, label: string): string {
+  // הערך נגמר לפני התווית הבאה (עם נקודתיים), מפריד (· | •), קיצוץ של גוגל (...) או סוף הטקסט
+  const re = new RegExp('(?:^|[\\s·|•,])(?:' + label + ')\\s*:\\s*(.+?)(?=\\s*(?:' + _LBL + ')\\s*:|\\s*[·|•]|\\s*(?:\\.\\.\\.|…)|$)');
+  const m = re.exec(text);
+  return m ? m[1].replace(/[\s.,;:]+$/, "").trim() : "";
+}
+function extractLabeledFields(text: string): { author: string; publisher: string; year: string } {
+  const t = (text || "").replace(/\s+/g, " ");
+  const author = fieldAfterLabel(t, 'מחבר(?:ים|ת)?|סופר(?:ת)?');
+  let publisher = fieldAfterLabel(t, 'הוצאה לאור|הוצאה|מוציא לאור');
+  if (!publisher) { const m = t.match(/בהוצאת\s+([^·|•,.:]{2,40})/); if (m) publisher = m[1].trim(); }
+  const yRaw = fieldAfterLabel(t, 'שנת הדפסה|שנת הוצאה|שנת פרסום');
+  const ym = (yRaw || "").match(/(?:19|20)\d{2}/);
+  // סינון ערכים חשודים: קצרים/ארוכים מדי או עתירי ספרות (קיצוץ/זבל של גוגל)
+  const ok = (v: string) => (v && v.length >= 2 && v.length <= 40 && !/\d{5,}/.test(v)) ? v : "";
+  return { author: ok(cleanNliAuthor(author)), publisher: ok(publisher), year: ym ? ym[0] : "" };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -296,7 +322,7 @@ Deno.serve(async (req) => {
 
     // מצב בדיקה עצמית: הפונקציה בודקת את הסודות שהיא מחזיקה ומחזירה את תשובות המקורות
     if (body.selftest) {
-      const out: any = { selftest: true, fn: "v16", nli_key: !!NLI };
+      const out: any = { selftest: true, fn: "v17", nli_key: !!NLI };
       const CK = Deno.env.get("GOOGLE_CSE_KEY") || "";
       const CX = Deno.env.get("GOOGLE_CSE_ID") || "";
       out.cse_key_present = !!CK; out.cse_key_prefix = CK ? CK.slice(0, 8) + "…" + CK.slice(-4) + " (" + CK.length + " תווים)" : "";
@@ -331,8 +357,8 @@ Deno.serve(async (req) => {
     const HAS_WEB = !!(Deno.env.get("SERPER_API_KEY") || (CSE_KEY && CSE_ID));
     if (!result && HAS_WEB) { try { result = await lookupWebSearch(q, CSE_KEY, CSE_ID); } catch (e) { tri("WebSearch שגיאה: " + String(e)); } }
     const CSE_ON = !!(Deno.env.get("SERPER_API_KEY") || (Deno.env.get("GOOGLE_CSE_KEY") && Deno.env.get("GOOGLE_CSE_ID")));
-    if (!result) return json({ found: false, fn: "v16", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
-    (result as any).fn = "v16";
+    if (!result) return json({ found: false, fn: "v17", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
+    (result as any).fn = "v17";
     const se = extractSeries((result as any).title || "");
     if (se.series) { (result as any).series = se.series; (result as any).seriesIndex = se.seriesIndex; }
     return json(result);
