@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 174</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 176</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1392,11 +1392,16 @@ function fillLookup(d){
 // שליפת פרטי ספר לפי מסת״ב — שרת (ספרייה לאומית→Google) ואם אין, ישירות Google Books
 async function fetchBookMeta(q){
   try{
-    if(cloudOn&&supa){
+    if(!cloudOn||!supa){ window._lookupDebug={fn:'ענן כבוי בדפדפן'}; }
+    else{
       const {data:{session}}=await supa.auth.getSession();
-      if(session){
-        const res=await fetch(`${SUPA_URL}/functions/v1/book-lookup`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},body:JSON.stringify({q})});
-        if(res.ok){ const d=await res.json(); if(d&&d.found)return d; window._lookupDebug=d; }
+      if(!session){ window._lookupDebug={fn:'אין התחברות (session)'}; }
+      else{
+        try{
+          const res=await fetch(`${SUPA_URL}/functions/v1/book-lookup`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},body:JSON.stringify({q})});
+          if(res.ok){ const d=await res.json(); if(d&&d.found)return d; window._lookupDebug=d; }
+          else{ let t=''; try{t=(await res.text()).slice(0,120);}catch(e){} window._lookupDebug={fn:'שגיאת HTTP '+res.status+(t?' · '+t:'')}; }
+        }catch(e){ window._lookupDebug={fn:'כשל רשת אל השרת: '+String(e&&e.message||e).slice(0,80)}; }
       }
     }
   }catch(e){}
@@ -1426,7 +1431,8 @@ function bulkRowHtml(x){
   }
   if(x.status==='loading') return `<div class="meta"><b>⏳ מחפש פרטים…</b><small>ברקוד ${esc(x.code)}${x.copies>1?' · ×'+x.copies:''}</small></div><div class="actions"><span class="tag out">בתהליך</span><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕</button></div>`;
   if(x.status==='found') return `<div class="meta"><b>✓ ${esc(x.meta.title)}</b><small>${esc(x.meta.author||'')}${x.meta.publisher?' · '+esc(x.meta.publisher):''} · ברקוד ${esc(x.code)}${x.copies>1?' · ×'+x.copies:''}${x.meta.source?' · '+esc(x.meta.source):''}</small></div><div class="actions"><button class="btn sm" onclick="bulkApprove('${x.id}')">✓ אישור</button><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕ הסר</button></div>`;
-  const dbg=x.dbg?`<div class="muted" style="font-size:11.5px;margin-top:4px;line-height:1.5">🔬 שרת ${esc(x.dbg.fn||'ישן — פרסו מחדש!')} · מפתח ספרייה לאומית: ${x.dbg.nli_key?'✓':'✗ חסר'} · חיפוש אינטרנט: ${x.dbg.web_search?'✓':'✗ כבוי'}${(x.dbg.tried&&x.dbg.tried.length)?'<br>'+x.dbg.tried.map(esc).join(' · '):''}</div>`:(x.dbg===null&&x.status==='miss'?'<div class="muted" style="font-size:11.5px;margin-top:4px">🔬 השרת לא הגיב — נבדק רק מול Google Books</div>':'');
+  const _b=v=>v===true?'✓':v===false?'✗':'?';
+  const dbg=x.dbg?`<div class="muted" style="font-size:11.5px;margin-top:4px;line-height:1.5">🔬 שרת: ${esc(x.dbg.fn||'ישן — פרסו מחדש!')}${('nli_key' in x.dbg)?` · מפתח ספרייה לאומית: ${_b(x.dbg.nli_key)} · חיפוש אינטרנט: ${_b(x.dbg.web_search)}`:''}${(x.dbg.tried&&x.dbg.tried.length)?'<br>'+x.dbg.tried.map(esc).join(' · '):''}</div>`:(x.dbg===null&&x.status==='miss'?'<div class="muted" style="font-size:11.5px;margin-top:4px">🔬 השרת לא הגיב — נבדק רק מול Google Books</div>':'');
   return `<div class="meta" style="flex:1"><b>⚠️ לא נמצאו פרטים — ${esc(x.code)}</b><small>הקלידו את שם הספר מהכריכה וחפשו, או אשרו כ"ספר בהמתנה"${x.copies>1?' · ×'+x.copies:''}</small>${dbg}<div class="row" style="margin-top:6px;gap:6px"><input class="inp" id="bn_${x.id}" placeholder="שם הספר…" style="flex:1;height:34px" onkeydown="if(event.key==='Enter')bulkByName('${x.id}')"><button class="btn sm" onclick="bulkByName('${x.id}')">🔎 חפש לפי שם</button></div></div><div class="actions"><button class="btn sm" onclick="bulkApprove('${x.id}')">✓ אשר בכל זאת</button><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕ הסר</button></div>`;
 }
 function bulkRender(){
@@ -1517,9 +1523,9 @@ function openBulkScan(){
   <div class="mbody">
     <p class="muted" style="margin:0 0 10px">סרקו ברקוד אחרי ברקוד — הספרים נצברים ברשימת המתנה למטה, והמערכת מחפשת את פרטיהם ברקע. <b>שום דבר לא נכנס לקטלוג עד שתאשרו</b> — אחד־אחד או הכל יחד. סריקה חוזרת של אותו ברקוד = עותק נוסף.</p>
     <input class="inp" id="bulkInput" placeholder="📷 סרקו לכאן… (או הקלידו מסת״ב + Enter)" autocomplete="off" style="font-size:18px;height:48px">
-    <div class="row" style="margin:10px 0;justify-content:space-between;align-items:center">
+    <div class="row" style="margin:10px 0;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
       <div id="bulkStats" class="muted"></div>
-      <button class="btn" id="bulkApproveAll" style="display:none" onclick="bulkApproveAll()">✓ אשר את כולם</button>
+      <div class="row" style="gap:6px"><button class="btn ghost sm" onclick="bulkCopyReport()">📋 העתק דוח אבחון</button><button class="btn" id="bulkApproveAll" style="display:none" onclick="bulkApproveAll()">✓ אשר את כולם</button></div>
     </div>
     <div id="bulkList" class="list" style="max-height:340px;overflow:auto"></div>
   </div>`);
@@ -1528,6 +1534,26 @@ function openBulkScan(){
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const v=inp.value.trim(); inp.value=''; if(v)bulkScanAdd(v); } });
   inp.addEventListener('blur',()=>setTimeout(()=>{ if(document.getElementById('bulkInput'))inp.focus(); },150));
 }
+window.bulkCopyReport=function(){
+  const lines=[];
+  lines.push('=== דוח קליטה מהירה · '+APP_VERSION+' · '+new Date().toLocaleString('he-IL')+' ===');
+  if(!_bulkPend.length)lines.push('(אין פריטים ברשימה)');
+  _bulkPend.forEach((x,i)=>{
+    lines.push('--- פריט '+(i+1)+' ---');
+    lines.push('ברקוד: '+x.code+(x.copies>1?' ×'+x.copies:''));
+    lines.push('סטטוס: '+(x.status==='found'?'נמצא':x.status==='miss'?'לא נמצא':'בחיפוש')+(x.type==='copy'?' (עותק נוסף)':''));
+    if(x.meta&&x.meta.title)lines.push('תוצאה: '+x.meta.title+(x.meta.author?' / '+x.meta.author:'')+(x.meta.source?' · '+x.meta.source:''));
+    if(x.dbg){
+      lines.push('שרת: '+(x.dbg.fn||'ישן!')+' · מפתח ספרייה לאומית: '+(x.dbg.nli_key?'✓':'✗')+' · חיפוש אינטרנט: '+(x.dbg.web_search?'✓':'✗'));
+      (x.dbg.tried||[]).forEach(t=>lines.push('  ניסיון: '+t));
+    } else if(x.status==='miss') lines.push('(אין נתוני שרת — נבדק מול Google Books בלבד)');
+  });
+  const txt=lines.join('\n');
+  const done=()=>toast('הדוח הועתק — הדביקו בצ׳אט','ok');
+  try{ navigator.clipboard.writeText(txt).then(done).catch(()=>{ _bulkCopyFallback(txt); done(); }); }
+  catch(e){ _bulkCopyFallback(txt); done(); }
+};
+function _bulkCopyFallback(txt){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); }
 window.bulkCloseAsk=function(){
   if(_bulkPend.length){
     confirmAction({title:'יש פריטים שלא אושרו',message:`ברשימה ${_bulkPend.length} פריטים שטרם אושרו. הרשימה תישמר לחזרה בפתיחה הבאה של החלון (עד רענון הדף). לסגור?`,okLabel:'סגור'},()=>{ closeModal(); try{renderCatalog();renderShelf();}catch(e){} });
@@ -3628,7 +3654,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 17.7.2026 · 174';
+const APP_VERSION='גרסה 17.7.2026 · 176';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
