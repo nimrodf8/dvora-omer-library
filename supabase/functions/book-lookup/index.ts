@@ -382,6 +382,8 @@ async function findCoverImage(title: string): Promise<string> {
     const all = (data.images || []);
     const imgs = all.filter((im: any) => {
       const u = im.imageUrl || ""; const w = +im.imageWidth || 0, h = +im.imageHeight || 0;
+      const dom = ((im.domain || im.link || "") + "").toLowerCase();
+      if (/pinterest|aliexpress|ebay\.|etsy\.|yad2|facebook|instagram|tiktok|walla\.|ynet\.|mako\.|wikipedia/.test(dom)) return false;   // מקורות תמונה לא-אמינים לכריכות
       return /^https:/.test(u) && h >= 150 && w >= 100 && h >= w * 1.02;
     });
     // רק תמונה שהכיתוב שלה דומה לשם הספר — עדיף בלי כריכה מאשר כריכה של ספר אחר.
@@ -418,7 +420,7 @@ Deno.serve(async (req) => {
 
     // מצב בדיקה עצמית: הפונקציה בודקת את הסודות שהיא מחזיקה ומחזירה את תשובות המקורות
     if (body.selftest) {
-      const out: any = { selftest: true, fn: "v26", nli_key: !!NLI };
+      const out: any = { selftest: true, fn: "v27", nli_key: !!NLI };
       const CK = Deno.env.get("GOOGLE_CSE_KEY") || "";
       const CX = Deno.env.get("GOOGLE_CSE_ID") || "";
       out.cse_key_present = !!CK; out.cse_key_prefix = CK ? CK.slice(0, 8) + "…" + CK.slice(-4) + " (" + CK.length + " תווים)" : "";
@@ -449,7 +451,7 @@ Deno.serve(async (req) => {
       TRIED.length = 0;
       let img = "";
       try { img = await findCoverImage(q); } catch (_) { tri("ImageSearch שגיאה"); }
-      return json({ found: !!img, cover: img, fn: "v26", tried: TRIED.slice() });
+      return json({ found: !!img, cover: img, fn: "v27", tried: TRIED.slice() });
     }
 
     TRIED.length = 0;
@@ -461,8 +463,8 @@ Deno.serve(async (req) => {
     const HAS_WEB = !!(Deno.env.get("SERPER_API_KEY") || (CSE_KEY && CSE_ID));
     if (!result && HAS_WEB) { try { result = await lookupWebSearch(q, CSE_KEY, CSE_ID); } catch (e) { tri("WebSearch שגיאה: " + String(e)); } }
     const CSE_ON = !!(Deno.env.get("SERPER_API_KEY") || (Deno.env.get("GOOGLE_CSE_KEY") && Deno.env.get("GOOGLE_CSE_ID")));
-    if (!result) return json({ found: false, fn: "v26", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
-    (result as any).fn = "v26";
+    if (!result) return json({ found: false, fn: "v27", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
+    (result as any).fn = "v27";
     const se = extractSeries((result as any).title || "");
     if (se.series) { (result as any).series = se.series; (result as any).seriesIndex = se.seriesIndex; }
     // ספר שנמצא בלי כריכה — ניסיון אחרון: חיפוש תמונה לפי השם
@@ -470,6 +472,7 @@ Deno.serve(async (req) => {
       try { const img = await findCoverImage((result as any).title); if (img) (result as any).cover = img; }
       catch (_) { tri("ImageSearch שגיאה"); }
     }
+    (result as any).tried = TRIED.slice();   // יומן ניסיונות גם בהצלחה — לאבחון מקור הכריכה/הפרטים
     return json(result);
   } catch (e) {
     return json({ found: false, error: String((e as any)?.message || e) }, 500);
