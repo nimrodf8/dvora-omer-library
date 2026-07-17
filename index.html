@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 177</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 178</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1525,7 +1525,7 @@ function openBulkScan(){
     <input class="inp" id="bulkInput" placeholder="📷 סרקו לכאן… (או הקלידו מסת״ב + Enter)" autocomplete="off" style="font-size:18px;height:48px">
     <div class="row" style="margin:10px 0;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
       <div id="bulkStats" class="muted"></div>
-      <div class="row" style="gap:6px"><button class="btn ghost sm" onclick="bulkCopyReport()">📋 העתק דוח אבחון</button><button class="btn" id="bulkApproveAll" style="display:none" onclick="bulkApproveAll()">✓ אשר את כולם</button></div>
+      <div class="row" style="gap:6px"><button class="btn ghost sm" onclick="bulkSelfTest()">🧪 בדיקת חיבור</button><button class="btn ghost sm" onclick="bulkCopyReport()">📋 העתק דוח אבחון</button><button class="btn" id="bulkApproveAll" style="display:none" onclick="bulkApproveAll()">✓ אשר את כולם</button></div>
     </div>
     <div id="bulkList" class="list" style="max-height:340px;overflow:auto"></div>
   </div>`);
@@ -1534,9 +1534,27 @@ function openBulkScan(){
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const v=inp.value.trim(); inp.value=''; if(v)bulkScanAdd(v); } });
   inp.addEventListener('blur',()=>setTimeout(()=>{ if(document.getElementById('bulkInput'))inp.focus(); },150));
 }
+window.bulkSelfTest=async function(){
+  const box=$('#bulkList'); if(box)box.innerHTML='<p class="muted">🧪 בודק חיבורים…</p>';
+  let out=null;
+  try{
+    const {data:{session}}=await supa.auth.getSession();
+    const res=await fetch(`${SUPA_URL}/functions/v1/book-lookup`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},body:JSON.stringify({selftest:true})});
+    out=res.ok?await res.json():{error:'HTTP '+res.status};
+  }catch(e){ out={error:String(e&&e.message||e)}; }
+  const ok=v=>String(v||'').includes('200');
+  const html=out&&out.selftest?`<div class="litem"><div class="meta"><b>🧪 תוצאות בדיקת חיבור — שרת ${esc(out.fn||'?')}</b><small style="line-height:1.7">
+    ספרייה לאומית: ${esc(out.nli||'?')} ${ok(out.nli)?'✅':'❌'}<br>
+    חיפוש גוגל: ${esc(out.cse||'?')} ${ok(out.cse)?'✅':'❌'}<br>
+    מפתח גוגל בסודות: ${out.cse_key_present?esc(out.cse_key_prefix):'❌ חסר'} · מזהה מנוע: ${esc(out.cse_id||'')}
+  </small></div></div>`:`<div class="litem"><div class="meta"><b>🧪 הבדיקה נכשלה</b><small>${esc((out&&out.error)||'?')} — ייתכן שהפונקציה הפרוסה ישנה (צריך v9)</small></div></div>`;
+  if(box)box.innerHTML=html;
+  window._lastSelfTest=out;
+};
 window.bulkCopyReport=function(){
   const lines=[];
   lines.push('=== דוח קליטה מהירה · '+APP_VERSION+' · '+new Date().toLocaleString('he-IL')+' ===');
+  if(window._lastSelfTest){ const o=window._lastSelfTest; lines.push('בדיקת חיבור: שרת '+(o.fn||'?')+' · ספרייה לאומית: '+(o.nli||'?')+' · גוגל: '+(o.cse||'?')+' · מפתח: '+(o.cse_key_present?o.cse_key_prefix:'חסר')+' · מזהה: '+(o.cse_id||'')); }
   if(!_bulkPend.length)lines.push('(אין פריטים ברשימה)');
   _bulkPend.forEach((x,i)=>{
     lines.push('--- פריט '+(i+1)+' ---');
@@ -3654,7 +3672,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 17.7.2026 · 177';
+const APP_VERSION='גרסה 17.7.2026 · 178';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
