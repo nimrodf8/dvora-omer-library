@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 186</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 187</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1090,7 +1090,52 @@ function renderShelf(){
   wall.innerHTML=`<div class="book-wall">${html}</div>`;
   wall.querySelectorAll('.spine').forEach(el=>{el.addEventListener('click',()=>bookDetail(el.dataset.id));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bookDetail(el.dataset.id);}});});
   if(typeof requestAnimationFrame==='function') requestAnimationFrame(fillShelfFillers); else fillShelfFillers();
+  setTimeout(spineColorQueue,600);
 }
+/* ===== צבע שולט מהכריכה על גב הספר (רעיון 2) =====
+   מחלץ את הצבע הבולט של תמונת הכריכה ושומר בכרטיס (spineC) — פעם אחת לכל ספר.
+   כשמקור התמונה חוסם קריאת פיקסלים (CORS) — נסיגה שקטה לצבע הז'אנר. תוספתי בלבד, שום נתון לא נמחק. */
+const _domFail=new Set(); let _domQ=[],_domRun=0,_domSaveT=0;
+function spineColorQueue(){
+  if(typeof DB==='undefined'||!DB.books||typeof document==='undefined')return;
+  _domQ=DB.books.filter(b=>b.cover&&!b.spineC&&!_domFail.has(b.id));
+  _domPump();
+}
+function _domPump(){ while(_domRun<3&&_domQ.length){ _domExtract(_domQ.shift()); } }
+function _domExtract(b){
+  _domRun++;
+  const img=new Image(); img.crossOrigin='anonymous';
+  const done=ok=>{ if(!ok)_domFail.add(b.id); _domRun--; _domPump(); };
+  img.onload=()=>{ try{
+      const c=_domColor(img);
+      if(c){ b.spineC=c; _domPaint(b); clearTimeout(_domSaveT); _domSaveT=setTimeout(()=>{ try{save();}catch(e){} },2000); done(true); }
+      else done(false);
+    }catch(e){ done(false); } };   // canvas "נגוע" (בלי CORS) זורק כאן — נסיגה לצבע ז'אנר
+  img.onerror=()=>done(false);
+  img.src=b.cover;
+}
+function _domColor(img){
+  const W=24,H=32,cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const cx=cv.getContext('2d',{willReadFrequently:true}); cx.drawImage(img,0,0,W,H);
+  const d=cx.getImageData(0,0,W,H).data, buckets={};
+  for(let i=0;i<d.length;i+=4){
+    const r=d[i],g=d[i+1],bl=d[i+2];
+    if(d[i+3]<200)continue;
+    const mx=Math.max(r,g,bl),mn=Math.min(r,g,bl),l=(mx+mn)/2;
+    if(l>235||l<22)continue;                                  // לבן/שחור כמעט — לא מייצגים
+    const sat=mx===mn?0:(mx-mn)/(255-Math.abs(2*l-255));
+    const k=(r>>5)+'-'+(g>>5)+'-'+(bl>>5), w=1+sat*3;         // עדיפות לצבעים רוויים
+    const o=buckets[k]=buckets[k]||{n:0,r:0,g:0,b:0};
+    o.n+=w; o.r+=r*w; o.g+=g*w; o.b+=bl*w;
+  }
+  let best=null; for(const k in buckets){ if(!best||buckets[k].n>best.n)best=buckets[k]; }
+  if(!best||best.n<10)return '';
+  let r=Math.round(best.r/best.n),g=Math.round(best.g/best.n),bl=Math.round(best.b/best.n);
+  const lum=0.299*r+0.587*g+0.114*bl;
+  if(lum>150){ const f=150/lum; r=Math.round(r*f); g=Math.round(g*f); bl=Math.round(bl*f); } // כהייה — הכותרת הלבנה חייבת להישאר קריאה
+  return '#'+((1<<24)+(r<<16)+(g<<8)+bl).toString(16).slice(1);
+}
+function _domPaint(b){ document.querySelectorAll(`.spine[data-id="${b.id}"]`).forEach(el=>el.style.setProperty('--c',b.spineC)); }
 function makeFiller(i){
   const h=150+((i*37+13)%38), w=38+((i*23+7)%22);
   const pal=['#0d8b8d','#5a4a32','#7d6128','#b5651d','#3b6e6f','#8a5a16','#46627a','#6b8e23','#9a2d20','#2f6f5e','#7a4f9a','#c9a14a','#34679a','#7d8a3a'];
@@ -1125,7 +1170,7 @@ function fillShelfFillers(){
 let _shelfFillT;
 if(typeof window!=='undefined') window.addEventListener('resize',()=>{ clearTimeout(_shelfFillT); _shelfFillT=setTimeout(()=>{ if(typeof CUR!=='undefined'&&CUR==='shelf') fillShelfFillers(); },200); });
 function spine(b,item,idx,total){
-  const h=150+hash(b.id)%38, w=38+hash(b.title||b.id)%22, c=GENRE_C[b.genre]||'#0d8b8d';
+  const h=150+hash(b.id)%38, w=38+hash(b.title||b.id)%22, c=b.spineC||GENRE_C[b.genre]||'#0d8b8d';
   const author=(b.author||'').split(/\s+/).slice(-2).join(' ');
   const st = item ? item.status : aggStatus(b);
   const dot = st==='out'?'#e0533d':st==='lost'?'#9a2d20':(!item&&aggStatus(b)==='partial'?'#f0871e':'');
@@ -3743,7 +3788,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 17.7.2026 · 186';
+const APP_VERSION='גרסה 17.7.2026 · 187';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
