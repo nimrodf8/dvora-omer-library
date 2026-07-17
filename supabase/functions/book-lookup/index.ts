@@ -144,8 +144,10 @@ async function lookupNLI(q: string, key: string) {
   if (!title) return null;
   const langRaw = pick(rec, "language").toLowerCase().slice(0, 3);
   let cover = pick(rec, "thumbnail") || pick(rec, "nnl_thumbnail") || "";
-  const isbn = (pick(rec, "isbn") || pick(rec, "identifier")).replace(/[^0-9Xx]/g, "");
-  if (!cover && isbn.length >= 10) cover = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+  // רק מסת"ב שעובר ספרת ביקורת — שדה identifier מכיל לרוב מספר מערכת פנימי, לא מסת"ב
+  const isbnRaw = (pick(rec, "isbn") || pick(rec, "identifier")).replace(/[^0-9Xx]/g, "");
+  const isbn = isValidIsbn(isbnRaw) ? isbnRaw : "";
+  if (!cover && isbn) cover = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
   return {
     found: true, source: "הספרייה הלאומית",
     title: cleanNliTitle(title),
@@ -170,7 +172,7 @@ async function lookupGoogle(q: string) {
   if (!v) { tri(`GoogleBooks → 0 תוצאות`); return null; }
   let cover = v.imageLinks && (v.imageLinks.thumbnail || v.imageLinks.smallThumbnail);
   if (cover) cover = cover.replace("http://", "https://");
-  else if (isIsbn) cover = `https://covers.openlibrary.org/b/isbn/${digits}-L.jpg`;
+  else if (isIsbn && isValidIsbn(digits)) cover = `https://covers.openlibrary.org/b/isbn/${digits}-L.jpg`;
   return {
     found: true, source: "Google Books",
     title: v.title || "",
@@ -178,7 +180,7 @@ async function lookupGoogle(q: string) {
     publisher: v.publisher || "",
     year: ((v.publishedDate || "").match(/\d{4}/) || [""])[0],
     language: LANG[v.language] || "",
-    isbn: digits.length >= 10 ? digits : "",
+    isbn: isValidIsbn(digits) ? digits : "",
     cover: cover || "",
   };
 }
@@ -234,10 +236,17 @@ async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
   } else { tri("WebSearch → אין ספק מוגדר"); return null; }
 
   for (const it of items) {
-    // אימות: הדאנאקוד חייב להופיע בכותרת/בתקציר התוצאה — אחרת דילוג
-    const blob = ((it.title || "") + " " + (it.snippet || "")).replace(/[^0-9-]/g, "");
+    // אימות: הדאנאקוד חייב להופיע בתוצאה כמספר שלם — לא כחלק ממספר ארוך יותר.
+    // בלי גבולות, "310-229" תופס גם טלפון אמריקאי 310-229-5867 (310 = קידומת לוס אנג'לס).
+    // מותר אפסים מובילים ("0310-229" באתר מול "310-229" בחיפוש), אסור ספרות/המשך-מקף אחרי.
+    const rawTxt = (it.title || "") + " " + (it.snippet || "");
     const needle = term.replace(/[^0-9-]/g, "");
-    if (needle.length >= 4 && !blob.includes(needle) && !blob.includes(needle.replace(/-/g, ""))) { tri(`WebSearch → תוצאה בלי הדאנאקוד, נפסלה`); continue; }
+    if (needle.length >= 4) {
+      const pre = "(^|[^0-9])0*", post = "([^0-9-]|$)";
+      const reDash = new RegExp(pre + needle.replace(/-/g, "\\-") + post);
+      const reFlat = new RegExp(pre + needle.replace(/-/g, "") + post);
+      if (!reDash.test(rawTxt) && !reFlat.test(rawTxt)) { tri(`WebSearch → תוצאה בלי הדאנאקוד כמספר שלם, נפסלה`); continue; }
+    }
     const title = cleanTitleFromWeb(it.title || "");
     if (!title || title.length < 2) continue;
     tri(`WebSearch → מנסה שם: "${title}"`);
@@ -250,7 +259,8 @@ async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
     const _blob = (it.title || "") + " " + (it.snippet || "");
     const _age = extractAge(_blob);
     const _lf = extractLabeledFields(_blob);
-    if (_lf.author || _lf.publisher || _lf.year) tri(`WebSearch → שדות מהתקציר: ${[_lf.author && "מחבר✓", _lf.publisher && "הוצאה✓", _lf.year && "שנה✓"].filter(Boolean).join(" ")}`);
+    const _sf = seriesFromSnippet(_blob, title);
+    if (_lf.author || _lf.publisher || _lf.year || _sf.series) tri(`WebSearch → שדות מהתקציר: ${[_lf.author && "מחבר✓", _lf.publisher && "הוצאה✓", _lf.year && "שנה✓", _sf.series && "סדרה✓"].filter(Boolean).join(" ")}`);
     if (d) {
       d.title = title;  // השם שנמצא באינטרנט הוא השם המוצג — המאגר רק משלים מחבר/הוצאה/שנה/כריכה
       d.author = cleanNliAuthor(d.author || "") || _lf.author;
@@ -258,9 +268,10 @@ async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
       if (!d.year) d.year = _lf.year;
       d.source = (d.source || "") + " (דרך חיפוש אינטרנט)";
       if (_age && !(d as any).age) (d as any).age = _age;
+      if (_sf.series) { (d as any).series = _sf.series; (d as any).seriesIndex = _sf.seriesIndex; }
       return d;
     }
-    return { found: true, source: "חיפוש אינטרנט", title, author: _lf.author, publisher: _lf.publisher, year: _lf.year, language: "עברית", isbn: "", cover: "", age: _age };
+    return { found: true, source: "חיפוש אינטרנט", title, author: _lf.author, publisher: _lf.publisher, year: _lf.year, language: "עברית", isbn: "", cover: "", age: _age, series: _sf.series, seriesIndex: _sf.seriesIndex };
   }
   return null;
 }
@@ -292,6 +303,37 @@ function fieldAfterLabel(text: string, label: string): string {
   const m = re.exec(text);
   return m ? m[1].replace(/[\s.,;:]+$/, "").trim() : "";
 }
+// אימות מסת"ב אמיתי (כולל ספרת ביקורת) — מספרי מערכת של הספרייה הלאומית ודאנאקודים לא ייחשבו מסת"ב,
+// כדי שלא ייבנו מהם כתובות כריכה שגויות ב-OpenLibrary ולא יישמרו בשדה ISBN בכרטיס
+function isValidIsbn(s: string): boolean {
+  const d = (s || "").replace(/[^0-9Xx]/g, "");
+  if (d.length === 10) {
+    if (!/^\d{9}[\dXx]$/.test(d)) return false;
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += (10 - i) * (+d[i]);
+    const c = d[9].toUpperCase() === "X" ? 10 : +d[9];
+    return (sum + c) % 11 === 0;
+  }
+  if (d.length === 13) {
+    if (!/^97[89]\d{10}$/.test(d)) return false;
+    let sum = 0;
+    for (let i = 0; i < 12; i++) sum += (+d[i]) * (i % 2 ? 3 : 1);
+    return (10 - (sum % 10)) % 10 === +d[12];
+  }
+  return false;
+}
+// סדרה מתקציר התוצאה — תופס גם ספר ראשון בסדרה שאין מספר בכותרתו:
+// "סדרה: בלשי הביוב", "בסדרת בלשי הביוב", "הספר הראשון בסדרת..." → מס' 1 (רק כשכתוב מפורשות)
+function seriesFromSnippet(text: string, bookTitle: string): { series: string; seriesIndex: string } {
+  const t = (text || "").replace(/\s+/g, " ");
+  let name = fieldAfterLabel(t, 'סדרה');
+  if (!name) { const m = t.match(/(?:^|[\s,.·|•(])[במ]סדרת\s+([^·|•,.;:)]{2,40})/); if (m) name = m[1].trim(); }
+  if (name) name = name.replace(/["״]/g, "").replace(/[\s.,]+$/, "").trim();
+  if (name && (name.length < 2 || name.length > 40)) name = "";
+  const first = /(?:הספר\s+|ספר\s+)?ה?ראשו(?:ן|נה)\s+בסדר(?:ה|ת)/.test(t);
+  if (!name && first && bookTitle && !/\d/.test(bookTitle)) name = bookTitle;   // "הראשון בסדרה" בלי שם סדרה — הסדרה נקראת כשם הספר
+  return { series: name || "", seriesIndex: (name && first) ? "1" : "" };
+}
 function extractLabeledFields(text: string): { author: string; publisher: string; year: string } {
   const t = (text || "").replace(/\s+/g, " ");
   const author = fieldAfterLabel(t, 'מחבר(?:ים|ת)?|סופר(?:ת)?');
@@ -322,7 +364,7 @@ Deno.serve(async (req) => {
 
     // מצב בדיקה עצמית: הפונקציה בודקת את הסודות שהיא מחזיקה ומחזירה את תשובות המקורות
     if (body.selftest) {
-      const out: any = { selftest: true, fn: "v17", nli_key: !!NLI };
+      const out: any = { selftest: true, fn: "v18", nli_key: !!NLI };
       const CK = Deno.env.get("GOOGLE_CSE_KEY") || "";
       const CX = Deno.env.get("GOOGLE_CSE_ID") || "";
       out.cse_key_present = !!CK; out.cse_key_prefix = CK ? CK.slice(0, 8) + "…" + CK.slice(-4) + " (" + CK.length + " תווים)" : "";
@@ -357,8 +399,8 @@ Deno.serve(async (req) => {
     const HAS_WEB = !!(Deno.env.get("SERPER_API_KEY") || (CSE_KEY && CSE_ID));
     if (!result && HAS_WEB) { try { result = await lookupWebSearch(q, CSE_KEY, CSE_ID); } catch (e) { tri("WebSearch שגיאה: " + String(e)); } }
     const CSE_ON = !!(Deno.env.get("SERPER_API_KEY") || (Deno.env.get("GOOGLE_CSE_KEY") && Deno.env.get("GOOGLE_CSE_ID")));
-    if (!result) return json({ found: false, fn: "v17", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
-    (result as any).fn = "v17";
+    if (!result) return json({ found: false, fn: "v18", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
+    (result as any).fn = "v18";
     const se = extractSeries((result as any).title || "");
     if (se.series) { (result as any).series = se.series; (result as any).seriesIndex = se.seriesIndex; }
     return json(result);
