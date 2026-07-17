@@ -375,9 +375,9 @@ async function findCoverImage(title: string): Promise<string> {
     const u = im.imageUrl || ""; const w = +im.imageWidth || 0, h = +im.imageHeight || 0;
     return /^https:/.test(u) && h >= 150 && w >= 100 && h >= w * 1.02;
   });
-  const sim = imgs.find((im: any) => titleSimilar(title, im.title || ""));
-  const best = sim || imgs[0];
-  tri(`ImageSearch "${title.slice(0, 25)}" → ${all.length} תוצאות, ${imgs.length} בצורת כריכה${best ? " ✓" : ""}`);
+  // רק תמונה שהכיתוב שלה דומה לשם הספר — עדיף בלי כריכה מאשר כריכה של ספר אחר
+  const best = imgs.find((im: any) => titleSimilar(title, im.title || ""));
+  tri(`ImageSearch "${title.slice(0, 25)}" → ${all.length} תוצאות, ${imgs.length} בצורת כריכה, ${best ? "כיתוב דומה ✓" : "אף כיתוב לא דומה — בלי כריכה"}`);
   return best ? best.imageUrl : "";
 }
 
@@ -399,7 +399,7 @@ Deno.serve(async (req) => {
 
     // מצב בדיקה עצמית: הפונקציה בודקת את הסודות שהיא מחזיקה ומחזירה את תשובות המקורות
     if (body.selftest) {
-      const out: any = { selftest: true, fn: "v21", nli_key: !!NLI };
+      const out: any = { selftest: true, fn: "v22", nli_key: !!NLI };
       const CK = Deno.env.get("GOOGLE_CSE_KEY") || "";
       const CX = Deno.env.get("GOOGLE_CSE_ID") || "";
       out.cse_key_present = !!CK; out.cse_key_prefix = CK ? CK.slice(0, 8) + "…" + CK.slice(-4) + " (" + CK.length + " תווים)" : "";
@@ -434,8 +434,8 @@ Deno.serve(async (req) => {
     const HAS_WEB = !!(Deno.env.get("SERPER_API_KEY") || (CSE_KEY && CSE_ID));
     if (!result && HAS_WEB) { try { result = await lookupWebSearch(q, CSE_KEY, CSE_ID); } catch (e) { tri("WebSearch שגיאה: " + String(e)); } }
     const CSE_ON = !!(Deno.env.get("SERPER_API_KEY") || (Deno.env.get("GOOGLE_CSE_KEY") && Deno.env.get("GOOGLE_CSE_ID")));
-    if (!result) return json({ found: false, fn: "v21", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
-    (result as any).fn = "v21";
+    if (!result) return json({ found: false, fn: "v22", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
+    (result as any).fn = "v22";
     const se = extractSeries((result as any).title || "");
     if (se.series) { (result as any).series = se.series; (result as any).seriesIndex = se.seriesIndex; }
     // ספר שנמצא בלי כריכה — ניסיון אחרון: חיפוש תמונה לפי השם
