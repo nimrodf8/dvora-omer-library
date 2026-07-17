@@ -151,13 +151,7 @@ textarea.inp{resize:vertical; min-height:64px}
 .spine::before{content:""; position:absolute; top:8px; left:5px; right:5px; height:2px; background:rgba(255,255,255,.5); box-shadow:0 calc(var(--h) - 20px) 0 rgba(255,255,255,.5)}
 .spine:hover{transform:translateY(-12px); box-shadow:0 16px 24px rgba(40,60,65,.3); z-index:3}
 .spine:focus-visible{outline:3px solid var(--teal); outline-offset:2px}
-.spine .sc{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block}
-.spine.hc::after{content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.16), rgba(0,0,0,.42))}
-.spine.d1{border-top:4px solid rgba(255,255,255,.28)}
-.spine.d2{border-bottom:5px solid rgba(0,0,0,.24)}
-.spine.ds{border-top:3px double rgba(255,255,255,.55); border-bottom:3px double rgba(255,255,255,.55)}
-.spine .copynum.vol{background:rgba(122,90,35,.88)}
-.spine .lbl{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; transform:rotate(90deg); transform-origin:center; z-index:1}
+.spine .lbl{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; transform:rotate(90deg); transform-origin:center}
 .spine .lbl .t{width:calc(var(--h) - 28px); max-width:calc(var(--h) - 28px); text-align:center; font-weight:700; font-size:13px; line-height:1.15; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:0 1px 2px rgba(0,0,0,.4)}
 .spine .lbl .a{width:calc(var(--h) - 28px); text-align:center; font-size:9.5px; color:rgba(255,255,255,.82); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px}
 .spine .dot{position:absolute; bottom:6px; left:50%; transform:translateX(-50%); width:7px; height:7px; border-radius:50%; box-shadow:0 0 0 2px rgba(255,255,255,.65)}
@@ -343,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 185</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 186</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1130,31 +1124,17 @@ function fillShelfFillers(){
 }
 let _shelfFillT;
 if(typeof window!=='undefined') window.addEventListener('resize',()=>{ clearTimeout(_shelfFillT); _shelfFillT=setTimeout(()=>{ if(typeof CUR!=='undefined'&&CUR==='shelf') fillShelfFillers(); },200); });
-// הבהרה/הכהיה דטרמיניסטית של צבע — נותנת לכל ספר גוון משלו בתוך משפחת צבע הז'אנר
-function shadeHex(hex,f){
-  const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,bl=n&255;
-  const t=f<0?0:255,p=Math.abs(f);
-  r=Math.round(r+(t-r)*p); g=Math.round(g+(t-g)*p); bl=Math.round(bl+(t-bl)*p);
-  return '#'+((1<<24)+(r<<16)+(g<<8)+bl).toString(16).slice(1);
-}
 function spine(b,item,idx,total){
-  // ספרי סדרה חולקים מפתח עיצוב אחד — סט אחיד על המדף כמו בספרייה אמיתית
-  const key=b.series||b.id, keyT=b.series||b.title||b.id;
-  const h=150+hash(key)%38, w=38+hash(keyT)%22;
-  const base=GENRE_C[b.genre]||'#0d8b8d';
-  const c=shadeHex(base,(((hash('c'+key)%100)/100)-0.5)*0.36);
+  const h=150+hash(b.id)%38, w=38+hash(b.title||b.id)%22, c=GENRE_C[b.genre]||'#0d8b8d';
   const author=(b.author||'').split(/\s+/).slice(-2).join(' ');
   const st = item ? item.status : aggStatus(b);
   const dot = st==='out'?'#e0533d':st==='lost'?'#9a2d20':(!item&&aggStatus(b)==='partial'?'#f0871e':'');
   const many = total>1;
-  const num = many?`<span class="copynum">${idx+1}</span>`
-      :(b.seriesIndex?`<span class="copynum vol" title="כרך ${esc(b.seriesIndex)} בסדרה">${esc(b.seriesIndex)}</span>`:'');
-  const cov=b.cover?`<img class="sc" loading="lazy" src="${esc(b.cover)}" alt="" onerror="this.parentElement.classList.remove('hc');this.remove()">`:'';
-  const deco=b.cover?'hc':(b.series?'ds':'d'+(hash('d'+key)%3));
+  const num = many?`<span class="copynum">${idx+1}</span>`:'';
   const ttl = many?`${esc(b.title)} · עותק ${idx+1}/${total}${b.location?' · '+esc(b.location):''}`
                    :`${esc(b.title)} · ${itemsOf(b).length} עותקים${b.location?' · '+esc(b.location):''}`;
-  return `<button class="spine ${deco}" data-id="${b.id}" style="--h:${h}px;--w:${w}px;--c:${c}" title="${ttl}">
-    ${cov}<span class="lbl"><span class="t">${esc(b.title)}</span>${w>=46?`<span class="a">${esc(author)}</span>`:''}</span>
+  return `<button class="spine" data-id="${b.id}" style="--h:${h}px;--w:${w}px;--c:${c}" title="${ttl}">
+    <span class="lbl"><span class="t">${esc(b.title)}</span>${w>=46?`<span class="a">${esc(author)}</span>`:''}</span>
     ${num}
     ${dot?`<span class="dot" style="background:${dot}"></span>`:''}
   </button>`;
@@ -3763,7 +3743,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 17.7.2026 · 185';
+const APP_VERSION='גרסה 17.7.2026 · 186';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
