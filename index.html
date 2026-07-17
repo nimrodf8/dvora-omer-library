@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 172</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 173</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1426,7 +1426,7 @@ function bulkRowHtml(x){
   }
   if(x.status==='loading') return `<div class="meta"><b>⏳ מחפש פרטים…</b><small>ברקוד ${esc(x.code)}${x.copies>1?' · ×'+x.copies:''}</small></div><div class="actions"><span class="tag out">בתהליך</span><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕</button></div>`;
   if(x.status==='found') return `<div class="meta"><b>✓ ${esc(x.meta.title)}</b><small>${esc(x.meta.author||'')}${x.meta.publisher?' · '+esc(x.meta.publisher):''} · ברקוד ${esc(x.code)}${x.copies>1?' · ×'+x.copies:''}${x.meta.source?' · '+esc(x.meta.source):''}</small></div><div class="actions"><button class="btn sm" onclick="bulkApprove('${x.id}')">✓ אישור</button><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕ הסר</button></div>`;
-  return `<div class="meta"><b>⚠️ לא נמצאו פרטים — ${esc(x.code)}</b><small>ניתן לאשר בכל זאת (ייכנס כ"ספר בהמתנה" להשלמה ידנית) או להסיר${x.copies>1?' · ×'+x.copies:''}</small></div><div class="actions"><button class="btn sm" onclick="bulkApprove('${x.id}')">✓ אשר בכל זאת</button><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕ הסר</button></div>`;
+  return `<div class="meta" style="flex:1"><b>⚠️ לא נמצאו פרטים — ${esc(x.code)}</b><small>הקלידו את שם הספר מהכריכה וחפשו, או אשרו כ"ספר בהמתנה"${x.copies>1?' · ×'+x.copies:''}</small><div class="row" style="margin-top:6px;gap:6px"><input class="inp" id="bn_${x.id}" placeholder="שם הספר…" style="flex:1;height:34px" onkeydown="if(event.key==='Enter')bulkByName('${x.id}')"><button class="btn sm" onclick="bulkByName('${x.id}')">🔎 חפש לפי שם</button></div></div><div class="actions"><button class="btn sm" onclick="bulkApprove('${x.id}')">✓ אשר בכל זאת</button><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕ הסר</button></div>`;
 }
 function bulkRender(){
   const box=$('#bulkList'); if(!box)return;
@@ -1465,6 +1465,20 @@ async function bulkPump(){
   _bulkBusy=false; bulkRender();
 }
 window.bulkRemove=function(id){ _bulkPend=_bulkPend.filter(x=>x.id!==id); _bulkQ=_bulkQ.filter(x=>x.id!==id); bulkRender(); };
+window.bulkByName=async function(id){
+  const x=_bulkPend.find(k=>k.id===id); if(!x)return;
+  const inp=document.getElementById('bn_'+id);
+  const name=(inp&&inp.value||'').trim();
+  if(!name){ toast('הקלידו את שם הספר','err'); if(inp)inp.focus(); return; }
+  x.status='loading'; bulkRender();
+  let d=null; try{ d=await fetchBookMeta(name); }catch(e){}
+  const still=_bulkPend.find(k=>k.id===id); if(!still)return;
+  if(d&&d.title){ still.status='found'; still.meta=d; toast('נמצא: '+d.title,'ok'); }
+  else { still.status='miss'; toast('לא נמצא גם לפי השם — אפשר לאשר כ"ספר בהמתנה"','err'); }
+  bulkRender();
+  // שחזור השם שהוקלד אם עדיין ⚠️ (לנוחות תיקון)
+  if(still.status==='miss'){ const ni=document.getElementById('bn_'+id); if(ni)ni.value=name; }
+};
 window.bulkApprove=function(id){
   const x=_bulkPend.find(k=>k.id===id); if(!x)return;
   if(x.status==='loading'){ toast('עוד רגע — בחיפוש פרטים','err'); return; }
@@ -3612,7 +3626,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 10.7.2026 · 172';
+const APP_VERSION='גרסה 10.7.2026 · 173';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
