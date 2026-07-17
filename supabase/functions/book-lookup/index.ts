@@ -45,9 +45,12 @@ function candidates(q: string): string[] {
   const add = (t: string) => { if (t && !out.includes(t)) out.push(t); };
   if (digits.length >= 7) add(digits);
   // דאנאקוד סרוק (12 ספרות, לא מתחיל 978/979): 124500001036 → 1245-103 וגם 1245103
-  if (digits.length === 12 && !/^97[89]/.test(digits)) {
-    const pub = digits.slice(0, 4);
-    const mid = digits.slice(4, 11).replace(/^0+/, "");
+  // סורקים מסוימים בולעים אפסים מובילים (10100302164 במקום 010100302164) — משלימים ל-12 ובודקים גם כך
+  let d12 = digits;
+  if ((digits.length === 10 || digits.length === 11) && !/^97[89]/.test(digits) && !isValidIsbn(digits)) { d12 = digits.padStart(12, "0"); add(d12); }
+  if (d12.length === 12 && !/^97[89]/.test(d12)) {
+    const pub = d12.slice(0, 4);
+    const mid = d12.slice(4, 11).replace(/^0+/, "");
     const pubT = pub.replace(/^0+/, "");
     if (mid) {
       if (pubT && pubT !== pub) { add(pubT + "-" + mid); add(pubT + mid); }
@@ -204,7 +207,9 @@ function titleSimilar(query: string, found: string): boolean {
   return shared >= 2 || shared / qs.length >= 0.6;
 }
 async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
-  const digits = q.replace(/[^0-9Xx]/g, "");
+  let digits = q.replace(/[^0-9Xx]/g, "");
+  // השלמת אפס מוביל שנבלע בסריקה — כמו ב-candidates
+  if ((digits.length === 10 || digits.length === 11) && !/^97[89]/.test(digits) && !isValidIsbn(digits)) digits = digits.padStart(12, "0");
   let term = q;
   if (digits.length === 12 && !/^97[89]/.test(digits)) {
     const pub = digits.slice(0, 4).replace(/^0+/, "");
@@ -249,6 +254,8 @@ async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
     }
     const title = cleanTitleFromWeb(it.title || "");
     if (!title || title.length < 2) continue;
+    // מסנן כותרות שאינן ספרים: גיליונות אקסל, קטלוגים, רשימות מלאי וכו' ("גיליון1" = Sheet1)
+    if (/^(גיליון|גליון|sheet|עמוד|page|קטלוג|טבלה|רשימת|רשימה|מלאי|מחירון|catalog|inventory|excel|xls)/i.test(title)) { tri(`WebSearch → כותרת לא-ספרית ("${title.slice(0, 20)}"), נפסלה`); continue; }
     tri(`WebSearch → מנסה שם: "${title}"`);
     let d: any = null;
     const NLIKEY = Deno.env.get("NLI_API_KEY") || "";
@@ -388,7 +395,7 @@ Deno.serve(async (req) => {
 
     // מצב בדיקה עצמית: הפונקציה בודקת את הסודות שהיא מחזיקה ומחזירה את תשובות המקורות
     if (body.selftest) {
-      const out: any = { selftest: true, fn: "v19", nli_key: !!NLI };
+      const out: any = { selftest: true, fn: "v20", nli_key: !!NLI };
       const CK = Deno.env.get("GOOGLE_CSE_KEY") || "";
       const CX = Deno.env.get("GOOGLE_CSE_ID") || "";
       out.cse_key_present = !!CK; out.cse_key_prefix = CK ? CK.slice(0, 8) + "…" + CK.slice(-4) + " (" + CK.length + " תווים)" : "";
@@ -423,8 +430,8 @@ Deno.serve(async (req) => {
     const HAS_WEB = !!(Deno.env.get("SERPER_API_KEY") || (CSE_KEY && CSE_ID));
     if (!result && HAS_WEB) { try { result = await lookupWebSearch(q, CSE_KEY, CSE_ID); } catch (e) { tri("WebSearch שגיאה: " + String(e)); } }
     const CSE_ON = !!(Deno.env.get("SERPER_API_KEY") || (Deno.env.get("GOOGLE_CSE_KEY") && Deno.env.get("GOOGLE_CSE_ID")));
-    if (!result) return json({ found: false, fn: "v19", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
-    (result as any).fn = "v19";
+    if (!result) return json({ found: false, fn: "v20", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
+    (result as any).fn = "v20";
     const se = extractSeries((result as any).title || "");
     if (se.series) { (result as any).series = se.series; (result as any).seriesIndex = se.seriesIndex; }
     // ספר שנמצא בלי כריכה — ניסיון אחרון: חיפוש תמונה לפי השם
