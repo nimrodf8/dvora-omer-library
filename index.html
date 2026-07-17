@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 171</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 172</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1409,65 +1409,114 @@ async function fetchBookMeta(q){
     return {found:true,source:'Google Books',title:v.title||'',author:(v.authors||[]).join(', '),publisher:v.publisher||'',year:((v.publishedDate||'').match(/\d{4}/)||[''])[0],language:LANG_MAP[v.language]||'',cover:cov||''};
   }catch(e){ return null; }
 }
-let _bulkQ=[],_bulkBusy=false,_bulkLastCode='',_bulkLastTs=0,_bulkStats={added:0,copies:0,found:0,miss:0};
-function bulkRow(id,html){ const box=$('#bulkList'); if(!box)return; let row=document.getElementById('bk_'+id); if(!row){ row=document.createElement('div'); row.id='bk_'+id; row.className='litem'; box.prepend(row); } row.innerHTML=html; }
-function bulkStats(){ const el=$('#bulkStats'); if(el)el.innerHTML=`נקלטו: <b>${_bulkStats.added}</b> ספרים חדשים · <b>${_bulkStats.copies}</b> עותקים נוספים · נמצאו פרטים: <b style="color:#2e9a4f">${_bulkStats.found}</b> · ללא פרטים: <b style="color:#b5651d">${_bulkStats.miss}</b>${_bulkQ.length?` · ⏳ בתור: ${_bulkQ.length}`:''}`; }
+// ---- קליטה מהירה: רשימת המתנה — כלום לא נכנס לקטלוג בלי אישור ----
+let _bulkPend=[],_bulkQ=[],_bulkBusy=false,_bulkLastCode='',_bulkLastTs=0;
+function bulkStats(){
+  const el=$('#bulkStats'); if(!el)return;
+  const found=_bulkPend.filter(x=>x.status==='found').length;
+  const miss=_bulkPend.filter(x=>x.status==='miss').length;
+  const load=_bulkPend.filter(x=>x.status==='loading').length;
+  const cps=_bulkPend.filter(x=>x.type==='copy').length;
+  el.innerHTML=`ממתינים לאישור: <b>${_bulkPend.length}</b> · נמצאו פרטים: <b style="color:#2e9a4f">${found}</b> · ללא פרטים: <b style="color:#b5651d">${miss}</b>${cps?` · עותקים נוספים: <b>${cps}</b>`:''}${load?` · ⏳ בחיפוש: ${load}`:''}`;
+}
+function bulkRowHtml(x){
+  if(x.type==='copy'){
+    const b=DB.books.find(k=>k.id===x.bookId);
+    return `<div class="meta"><b>➕ עותק נוסף — ${esc(b?b.title:'?')}</b><small>ברקוד ${esc(x.code)}${x.copies>1?' · ×'+x.copies:''}</small></div><div class="actions"><button class="btn sm" onclick="bulkApprove('${x.id}')">✓ אישור</button><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕ הסר</button></div>`;
+  }
+  if(x.status==='loading') return `<div class="meta"><b>⏳ מחפש פרטים…</b><small>ברקוד ${esc(x.code)}${x.copies>1?' · ×'+x.copies:''}</small></div><div class="actions"><span class="tag out">בתהליך</span><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕</button></div>`;
+  if(x.status==='found') return `<div class="meta"><b>✓ ${esc(x.meta.title)}</b><small>${esc(x.meta.author||'')}${x.meta.publisher?' · '+esc(x.meta.publisher):''} · ברקוד ${esc(x.code)}${x.copies>1?' · ×'+x.copies:''}${x.meta.source?' · '+esc(x.meta.source):''}</small></div><div class="actions"><button class="btn sm" onclick="bulkApprove('${x.id}')">✓ אישור</button><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕ הסר</button></div>`;
+  return `<div class="meta"><b>⚠️ לא נמצאו פרטים — ${esc(x.code)}</b><small>ניתן לאשר בכל זאת (ייכנס כ"ספר בהמתנה" להשלמה ידנית) או להסיר${x.copies>1?' · ×'+x.copies:''}</small></div><div class="actions"><button class="btn sm" onclick="bulkApprove('${x.id}')">✓ אשר בכל זאת</button><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕ הסר</button></div>`;
+}
+function bulkRender(){
+  const box=$('#bulkList'); if(!box)return;
+  box.innerHTML=_bulkPend.slice().reverse().map(x=>`<div class="litem" id="bk_${x.id}"${x.status==='miss'?' style="background:#fff8ef"':''}>${bulkRowHtml(x)}</div>`).join('')||'<p class="muted">סרקו ברקוד כדי להתחיל…</p>';
+  const ab=$('#bulkApproveAll'); if(ab)ab.style.display=_bulkPend.length?'':'none';
+  bulkStats();
+}
 function bulkScanAdd(codeRaw){
   const code=String(codeRaw||'').trim(); if(!code)return;
   const now=Date.now();
-  if(code===_bulkLastCode && now-_bulkLastTs<1200){ return; } // חסימת סריקה כפולה בטעות (bounce)
+  if(code===_bulkLastCode && now-_bulkLastTs<1200)return; // חסימת סריקה כפולה בטעות
   _bulkLastCode=code; _bulkLastTs=now;
-  // קיים כבר? (ברקוד עותק / דנה קוד) → מוסיפים עותק
+  // כבר ממתין ברשימה? → עוד עותק
+  const pend=_bulkPend.find(x=>x.code===code);
+  if(pend){ pend.copies++; bulkRender(); return; }
+  // קיים כבר בקטלוג? → עותק נוסף (ממתין לאישור)
   let hit=null;
   for(const b of DB.books){ if(String(b.danaCode||'')===code){hit=b;break;} if(itemsOf(b).some(it=>String(it.barcode||'')===code)){hit=b;break;} }
-  if(hit){
-    hit.items=itemsOf(hit); hit.items.push({id:uid(),barcode:code,status:'in',holder:null,dueDate:null});
-    _bulkStats.copies++; save(); bulkStats();
-    bulkRow(uid(),`<div class="meta"><b>➕ עותק ${hit.items.length} — ${esc(hit.title)}</b><small>ברקוד ${esc(code)}</small></div><div class="actions"><span class="tag">עותק נוסף</span></div>`);
-    return;
-  }
-  // ספר חדש — נוצר מיד, מתמלא ברקע
-  const b={id:uid(),title:'⏳ '+code,danaCode:'',author:'',authorSort:'',series:'',seriesIndex:'',language:'עברית',ageBand:'',genre:'',publisher:'',year:'',location:'',cover:'',items:[{id:uid(),barcode:code,status:'in',holder:null,dueDate:null}]};
-  DB.books.push(b); _bulkStats.added++; save(); bulkStats();
-  bulkRow(b.id,`<div class="meta"><b>⏳ מחפש פרטים…</b><small>ברקוד ${esc(code)}</small></div><div class="actions"><span class="tag out">בתהליך</span></div>`);
-  _bulkQ.push({book:b,code}); bulkPump();
+  if(hit){ _bulkPend.push({id:uid(),type:'copy',bookId:hit.id,code,copies:1,status:'found',meta:{}}); bulkRender(); return; }
+  // חדש → לרשימת ההמתנה + חיפוש ברקע (לא נכנס לקטלוג!)
+  const x={id:uid(),type:'new',code,copies:1,status:'loading',meta:{}};
+  _bulkPend.push(x); bulkRender();
+  _bulkQ.push(x); bulkPump();
 }
 async function bulkPump(){
   if(_bulkBusy)return; _bulkBusy=true;
   while(_bulkQ.length){
-    const {book,code}=_bulkQ.shift(); bulkStats();
-    let d=null; try{ d=await fetchBookMeta(code); }catch(e){}
-    const b=DB.books.find(x=>x.id===book.id); if(!b)continue;
-    if(d&&d.title){
-      b.title=d.title; b.author=d.author||''; b.publisher=d.publisher||''; b.year=d.year||'';
-      if(d.language)b.language=d.language; if(d.cover)b.cover=d.cover;
-      _bulkStats.found++;
-      bulkRow(b.id,`<div class="meta"><b>✓ ${esc(b.title)}</b><small>${esc(b.author||'')}${b.publisher?' · '+esc(b.publisher):''} · ברקוד ${esc(code)}${d.source?' · '+esc(d.source):''}</small></div><div class="actions"><button class="btn ghost sm" onclick="editBook('${b.id}')">ערוך</button><span class="tag">נמצא</span></div>`);
-    } else {
-      b.title='ספר בהמתנה · '+code;
-      _bulkStats.miss++;
-      bulkRow(b.id,`<div class="meta"><b>⚠️ לא נמצאו פרטים — ${esc(code)}</b><small>הספר נשמר; השלימו שם וסופר ידנית</small></div><div class="actions"><button class="btn ghost sm" onclick="editBook('${b.id}')">השלמה ידנית</button><span class="tag lost">חסר</span></div>`);
-    }
-    save(); bulkStats();
-    await new Promise(r=>setTimeout(r,350)); // עדינות למאגרים
+    const x=_bulkQ.shift();
+    if(!_bulkPend.includes(x))continue; // הוסר בינתיים
+    let d=null; try{ d=await fetchBookMeta(x.code); }catch(e){}
+    if(!_bulkPend.includes(x))continue;
+    if(d&&d.title){ x.status='found'; x.meta=d; } else { x.status='miss'; }
+    bulkRender();
+    await new Promise(r=>setTimeout(r,350));
   }
-  _bulkBusy=false; bulkStats();
-  try{renderCatalog();renderShelf();}catch(e){}
+  _bulkBusy=false; bulkRender();
 }
+window.bulkRemove=function(id){ _bulkPend=_bulkPend.filter(x=>x.id!==id); _bulkQ=_bulkQ.filter(x=>x.id!==id); bulkRender(); };
+window.bulkApprove=function(id){
+  const x=_bulkPend.find(k=>k.id===id); if(!x)return;
+  if(x.status==='loading'){ toast('עוד רגע — בחיפוש פרטים','err'); return; }
+  _bulkApplyOne(x); _bulkPend=_bulkPend.filter(k=>k.id!==id);
+  save(); bulkRender(); toast('נוסף לקטלוג','ok');
+};
+function _bulkApplyOne(x){
+  if(x.type==='copy'){
+    const b=DB.books.find(k=>k.id===x.bookId); if(!b)return;
+    b.items=itemsOf(b); for(let i=0;i<x.copies;i++)b.items.push({id:uid(),barcode:x.code,status:'in',holder:null,dueDate:null});
+    logAct('book',`קליטה בסריקה: ${x.copies} עותק/ים ל"${b.title}"`);
+    return;
+  }
+  const m=x.meta||{};
+  const items=[]; for(let i=0;i<x.copies;i++)items.push({id:uid(),barcode:x.code,status:'in',holder:null,dueDate:null});
+  const b={id:uid(),title:m.title||('ספר בהמתנה · '+x.code),danaCode:'',author:m.author||'',authorSort:'',series:'',seriesIndex:'',language:m.language||'עברית',ageBand:'',genre:'',publisher:m.publisher||'',year:m.year||'',location:'',cover:m.cover||'',items};
+  DB.books.push(b);
+  logAct('book',`קליטה בסריקה: "${b.title}" (${x.copies} עותק/ים)`);
+}
+window.bulkApproveAll=function(){
+  const ready=_bulkPend.filter(x=>x.status!=='loading');
+  if(!ready.length){ toast('אין פריטים מוכנים לאישור','err'); return; }
+  const miss=ready.filter(x=>x.status==='miss').length;
+  confirmAction({title:'אישור קליטה לקטלוג',message:`להכניס לקטלוג ${ready.length} פריטים?${miss?`\nמתוכם ${miss} ללא פרטים — ייכנסו כ"ספר בהמתנה" להשלמה ידנית.`:''}`,okLabel:'אשר והכנס'},()=>{
+    ready.forEach(_bulkApplyOne);
+    _bulkPend=_bulkPend.filter(x=>x.status==='loading');
+    cloudForceNextSave=true; save(); bulkRender();
+    try{renderCatalog();renderShelf();}catch(e){}
+    toast(`נוספו ${ready.length} פריטים לקטלוג`,'ok');
+  });
+};
 function openBulkScan(){
-  modal(`<div class="mhead"><b>⚡ קליטה מהירה בסריקה</b><button class="btn ghost sm" onclick="closeModal();try{renderCatalog();renderShelf();}catch(e){}">✕ סגירה</button></div>
+  modal(`<div class="mhead"><b>⚡ קליטה מהירה בסריקה</b><button class="btn ghost sm" onclick="bulkCloseAsk()">✕ סגירה</button></div>
   <div class="mbody">
-    <p class="muted" style="margin:0 0 10px">סרקו את ברקוד המסת״ב (ISBN) שעל גב הספר — ספר אחרי ספר, בלי להמתין. כל ספר נוצר מיד והמערכת מחפשת את פרטיו במאגרים (הספרייה הלאומית / Google Books) ברקע. סריקה חוזרת של אותו ברקוד = עותק נוסף.</p>
+    <p class="muted" style="margin:0 0 10px">סרקו ברקוד אחרי ברקוד — הספרים נצברים ברשימת המתנה למטה, והמערכת מחפשת את פרטיהם ברקע. <b>שום דבר לא נכנס לקטלוג עד שתאשרו</b> — אחד־אחד או הכל יחד. סריקה חוזרת של אותו ברקוד = עותק נוסף.</p>
     <input class="inp" id="bulkInput" placeholder="📷 סרקו לכאן… (או הקלידו מסת״ב + Enter)" autocomplete="off" style="font-size:18px;height:48px">
-    <div id="bulkStats" class="muted" style="margin:10px 0"></div>
+    <div class="row" style="margin:10px 0;justify-content:space-between;align-items:center">
+      <div id="bulkStats" class="muted"></div>
+      <button class="btn" id="bulkApproveAll" style="display:none" onclick="bulkApproveAll()">✓ אשר את כולם</button>
+    </div>
     <div id="bulkList" class="list" style="max-height:340px;overflow:auto"></div>
   </div>`);
-  bulkStats();
+  bulkRender();
   const inp=$('#bulkInput'); inp.focus();
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const v=inp.value.trim(); inp.value=''; if(v)bulkScanAdd(v); } });
-  // שמירת פוקוס — שסריקות לא ילכו לאיבוד
   inp.addEventListener('blur',()=>setTimeout(()=>{ if(document.getElementById('bulkInput'))inp.focus(); },150));
 }
+window.bulkCloseAsk=function(){
+  if(_bulkPend.length){
+    confirmAction({title:'יש פריטים שלא אושרו',message:`ברשימה ${_bulkPend.length} פריטים שטרם אושרו. הרשימה תישמר לחזרה בפתיחה הבאה של החלון (עד רענון הדף). לסגור?`,okLabel:'סגור'},()=>{ closeModal(); try{renderCatalog();renderShelf();}catch(e){} });
+  } else { closeModal(); try{renderCatalog();renderShelf();}catch(e){} }
+};
 window.openBulkScan=openBulkScan;
 
 /* ============ CHECKOUT ============ */
@@ -3563,7 +3612,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 10.7.2026 · 171';
+const APP_VERSION='גרסה 10.7.2026 · 172';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
