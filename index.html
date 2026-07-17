@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 170</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 171</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -408,7 +408,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
   <section id="view-catalog" class="view hidden">
     <div class="view-head">
       <div><h2>קטלוג הספרים</h2><p>הוספה ועריכה של ספרים · שם, סופר, סדרה, ז׳אנר, מספר דנה קוד וכריכה</p></div>
-      <div class="row"><button class="btn ghost sm" id="xlBooks">⬇ ייצוא לאקסל (XLSX)</button><button class="btn ghost sm" id="dlBooks">⬇ קובץ קטלוג (CSV)</button><button class="btn ghost sm" id="upBooksBtn">⬆ עדכון מקובץ</button><input type="file" id="upBooksFile" accept=".csv,.txt" class="hidden"><button class="btn" id="newBookBtn">+ ספר חדש</button></div>
+      <div class="row"><button class="btn" id="bulkScanBtn" style="background:var(--orange-d)">⚡ קליטה מהירה בסריקה</button><button class="btn ghost sm" id="xlBooks">⬇ ייצוא לאקסל (XLSX)</button><button class="btn ghost sm" id="dlBooks">⬇ קובץ קטלוג (CSV)</button><button class="btn ghost sm" id="upBooksBtn">⬆ עדכון מקובץ</button><input type="file" id="upBooksFile" accept=".csv,.txt" class="hidden"><button class="btn" id="newBookBtn">+ ספר חדש</button></div>
     </div>
     <div class="controls no-print">
       <label class="fld grow" style="margin:0"><span>חיפוש</span><span class="search-wrap"><input class="inp" id="catSearch" placeholder="שם, סופר, סדרה, ברקוד, מספר דנה קוד…"><button type="button" class="search-clear" id="catSearchClear" title="נקה חיפוש">×</button></span></label>
@@ -1205,6 +1205,7 @@ function quickCheckout(bookId,itemId){closeModal();go('checkout');const b=DB.boo
 
 /* ============ CATALOG ============ */
 $('#newBookBtn').addEventListener('click',()=>editBook(null));
+if($('#bulkScanBtn'))$('#bulkScanBtn').addEventListener('click',()=>openBulkScan());
 ['#catSearch','#catSort','#catLang','#catGenre','#catAge','#catAvail'].forEach(s=>$(s)&&$(s).addEventListener('input',renderCatalog));
 function resetCatalogSearch(){ const s=$('#catSearch'); if(s)s.value=''; ['#catSort','#catLang','#catGenre','#catAge','#catAvail'].forEach(x=>{const el=$(x);if(el)el.selectedIndex=0;}); const c=$('#catSearchClear'); if(c)c.classList.remove('show'); }
 (function(){ const inp=$('#catSearch'), btn=$('#catSearchClear'); if(inp&&btn){ const upd=()=>btn.classList.toggle('show',!!inp.value); inp.addEventListener('input',upd); btn.addEventListener('click',()=>{ inp.value=''; upd(); renderCatalog(); inp.focus(); }); upd(); } })();
@@ -1386,6 +1387,88 @@ function fillLookup(d){
   if(d.language&&$('#fLang')&&[...$('#fLang').options].some(o=>o.value===d.language))$('#fLang').value=d.language;
   if(d.cover&&!$('#fCover').value)$('#fCover').value=d.cover;
 }
+
+/* ============ קליטה מהירה בסריקה (Bulk Intake) ============ */
+// שליפת פרטי ספר לפי מסת״ב — שרת (ספרייה לאומית→Google) ואם אין, ישירות Google Books
+async function fetchBookMeta(q){
+  try{
+    if(cloudOn&&supa){
+      const {data:{session}}=await supa.auth.getSession();
+      if(session){
+        const res=await fetch(`${SUPA_URL}/functions/v1/book-lookup`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},body:JSON.stringify({q})});
+        if(res.ok){ const d=await res.json(); if(d&&d.found)return d; }
+      }
+    }
+  }catch(e){}
+  try{
+    const digits=q.replace(/[^0-9Xx]/g,''); const isIsbn=digits.length>=10;
+    const url=isIsbn?`https://www.googleapis.com/books/v1/volumes?q=isbn:${digits}`:`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}`;
+    const r=await fetch(url);const data=await r.json();const v=data.items&&data.items[0]&&data.items[0].volumeInfo;
+    if(!v)return null;
+    let cov=v.imageLinks&&(v.imageLinks.thumbnail||v.imageLinks.smallThumbnail); if(cov)cov=cov.replace('http://','https://'); else if(isIsbn)cov=`https://covers.openlibrary.org/b/isbn/${digits}-L.jpg`;
+    return {found:true,source:'Google Books',title:v.title||'',author:(v.authors||[]).join(', '),publisher:v.publisher||'',year:((v.publishedDate||'').match(/\d{4}/)||[''])[0],language:LANG_MAP[v.language]||'',cover:cov||''};
+  }catch(e){ return null; }
+}
+let _bulkQ=[],_bulkBusy=false,_bulkLastCode='',_bulkLastTs=0,_bulkStats={added:0,copies:0,found:0,miss:0};
+function bulkRow(id,html){ const box=$('#bulkList'); if(!box)return; let row=document.getElementById('bk_'+id); if(!row){ row=document.createElement('div'); row.id='bk_'+id; row.className='litem'; box.prepend(row); } row.innerHTML=html; }
+function bulkStats(){ const el=$('#bulkStats'); if(el)el.innerHTML=`נקלטו: <b>${_bulkStats.added}</b> ספרים חדשים · <b>${_bulkStats.copies}</b> עותקים נוספים · נמצאו פרטים: <b style="color:#2e9a4f">${_bulkStats.found}</b> · ללא פרטים: <b style="color:#b5651d">${_bulkStats.miss}</b>${_bulkQ.length?` · ⏳ בתור: ${_bulkQ.length}`:''}`; }
+function bulkScanAdd(codeRaw){
+  const code=String(codeRaw||'').trim(); if(!code)return;
+  const now=Date.now();
+  if(code===_bulkLastCode && now-_bulkLastTs<1200){ return; } // חסימת סריקה כפולה בטעות (bounce)
+  _bulkLastCode=code; _bulkLastTs=now;
+  // קיים כבר? (ברקוד עותק / דנה קוד) → מוסיפים עותק
+  let hit=null;
+  for(const b of DB.books){ if(String(b.danaCode||'')===code){hit=b;break;} if(itemsOf(b).some(it=>String(it.barcode||'')===code)){hit=b;break;} }
+  if(hit){
+    hit.items=itemsOf(hit); hit.items.push({id:uid(),barcode:code,status:'in',holder:null,dueDate:null});
+    _bulkStats.copies++; save(); bulkStats();
+    bulkRow(uid(),`<div class="meta"><b>➕ עותק ${hit.items.length} — ${esc(hit.title)}</b><small>ברקוד ${esc(code)}</small></div><div class="actions"><span class="tag">עותק נוסף</span></div>`);
+    return;
+  }
+  // ספר חדש — נוצר מיד, מתמלא ברקע
+  const b={id:uid(),title:'⏳ '+code,danaCode:'',author:'',authorSort:'',series:'',seriesIndex:'',language:'עברית',ageBand:'',genre:'',publisher:'',year:'',location:'',cover:'',items:[{id:uid(),barcode:code,status:'in',holder:null,dueDate:null}]};
+  DB.books.push(b); _bulkStats.added++; save(); bulkStats();
+  bulkRow(b.id,`<div class="meta"><b>⏳ מחפש פרטים…</b><small>ברקוד ${esc(code)}</small></div><div class="actions"><span class="tag out">בתהליך</span></div>`);
+  _bulkQ.push({book:b,code}); bulkPump();
+}
+async function bulkPump(){
+  if(_bulkBusy)return; _bulkBusy=true;
+  while(_bulkQ.length){
+    const {book,code}=_bulkQ.shift(); bulkStats();
+    let d=null; try{ d=await fetchBookMeta(code); }catch(e){}
+    const b=DB.books.find(x=>x.id===book.id); if(!b)continue;
+    if(d&&d.title){
+      b.title=d.title; b.author=d.author||''; b.publisher=d.publisher||''; b.year=d.year||'';
+      if(d.language)b.language=d.language; if(d.cover)b.cover=d.cover;
+      _bulkStats.found++;
+      bulkRow(b.id,`<div class="meta"><b>✓ ${esc(b.title)}</b><small>${esc(b.author||'')}${b.publisher?' · '+esc(b.publisher):''} · ברקוד ${esc(code)}${d.source?' · '+esc(d.source):''}</small></div><div class="actions"><button class="btn ghost sm" onclick="editBook('${b.id}')">ערוך</button><span class="tag">נמצא</span></div>`);
+    } else {
+      b.title='ספר בהמתנה · '+code;
+      _bulkStats.miss++;
+      bulkRow(b.id,`<div class="meta"><b>⚠️ לא נמצאו פרטים — ${esc(code)}</b><small>הספר נשמר; השלימו שם וסופר ידנית</small></div><div class="actions"><button class="btn ghost sm" onclick="editBook('${b.id}')">השלמה ידנית</button><span class="tag lost">חסר</span></div>`);
+    }
+    save(); bulkStats();
+    await new Promise(r=>setTimeout(r,350)); // עדינות למאגרים
+  }
+  _bulkBusy=false; bulkStats();
+  try{renderCatalog();renderShelf();}catch(e){}
+}
+function openBulkScan(){
+  modal(`<div class="mhead"><b>⚡ קליטה מהירה בסריקה</b><button class="btn ghost sm" onclick="closeModal();try{renderCatalog();renderShelf();}catch(e){}">✕ סגירה</button></div>
+  <div class="mbody">
+    <p class="muted" style="margin:0 0 10px">סרקו את ברקוד המסת״ב (ISBN) שעל גב הספר — ספר אחרי ספר, בלי להמתין. כל ספר נוצר מיד והמערכת מחפשת את פרטיו במאגרים (הספרייה הלאומית / Google Books) ברקע. סריקה חוזרת של אותו ברקוד = עותק נוסף.</p>
+    <input class="inp" id="bulkInput" placeholder="📷 סרקו לכאן… (או הקלידו מסת״ב + Enter)" autocomplete="off" style="font-size:18px;height:48px">
+    <div id="bulkStats" class="muted" style="margin:10px 0"></div>
+    <div id="bulkList" class="list" style="max-height:340px;overflow:auto"></div>
+  </div>`);
+  bulkStats();
+  const inp=$('#bulkInput'); inp.focus();
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const v=inp.value.trim(); inp.value=''; if(v)bulkScanAdd(v); } });
+  // שמירת פוקוס — שסריקות לא ילכו לאיבוד
+  inp.addEventListener('blur',()=>setTimeout(()=>{ if(document.getElementById('bulkInput'))inp.focus(); },150));
+}
+window.openBulkScan=openBulkScan;
 
 /* ============ CHECKOUT ============ */
 let scanBuf='',scanT=0;
@@ -3480,7 +3563,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 9.7.2026 · 170';
+const APP_VERSION='גרסה 10.7.2026 · 171';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
