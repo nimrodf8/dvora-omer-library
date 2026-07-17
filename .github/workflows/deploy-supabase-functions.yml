@@ -1,0 +1,28 @@
+# פריסה אוטומטית של Edge Functions ל‑Supabase
+# רץ בכל push ל‑main שנוגע בקוד הפונקציות, וגם ידנית מלשונית Actions (Run workflow).
+# דורש secret בשם SUPABASE_ACCESS_TOKEN (נוצר ב: supabase.com/dashboard/account/tokens,
+# נשמר ב: GitHub → Settings → Secrets and variables → Actions).
+name: Deploy Supabase Edge Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # פורס את כל הפונקציות שבתיקיית supabase/functions (כרגע: book-lookup)
+      - name: Deploy functions
+        run: supabase functions deploy --project-ref icrmyrievankdbiknodl
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
