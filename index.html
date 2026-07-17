@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 182</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 183</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1537,7 +1537,15 @@ function openBulkScan(){
     <input class="inp" id="bulkInput" placeholder="📷 סרקו לכאן… (או הקלידו מסת״ב + Enter)" autocomplete="off" style="font-size:18px;height:48px">
     <div class="row" style="margin:10px 0;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
       <div id="bulkStats" class="muted"></div>
-      <div class="row" style="gap:6px"><button class="btn ghost sm" onclick="bulkSelfTest()">🧪 בדיקת חיבור</button><button class="btn ghost sm" onclick="bulkCopyReport()">📋 העתק דוח אבחון</button><button class="btn" id="bulkApproveAll" style="display:none" onclick="bulkApproveAll()">✓ אשר את כולם</button></div>
+      <div class="row" style="gap:6px"><button class="btn ghost sm" onclick="bulkToggleHelp()">❓ הנחיות סריקה</button><button class="btn ghost sm" onclick="bulkSelfTest()">🧪 בדיקת חיבור</button><button class="btn ghost sm" onclick="bulkCopyReport()">📋 העתק דוח אבחון</button><button class="btn" id="bulkApproveAll" style="display:none" onclick="bulkApproveAll()">✓ אשר את כולם</button></div>
+    </div>
+    <div id="bulkHelp" style="display:none;background:var(--panel,#f6f3ec);border:1px solid var(--line,#e3ddd0);border-radius:10px;padding:10px 14px;margin:0 0 10px;font-size:13.5px;line-height:1.65">
+      <b>כמה לסרוק ברצף?</b> אין מגבלה טכנית — אפשר לסרוק גם 200 ברצף באותו חלון. הרשימה נצברת, החיפושים רצים ברקע בתור מסודר, ושום דבר לא הולך לאיבוד.<br>
+      <b>מומלץ: מנות של 30–60 ספרים (בערך מדף)</b>, ואז "✓ אשר את כולם" לפני שממשיכים:<br>
+      1️⃣ <b>הרשימה חיה רק עד רענון הדף</b> — פריטים שלא אושרו יאבדו אם הדף ירוענן/ייסגר בטעות. אישור כל מדף = הכל שמור במסד, אפס סיכון.<br>
+      2️⃣ <b>נוח לבקר</b> — לעבור בעין על 40 שורות ולתקן 2–3 חריגים זה קל; על 300 זה מתיש ומפספסים.<br>
+      3️⃣ <b>קצב החיפוש</b> — ספר שלא נמצא במאגרים לוקח כמה שניות. במנה של 50 הרקע משלים תוך ~2–3 דקות; ב־300 בבת אחת הזנב יתארך והמסך יהיה עמוס "בתהליך".<br>
+      <span class="muted">💡 שגרת מדף: סרקו את כל המדף ברצף (בלי לחכות) ← תנו לרקע דקה־שתיים ← עברו על הרשימה וטפלו בחריגים (🔎 שם / ✕) ← "✓ אשר את כולם" ← מדף הבא.</span>
     </div>
     <div id="bulkList" class="list" style="max-height:340px;overflow:auto"></div>
   </div>`);
@@ -1586,6 +1594,7 @@ window.bulkCopyReport=function(){
   catch(e){ _bulkCopyFallback(txt); done(); }
 };
 function _bulkCopyFallback(txt){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); }
+window.bulkToggleHelp=function(){ const h=document.getElementById('bulkHelp'); if(h)h.style.display=h.style.display==='none'?'block':'none'; };
 window.bulkCloseAsk=function(){
   if(_bulkPend.length){
     confirmAction({title:'יש פריטים שלא אושרו',message:`ברשימה ${_bulkPend.length} פריטים שטרם אושרו. הרשימה תישמר לחזרה בפתיחה הבאה של החלון (עד רענון הדף). לסגור?`,okLabel:'סגור'},()=>{ closeModal(); try{renderCatalog();renderShelf();}catch(e){} });
@@ -3081,7 +3090,7 @@ function renderGuide(){
       <li>סורקים את ברקוד הספר (או מקלידים ידנית + Enter).</li>
       <li>בוחרים את התלמיד/ה מהרשימה.</li>
       <li>מאשרים — ההורה מקבל מייל אוטומטי על ההשאלה.</li></ol>
-      <div class="gv-tip">💡 תיק "סגור להשאלה" = טרם נחתם תקנון (סעיף 6).</div>
+      <div class="gv-tip">💡 תיק "סגור להשאלה" = טרם נחתם תקנון (סעיף 7).</div>
     </div>
 
     <div class="gv-card gv-key"><h3>3 · החזרת ספר</h3>
@@ -3099,18 +3108,27 @@ function renderGuide(){
       <div class="gv-tip">💡 החיפוש והסינון מתאפסים ביציאה. הכפתור × מנקה את החיפוש.</div>
     </div>
 
-    <div class="gv-card"><h3>5 · תזכורות להורים</h3>
+    <div class="gv-card"><h3>5 · קליטה מהירה בסריקה</h3>
+      <p>ב${L('catalog','קטלוג')} ← <b>⚡ קליטה מהירה בסריקה</b>: סורקים ברקוד אחרי ברקוד — הספרים נצברים ברשימת המתנה והמערכת מחפשת את פרטיהם ברקע. שום דבר לא נכנס לקטלוג עד שמאשרים.</p>
+      <p><b>כמה לסרוק ברצף?</b> אין מגבלה טכנית — אפשר לסרוק גם 200 ברצף באותו חלון. הרשימה נצברת, החיפושים רצים ברקע בתור מסודר, ושום דבר לא הולך לאיבוד. <b>מומלץ: מנות של 30–60 ספרים (בערך מדף)</b>, ואז "✓ אשר את כולם" לפני שממשיכים:</p>
+      <ol><li><b>הרשימה חיה רק עד רענון הדף</b> — פריטים שלא אושרו יאבדו אם הדף ירוענן או ייסגר בטעות. אישור כל מדף = הכל שמור במסד, אפס סיכון.</li>
+      <li><b>נוח לבקר</b> — לעבור בעין על 40 שורות ולתקן 2–3 חריגים זה קל; על 300 זה מתיש ומפספסים.</li>
+      <li><b>קצב החיפוש</b> — כל ספר שלא נמצא במאגרים לוקח כמה שניות (שרשרת החיפושים). במנה של 50 הרקע משלים תוך ~2–3 דקות; אם יסרקו 300 בבת אחת, הזנב ייקח זמן והמסך יהיה עמוס "בתהליך".</li></ol>
+      <div class="gv-tip">💡 שגרת העבודה המומלצת למדף: סרקו את כל המדף ברצף (בלי לחכות) ← תנו לרקע דקה־שתיים להשלים ← עברו על הרשימה וטפלו בחריגים (🔎 שם / ✕) ← "✓ אשר את כולם" ← מדף הבא.</div>
+    </div>
+
+    <div class="gv-card"><h3>6 · תזכורות להורים</h3>
       <p>רוב התזכורות (לפני מועד ובאיחור) נשלחות אוטומטית. לשליחה ידנית: ${L('reminders','תזכורות')} — מייל להורה (וגם WhatsApp אם הופעל ע"י המנהל/ת).</p>
     </div>
 
-    <div class="gv-card"><h3>6 · תקנון וחתימת הורים</h3>
+    <div class="gv-card"><h3>7 · תקנון וחתימת הורים</h3>
       <p><b>תלמיד/ה יכול/ה להשאיל רק אחרי חתימת הורה על התקנון.</b></p>
       <ul><li>שליחה לחתימה דיגיטלית — בכרטיס התלמיד/ה: "שליחת תקנון לחתימה".</li>
       ${typeof isDevUser==='function'&&isDevUser()?'<li>חתמו על נייר? בכרטיס — "סמן כחתום ידנית".</li>':''}
       <li>הדפסת טופס — ${L('terms','תקנון')} ← "הדפסת טופס". בטופס המודפס יש <b>קוד QR</b> — ההורה סורק, בוחר את שם הילד/ה וחותם מהטלפון.</li></ul>
     </div>
 
-    <div class="gv-card"><h3>7 · תלמידים</h3>
+    <div class="gv-card"><h3>8 · תלמידים</h3>
       <ul><li>${L('students','תלמידים')} — כרטיס אישי, ספרים פתוחים והיסטוריה.</li>
       <li>הרשימות מוצגות <b>לפי כיתה, מקופלות</b> — לחצו על כותרת הכיתה לפתיחה/קיפול. חיפוש פותח את התוצאות אוטומטית.</li>
       <li>פרטי ההורים מוצגים כ"✓ הוזן" לשמירת פרטיות.</li>
@@ -3119,7 +3137,7 @@ function renderGuide(){
       <li>${L('classes','כיתות')} — רשימת הכיתות והמחנכים/ות. שמירת כיתה עם שם מורה יוצרת אוטומטית רשומת השאלה למורה. ${L('map','מפת התמצאות')} — היכן כל קטגוריה.</li></ul>
     </div>
 
-    <div class="gv-card"><h3>8 · מעבר שנה (למנהל/ת)</h3>
+    <div class="gv-card"><h3>9 · מעבר שנה (למנהל/ת)</h3>
       <ul><li>בתאריך שנקבע${typeof isDevUser==='function'&&isDevUser()?' (בהגדרות ← כלים למפתח)':''} מופיעה בעמוד הבית רצועת <b>📅 מעבר שנה</b> — למנהל/ת בלבד.</li>
       <li>לחיצה על "בצע קידום שכבה": תלמידי ו׳ עוברים לתלמידי עבר, שאר התלמידים עולים שכבה, והמורים/כיתות עולים יחד איתם (ו׳ מתחילה מחזור חדש כ־א׳). נשמר גיבוי אוטומטי לפני.</li>
       <li>אחרי הקידום, כל כיתה מסומנת <b>"ממתין לאישור"</b> ב${L('classes','כיתות ומורים')} — אשרו מורים שממשיכים (✓ אישור / ✓ אשר את כל המורים) וערכו את מי שלא.</li>
@@ -3127,11 +3145,11 @@ function renderGuide(){
       ${typeof isDevUser==='function'&&isDevUser()?'<li>אפשר גם להריץ ידנית: הגדרות ← כלים למפתח ← "⬆ הרץ קידום שכבה עכשיו". אחרי ביצוע, הרצועה לא תופיע שוב עד התאריך הבא.</li>':''}</ul>
     </div>
 
-    <div class="gv-card"><h3>9 · דוחות</h3>
+    <div class="gv-card"><h3>10 · דוחות</h3>
       <p>${L('reports','דוחות')} — בראש: מספרים חיים (מושאלים, איחורים, אבודים, טרם חתמו…). מתחת: דוחות מפורטים עם ייצוא לאקסל.</p>
     </div>
 
-    <div class="gv-card"><h3>10 · למי לפנות</h3>
+    <div class="gv-card"><h3>11 · למי לפנות</h3>
       <p>פעולות למנהל/ת בלבד: ${L('settings','הגדרות')} מדיניות, ניהול משתמשים, קודי אזור הורים ומחיקת נתונים. חסרה הרשאה? פנו למנהל/ת.</p>
       <p class="muted">תמיכה: dvoraomerlib@gmail.com</p>
     </div>
@@ -3686,7 +3704,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 17.7.2026 · 182';
+const APP_VERSION='גרסה 17.7.2026 · 183';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
