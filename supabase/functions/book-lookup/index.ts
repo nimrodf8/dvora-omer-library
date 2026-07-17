@@ -271,9 +271,30 @@ async function lookupWebSearch(q: string, cseKey: string, cseCx: string) {
     if (!d) { try { d = await lookupGoogle(title); } catch (_) {} }
     if (d && !titleSimilar(title, d.title || "")) { tri(`WebSearch → העשרת GoogleBooks נפסלה (כותר לא דומה)`); d = null; }
     const _blob = (it.title || "") + " " + (it.snippet || "");
-    const _age = extractAge(_blob);
+    let _age = extractAge(_blob);
     const _lf = extractLabeledFields(_blob);
-    const _sf = seriesFromSnippet(_blob, title);
+    let _sf = seriesFromSnippet(_blob, title);
+    // תוצאה עירומה (אין העשרה ואין מחבר בתקציר) — חיפוש טקסט נוסף לפי השם:
+    // תקצירי כמה חנויות יחד מכילים לרוב "מאת ..." / "הוצאה: ..." שהתקציר הבודד פספס
+    if (!d && !_lf.author && SERPER) {
+      try {
+        const r2 = await fetch("https://google.serper.dev/search", {
+          method: "POST", headers: { "X-API-KEY": SERPER, "Content-Type": "application/json" },
+          body: JSON.stringify({ q: `"${title}" ספר`, gl: "il", hl: "iw", num: 5 }),
+        });
+        if (r2.ok) {
+          const d2 = await r2.json();
+          const blob2 = (d2.organic || []).map((o: any) => (o.title || "") + " " + (o.snippet || "")).join(" · ");
+          const lf2 = extractLabeledFields(blob2);
+          if (lf2.author) _lf.author = lf2.author;
+          if (!_lf.publisher && lf2.publisher) _lf.publisher = lf2.publisher;
+          if (!_lf.year && lf2.year) _lf.year = lf2.year;
+          if (!_age) _age = extractAge(blob2);
+          if (!_sf.series) _sf = seriesFromSnippet(blob2, title);
+          tri(`WebSearch → העשרה לפי שם: ${[lf2.author && "מחבר✓", lf2.publisher && "הוצאה✓", lf2.year && "שנה✓"].filter(Boolean).join(" ") || "לא נמצאו שדות"}`);
+        }
+      } catch (_) { tri("WebSearch → העשרה לפי שם נכשלה"); }
+    }
     if (_lf.author || _lf.publisher || _lf.year || _sf.series) tri(`WebSearch → שדות מהתקציר: ${[_lf.author && "מחבר✓", _lf.publisher && "הוצאה✓", _lf.year && "שנה✓", _sf.series && "סדרה✓"].filter(Boolean).join(" ")}`);
     if (d) {
       d.title = title;  // השם שנמצא באינטרנט הוא השם המוצג — המאגר רק משלים מחבר/הוצאה/שנה/כריכה
@@ -350,7 +371,9 @@ function seriesFromSnippet(text: string, bookTitle: string): { series: string; s
 }
 function extractLabeledFields(text: string): { author: string; publisher: string; year: string } {
   const t = (text || "").replace(/\s+/g, " ");
-  const author = fieldAfterLabel(t, 'מחבר(?:ים|ת)?|סופר(?:ת)?');
+  let author = fieldAfterLabel(t, 'מחבר(?:ים|ת)?|סופר(?:ת)?');
+  // "מאת שם הסופר" — הצורה הנפוצה בחנויות; נעצר לפני תווית/מפריד/סוף
+  if (!author) { const m = t.match(/(?:^|[\s·|,.(])מאת:?\s+([֐-׿][֐-׿'"׳״.\s]{1,28}?)(?=\s*(?:[·|•,;:)(]|בהוצאת|הוצאה|שנת|עמודים|כריכה|$))/); if (m) author = m[1].replace(/[\s.]+$/, "").trim(); }
   let publisher = fieldAfterLabel(t, 'הוצאה לאור|הוצאה|מוציא לאור');
   if (!publisher) { const m = t.match(/בהוצאת\s+([^·|•,.:]{2,40})/); if (m) publisher = m[1].trim(); }
   const yRaw = fieldAfterLabel(t, 'שנת הדפסה|שנת הוצאה|שנת פרסום');
@@ -420,7 +443,7 @@ Deno.serve(async (req) => {
 
     // מצב בדיקה עצמית: הפונקציה בודקת את הסודות שהיא מחזיקה ומחזירה את תשובות המקורות
     if (body.selftest) {
-      const out: any = { selftest: true, fn: "v27", nli_key: !!NLI };
+      const out: any = { selftest: true, fn: "v28", nli_key: !!NLI };
       const CK = Deno.env.get("GOOGLE_CSE_KEY") || "";
       const CX = Deno.env.get("GOOGLE_CSE_ID") || "";
       out.cse_key_present = !!CK; out.cse_key_prefix = CK ? CK.slice(0, 8) + "…" + CK.slice(-4) + " (" + CK.length + " תווים)" : "";
@@ -451,7 +474,7 @@ Deno.serve(async (req) => {
       TRIED.length = 0;
       let img = "";
       try { img = await findCoverImage(q); } catch (_) { tri("ImageSearch שגיאה"); }
-      return json({ found: !!img, cover: img, fn: "v27", tried: TRIED.slice() });
+      return json({ found: !!img, cover: img, fn: "v28", tried: TRIED.slice() });
     }
 
     TRIED.length = 0;
@@ -463,8 +486,8 @@ Deno.serve(async (req) => {
     const HAS_WEB = !!(Deno.env.get("SERPER_API_KEY") || (CSE_KEY && CSE_ID));
     if (!result && HAS_WEB) { try { result = await lookupWebSearch(q, CSE_KEY, CSE_ID); } catch (e) { tri("WebSearch שגיאה: " + String(e)); } }
     const CSE_ON = !!(Deno.env.get("SERPER_API_KEY") || (Deno.env.get("GOOGLE_CSE_KEY") && Deno.env.get("GOOGLE_CSE_ID")));
-    if (!result) return json({ found: false, fn: "v27", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
-    (result as any).fn = "v27";
+    if (!result) return json({ found: false, fn: "v28", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
+    (result as any).fn = "v28";
     const se = extractSeries((result as any).title || "");
     if (se.series) { (result as any).series = se.series; (result as any).seriesIndex = se.seriesIndex; }
     // ספר שנמצא בלי כריכה — ניסיון אחרון: חיפוש תמונה לפי השם
