@@ -384,8 +384,16 @@ async function findCoverImage(title: string): Promise<string> {
       const u = im.imageUrl || ""; const w = +im.imageWidth || 0, h = +im.imageHeight || 0;
       return /^https:/.test(u) && h >= 150 && w >= 100 && h >= w * 1.02;
     });
-    // רק תמונה שהכיתוב שלה דומה לשם הספר — עדיף בלי כריכה מאשר כריכה של ספר אחר
-    const best = imgs.find((im: any) => titleSimilar(clean, im.title || ""));
+    // רק תמונה שהכיתוב שלה דומה לשם הספר — עדיף בלי כריכה מאשר כריכה של ספר אחר.
+    // וכלל מספרים: "רוני ותום 2" לא יקבל כריכה שכיתובה "רוני ותום 5" (כרך שגוי מאותה סדרה)
+    const tNums = (clean.match(/\d+/g) || []);
+    const best = imgs.find((im: any) => {
+      const cap = im.title || "";
+      if (!titleSimilar(clean, cap)) return false;
+      const cNums = (cap.match(/\d+/g) || []);
+      if (tNums.length && cNums.length && !tNums.some((n: string) => cNums.includes(n))) return false;
+      return true;
+    });
     tri(`ImageSearch "${q.slice(0, 30)}" → ${all.length} תוצאות, ${imgs.length} בצורת כריכה, ${best ? "כיתוב דומה ✓" : "אין התאמה"}`);
     if (best) return best.imageUrl;
   }
@@ -410,7 +418,7 @@ Deno.serve(async (req) => {
 
     // מצב בדיקה עצמית: הפונקציה בודקת את הסודות שהיא מחזיקה ומחזירה את תשובות המקורות
     if (body.selftest) {
-      const out: any = { selftest: true, fn: "v25", nli_key: !!NLI };
+      const out: any = { selftest: true, fn: "v26", nli_key: !!NLI };
       const CK = Deno.env.get("GOOGLE_CSE_KEY") || "";
       const CX = Deno.env.get("GOOGLE_CSE_ID") || "";
       out.cse_key_present = !!CK; out.cse_key_prefix = CK ? CK.slice(0, 8) + "…" + CK.slice(-4) + " (" + CK.length + " תווים)" : "";
@@ -436,6 +444,14 @@ Deno.serve(async (req) => {
     const q = (body.q || "").trim();
     if (!q) return json({ found: false, error: "empty query" }, 400);
 
+    // מצב "כריכה בלבד" (כפתור 🔍 חפש כריכה): חיפוש תמונה ישיר לפי השם, בלי תלות במציאת הספר במאגרים
+    if (body.coverOnly) {
+      TRIED.length = 0;
+      let img = "";
+      try { img = await findCoverImage(q); } catch (_) { tri("ImageSearch שגיאה"); }
+      return json({ found: !!img, cover: img, fn: "v26", tried: TRIED.slice() });
+    }
+
     TRIED.length = 0;
     let result = null;
     if (NLI) { try { result = await lookupNLI(q, NLI); } catch (_) { /* מתעלמים — נופלים לגוגל */ } }
@@ -445,8 +461,8 @@ Deno.serve(async (req) => {
     const HAS_WEB = !!(Deno.env.get("SERPER_API_KEY") || (CSE_KEY && CSE_ID));
     if (!result && HAS_WEB) { try { result = await lookupWebSearch(q, CSE_KEY, CSE_ID); } catch (e) { tri("WebSearch שגיאה: " + String(e)); } }
     const CSE_ON = !!(Deno.env.get("SERPER_API_KEY") || (Deno.env.get("GOOGLE_CSE_KEY") && Deno.env.get("GOOGLE_CSE_ID")));
-    if (!result) return json({ found: false, fn: "v25", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
-    (result as any).fn = "v25";
+    if (!result) return json({ found: false, fn: "v26", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
+    (result as any).fn = "v26";
     const se = extractSeries((result as any).title || "");
     if (se.series) { (result as any).series = se.series; (result as any).seriesIndex = se.seriesIndex; }
     // ספר שנמצא בלי כריכה — ניסיון אחרון: חיפוש תמונה לפי השם
