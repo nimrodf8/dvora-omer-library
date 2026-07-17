@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 179</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 181</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1430,7 +1430,7 @@ function bulkRowHtml(x){
     return `<div class="meta"><b>➕ עותק נוסף — ${esc(b?b.title:'?')}</b><small>ברקוד ${esc(x.code)}${x.copies>1?' · ×'+x.copies:''}</small></div><div class="actions"><button class="btn sm" onclick="bulkApprove('${x.id}')">✓ אישור</button><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕ הסר</button></div>`;
   }
   if(x.status==='loading') return `<div class="meta"><b>⏳ מחפש פרטים…</b><small>ברקוד ${esc(x.code)}${x.copies>1?' · ×'+x.copies:''}</small></div><div class="actions"><span class="tag out">בתהליך</span><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕</button></div>`;
-  if(x.status==='found') return `<div class="meta"><b>✓ ${esc(x.meta.title)}</b><small>${esc(x.meta.author||'')}${x.meta.publisher?' · '+esc(x.meta.publisher):''} · ברקוד ${esc(x.code)}${x.copies>1?' · ×'+x.copies:''}${x.meta.source?' · '+esc(x.meta.source):''}</small></div><div class="actions"><button class="btn sm" onclick="bulkApprove('${x.id}')">✓ אישור</button><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕ הסר</button></div>`;
+  if(x.status==='found') return `<div class="meta"><b>✓ ${esc(x.meta.title)}</b><small>${esc(x.meta.author||'')}${x.meta.publisher?' · '+esc(x.meta.publisher):''}${x.meta.series?' · סדרה: '+esc(x.meta.series)+(x.meta.seriesIndex?' #'+esc(x.meta.seriesIndex):''):''}${x.meta.age?' · גיל '+esc(x.meta.age):''} · ברקוד ${esc(x.code)}${x.copies>1?' · ×'+x.copies:''}${x.meta.source?' · '+esc(x.meta.source):''}</small></div><div class="actions"><button class="btn sm" onclick="bulkApprove('${x.id}')">✓ אישור</button><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕ הסר</button></div>`;
   const _b=v=>v===true?'✓':v===false?'✗':'?';
   const dbg=x.dbg?`<div class="muted" style="font-size:11.5px;margin-top:4px;line-height:1.5">🔬 שרת: ${esc(x.dbg.fn||'ישן — פרסו מחדש!')}${('nli_key' in x.dbg)?` · מפתח ספרייה לאומית: ${_b(x.dbg.nli_key)} · חיפוש אינטרנט: ${_b(x.dbg.web_search)}`:''}${(x.dbg.tried&&x.dbg.tried.length)?'<br>'+x.dbg.tried.map(esc).join(' · '):''}</div>`:(x.dbg===null&&x.status==='miss'?'<div class="muted" style="font-size:11.5px;margin-top:4px">🔬 השרת לא הגיב — נבדק רק מול Google Books</div>':'');
   return `<div class="meta" style="flex:1"><b>⚠️ לא נמצאו פרטים — ${esc(x.code)}</b><small>הקלידו את שם הספר מהכריכה וחפשו, או אשרו כ"ספר בהמתנה"${x.copies>1?' · ×'+x.copies:''}</small>${dbg}<div class="row" style="margin-top:6px;gap:6px"><input class="inp" id="bn_${x.id}" placeholder="שם הספר…" style="flex:1;height:34px" onkeydown="if(event.key==='Enter')bulkByName('${x.id}')"><button class="btn sm" onclick="bulkByName('${x.id}')">🔎 חפש לפי שם</button></div></div><div class="actions"><button class="btn sm" onclick="bulkApprove('${x.id}')">✓ אשר בכל זאת</button><button class="btn ghost sm" onclick="bulkRemove('${x.id}')">✕ הסר</button></div>`;
@@ -1493,6 +1493,18 @@ window.bulkApprove=function(id){
   _bulkApplyOne(x); _bulkPend=_bulkPend.filter(k=>k.id!==id);
   save(); bulkRender(); toast('נוסף לקטלוג','ok');
 };
+// מיפוי טווח גיל חופשי ("9-12", "6+") לערך הקרוב ביותר במערכת
+function _mapAge(a){
+  if(!a)return '';
+  const AG=['4-6','6-8','8-10','10-12','12-14','14+'];
+  if(AG.includes(a))return a;
+  const m=String(a).match(/(\d{1,2})\s*[-–+]?\s*(\d{1,2})?/); if(!m)return '';
+  const lo=+m[1], hi=m[2]?+m[2]:lo+2, mid=(lo+hi)/2;
+  if(mid>=14)return '14+';
+  let best='',bd=99;
+  AG.slice(0,5).forEach(r=>{const[a1,b1]=r.split('-').map(Number);const c=(a1+b1)/2;const d=Math.abs(c-mid);if(d<bd){bd=d;best=r;}});
+  return best;
+}
 function _bulkApplyOne(x){
   if(x.type==='copy'){
     const b=DB.books.find(k=>k.id===x.bookId); if(!b)return;
@@ -1502,7 +1514,7 @@ function _bulkApplyOne(x){
   }
   const m=x.meta||{};
   const items=[]; for(let i=0;i<x.copies;i++)items.push({id:uid(),barcode:x.code,status:'in',holder:null,dueDate:null});
-  const b={id:uid(),title:m.title||('ספר בהמתנה · '+x.code),danaCode:'',author:m.author||'',authorSort:'',series:'',seriesIndex:'',language:m.language||'עברית',ageBand:'',genre:'',publisher:m.publisher||'',year:m.year||'',location:'',cover:m.cover||'',items};
+  const b={id:uid(),title:m.title||('ספר בהמתנה · '+x.code),danaCode:'',author:m.author||'',authorSort:'',series:m.series||'',seriesIndex:m.seriesIndex||'',language:m.language||'עברית',ageBand:_mapAge(m.age),genre:'',publisher:m.publisher||'',year:m.year||'',location:'',cover:m.cover||'',items};
   DB.books.push(b);
   logAct('book',`קליטה בסריקה: "${b.title}" (${x.copies} עותק/ים)`);
 }
@@ -3674,7 +3686,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 17.7.2026 · 179';
+const APP_VERSION='גרסה 17.7.2026 · 181';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
