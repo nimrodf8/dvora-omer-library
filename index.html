@@ -337,7 +337,7 @@ body.locked .topbar, body.locked .layout, body.locked #modalRoot{ display:none !
 <body class="locked">
 <!-- מגן אתחול: נראה מיידית גם ללא JS; מוסר אוטומטית כשהאתר עולה -->
 <div id="bootShield" style="position:fixed;top:0;right:0;left:0;z-index:99999;background:#0f6d6d;color:#fff;font-family:Arial,sans-serif;font-size:14px;padding:10px 14px;text-align:center;direction:rtl">
-  📚 ספריית דבורה עומר · <b>גרסה 178</b> · טוען את המערכת…
+  📚 ספריית דבורה עומר · <b>גרסה 179</b> · טוען את המערכת…
   <div id="bootShieldErr" style="display:none;margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-word"></div>
   <noscript><div style="margin-top:6px;background:#8f2f2f;padding:6px 10px;border-radius:8px">JavaScript כבוי בדפדפן זה — יש להפעיל אותו כדי להשתמש במערכת.</div></noscript>
 </div>
@@ -1532,6 +1532,8 @@ function openBulkScan(){
   bulkRender();
   const inp=$('#bulkInput'); inp.focus();
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const v=inp.value.trim(); inp.value=''; if(v)bulkScanAdd(v); } });
+  // הסורק מסיים כל סריקה ב-## — שליחה אוטומטית, בלי Enter
+  inp.addEventListener('input',()=>{ const v=inp.value; if(v.endsWith('##')){ inp.value=''; const c=v.slice(0,-2).trim(); if(c)bulkScanAdd(c); } });
   inp.addEventListener('blur',()=>setTimeout(()=>{ if(document.getElementById('bulkInput'))inp.focus(); },150));
 }
 window.bulkSelfTest=async function(){
@@ -1582,7 +1584,7 @@ window.openBulkScan=openBulkScan;
 /* ============ CHECKOUT ============ */
 let scanBuf='',scanT=0;
 $('#scanInput').addEventListener('keydown',e=>{if(e.key==='Enter'){const v=$('#scanInput').value.trim();if(v)handleScan(v);}});
-$('#scanInput').addEventListener('input',scanSuggestRender);
+$('#scanInput').addEventListener('input',()=>{ const v=$('#scanInput').value; if(v.endsWith('##')){ const c=v.slice(0,-2).trim(); $('#scanInput').value=''; if(c){handleScan(c);return;} } scanSuggestRender(); });
 function scanSuggestRender(){
   const box=$('#scanSuggest'); if(!box)return;
   const q=($('#scanInput').value||'').trim();
@@ -3672,7 +3674,7 @@ $('#catFile')&&$('#catFile').addEventListener('change',ev=>{
 /* ============ init ============ */
 migrate();
 paintCount();renderShelf(); // checkRollover נקרא אחרי הגדרת משתני הענן (תוקן: קריסה במכשירים נקיים)
-const APP_VERSION='גרסה 17.7.2026 · 178';
+const APP_VERSION='גרסה 17.7.2026 · 179';
 (function(){const v=document.getElementById('verStamp');if(v)v.textContent=APP_VERSION;})();
 /* ===== התרעה על גרסה חדשה: משיכת index.html מהשרת והשוואת מספר הבנייה ===== */
 const APP_BUILD=(function(){const m=/·\s*(\d+)/.exec(APP_VERSION);return m?parseInt(m[1],10):0;})();
