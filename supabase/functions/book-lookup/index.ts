@@ -366,22 +366,30 @@ function extractLabeledFields(text: string): { author: string; publisher: string
 async function findCoverImage(title: string): Promise<string> {
   const SERPER = Deno.env.get("SERPER_API_KEY") || "";
   if (!SERPER || !title) return "";
-  const r = await fetch("https://google.serper.dev/images", {
-    method: "POST",
-    headers: { "X-API-KEY": SERPER, "Content-Type": "application/json" },
-    body: JSON.stringify({ q: `"${title}" ספר כריכה`, gl: "il", hl: "iw", num: 8 }),
-  });
-  if (!r.ok) { tri(`ImageSearch → http ${r.status}`); return ""; }
-  const data = await r.json();
-  const all = (data.images || []);
-  const imgs = all.filter((im: any) => {
-    const u = im.imageUrl || ""; const w = +im.imageWidth || 0, h = +im.imageHeight || 0;
-    return /^https:/.test(u) && h >= 150 && w >= 100 && h >= w * 1.02;
-  });
-  // רק תמונה שהכיתוב שלה דומה לשם הספר — עדיף בלי כריכה מאשר כריכה של ספר אחר
-  const best = imgs.find((im: any) => titleSimilar(title, im.title || ""));
-  tri(`ImageSearch "${title.slice(0, 25)}" → ${all.length} תוצאות, ${imgs.length} בצורת כריכה, ${best ? "כיתוב דומה ✓" : "אף כיתוב לא דומה — בלי כריכה"}`);
-  return best ? best.imageUrl : "";
+  // ניקוי לשיפור האיתור: מקפים דבוקים ("אלופה-בית") הופכים לרווחים; בלי ציטוט מדויק.
+  const clean = title.replace(/[-–־]/g, " ").replace(/\s+/g, " ").trim();
+  const words = clean.split(" ");
+  const queries = [clean + " ספר כריכה"];
+  if (words.length > 4) queries.push(words.slice(0, 4).join(" ") + " ספר כריכה");   // שם ארוך — ניסיון שני עם תחילתו
+  for (const q of queries) {
+    const r = await fetch("https://google.serper.dev/images", {
+      method: "POST",
+      headers: { "X-API-KEY": SERPER, "Content-Type": "application/json" },
+      body: JSON.stringify({ q, gl: "il", hl: "iw", num: 8 }),
+    });
+    if (!r.ok) { tri(`ImageSearch → http ${r.status}`); return ""; }
+    const data = await r.json();
+    const all = (data.images || []);
+    const imgs = all.filter((im: any) => {
+      const u = im.imageUrl || ""; const w = +im.imageWidth || 0, h = +im.imageHeight || 0;
+      return /^https:/.test(u) && h >= 150 && w >= 100 && h >= w * 1.02;
+    });
+    // רק תמונה שהכיתוב שלה דומה לשם הספר — עדיף בלי כריכה מאשר כריכה של ספר אחר
+    const best = imgs.find((im: any) => titleSimilar(clean, im.title || ""));
+    tri(`ImageSearch "${q.slice(0, 30)}" → ${all.length} תוצאות, ${imgs.length} בצורת כריכה, ${best ? "כיתוב דומה ✓" : "אין התאמה"}`);
+    if (best) return best.imageUrl;
+  }
+  return "";
 }
 
 Deno.serve(async (req) => {
@@ -402,7 +410,7 @@ Deno.serve(async (req) => {
 
     // מצב בדיקה עצמית: הפונקציה בודקת את הסודות שהיא מחזיקה ומחזירה את תשובות המקורות
     if (body.selftest) {
-      const out: any = { selftest: true, fn: "v24", nli_key: !!NLI };
+      const out: any = { selftest: true, fn: "v25", nli_key: !!NLI };
       const CK = Deno.env.get("GOOGLE_CSE_KEY") || "";
       const CX = Deno.env.get("GOOGLE_CSE_ID") || "";
       out.cse_key_present = !!CK; out.cse_key_prefix = CK ? CK.slice(0, 8) + "…" + CK.slice(-4) + " (" + CK.length + " תווים)" : "";
@@ -437,8 +445,8 @@ Deno.serve(async (req) => {
     const HAS_WEB = !!(Deno.env.get("SERPER_API_KEY") || (CSE_KEY && CSE_ID));
     if (!result && HAS_WEB) { try { result = await lookupWebSearch(q, CSE_KEY, CSE_ID); } catch (e) { tri("WebSearch שגיאה: " + String(e)); } }
     const CSE_ON = !!(Deno.env.get("SERPER_API_KEY") || (Deno.env.get("GOOGLE_CSE_KEY") && Deno.env.get("GOOGLE_CSE_ID")));
-    if (!result) return json({ found: false, fn: "v24", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
-    (result as any).fn = "v24";
+    if (!result) return json({ found: false, fn: "v25", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
+    (result as any).fn = "v25";
     const se = extractSeries((result as any).title || "");
     if (se.series) { (result as any).series = se.series; (result as any).seriesIndex = se.seriesIndex; }
     // ספר שנמצא בלי כריכה — ניסיון אחרון: חיפוש תמונה לפי השם
