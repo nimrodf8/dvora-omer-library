@@ -376,6 +376,8 @@ function extractLabeledFields(text: string): { author: string; publisher: string
   if (!author) { const m = t.match(/(?:^|[\s·|,.(])מאת:?\s+([֐-׿][֐-׿'"׳״.\s]{1,28}?)(?=\s*(?:[·|•,;:)(]|בהוצאת|הוצאה|שנת|עמודים|כריכה|$))/); if (m) author = m[1].replace(/[\s.]+$/, "").trim(); }
   let publisher = fieldAfterLabel(t, 'הוצאה לאור|הוצאה|מוציא לאור');
   if (!publisher) { const m = t.match(/בהוצאת\s+([^·|•,.:]{2,40})/); if (m) publisher = m[1].trim(); }
+  // "הוצאת כתר" — צורת סמיכות נפוצה; נעצר לפני מפריד או תווית הבאה
+  if (!publisher) { const m = t.match(/(?:^|[\s·|,.(])הוצאת\s+([֐-׿][֐-׿'"׳״\s]{1,30}?)(?=\s*(?:[·|•,.;:)(]|מאת|שנת|עמודים|כריכה|דאנאקוד|מחיר|$))/); if (m) publisher = m[1].replace(/[\s.]+$/, "").trim(); }
   const yRaw = fieldAfterLabel(t, 'שנת הדפסה|שנת הוצאה|שנת פרסום');
   const ym = (yRaw || "").match(/(?:19|20)\d{2}/);
   // סינון ערכים חשודים: קצרים/ארוכים מדי או עתירי ספרות (קיצוץ/זבל של גוגל)
@@ -443,7 +445,7 @@ Deno.serve(async (req) => {
 
     // מצב בדיקה עצמית: הפונקציה בודקת את הסודות שהיא מחזיקה ומחזירה את תשובות המקורות
     if (body.selftest) {
-      const out: any = { selftest: true, fn: "v28", nli_key: !!NLI };
+      const out: any = { selftest: true, fn: "v29", nli_key: !!NLI };
       const CK = Deno.env.get("GOOGLE_CSE_KEY") || "";
       const CX = Deno.env.get("GOOGLE_CSE_ID") || "";
       out.cse_key_present = !!CK; out.cse_key_prefix = CK ? CK.slice(0, 8) + "…" + CK.slice(-4) + " (" + CK.length + " תווים)" : "";
@@ -474,7 +476,7 @@ Deno.serve(async (req) => {
       TRIED.length = 0;
       let img = "";
       try { img = await findCoverImage(q); } catch (_) { tri("ImageSearch שגיאה"); }
-      return json({ found: !!img, cover: img, fn: "v28", tried: TRIED.slice() });
+      return json({ found: !!img, cover: img, fn: "v29", tried: TRIED.slice() });
     }
 
     TRIED.length = 0;
@@ -486,8 +488,8 @@ Deno.serve(async (req) => {
     const HAS_WEB = !!(Deno.env.get("SERPER_API_KEY") || (CSE_KEY && CSE_ID));
     if (!result && HAS_WEB) { try { result = await lookupWebSearch(q, CSE_KEY, CSE_ID); } catch (e) { tri("WebSearch שגיאה: " + String(e)); } }
     const CSE_ON = !!(Deno.env.get("SERPER_API_KEY") || (Deno.env.get("GOOGLE_CSE_KEY") && Deno.env.get("GOOGLE_CSE_ID")));
-    if (!result) return json({ found: false, fn: "v28", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
-    (result as any).fn = "v28";
+    if (!result) return json({ found: false, fn: "v29", nli_key: !!NLI, web_search: CSE_ON, tried: TRIED.slice() });
+    (result as any).fn = "v29";
     const se = extractSeries((result as any).title || "");
     if (se.series) { (result as any).series = se.series; (result as any).seriesIndex = se.seriesIndex; }
     // ספר שנמצא בלי כריכה — ניסיון אחרון: חיפוש תמונה לפי השם
